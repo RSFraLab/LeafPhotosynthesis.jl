@@ -17,10 +17,13 @@ scientific validation of the reference models.
   or reference conditions in equations. Supply values through explicit parameters.
 - Use FT and validate Float32 and Float64 type stability. Target CPU, NVIDIA GPU,
   and Apple GPU workflows, while acknowledging backend validation separately.
-- Ultimately reproduce every supplemental exercise in Gordon Bonan's
-  Climate Change and Terrestrial Ecosystem Modeling using production components.
-  The identified source is https://github.com/gbonan/bonanmodeling, also cloned
-  locally at ../bonanmodeling. This is an ecosystem goal, not leaf-package scope.
+- Teaching reference: Gordon Bonan's Climate Change and Terrestrial Ecosystem
+  Modeling, https://github.com/gbonan/bonanmodeling, also cloned at ../bonanmodeling.
+  Christian clarified after restarting: only exercises solvable within this
+  package belong here. 11.1 is implemented; Christian suggested 12.1 as another
+  leaf-level candidate. Later, a separate example repository can combine individual
+  packages. The original whole-book ambition must not become a scope-expansion
+  requirement for LeafPhotosynthesis.
 - Preserve the eventual scientific breadth of multilayer canopy photosynthesis,
   PSII efficiency and SIF, while separating optical transport from physiological yield.
 - ClimaLand/CliMA is the coupled Earth-system destination. Standalone column
@@ -131,27 +134,49 @@ Read-only archive: /kiwi-data/Data/model/LSM_SOURCE.
 
 ## Current implementation and next steps
 
-The first slice is deliberately narrow: thermal responses, electron transport,
-C3 carbon demand, explicit rate limitation and compensation policies, and a
-LeafModel containing one photosynthesis component. Bonan 11.1 supplies explicit
+The first slice contains thermal responses, electron transport, C3 carbon demand,
+explicit rate limitation and compensation policies. Bonan 11.1 supplies explicit
 parameters and all three response grids. Every grid point is compared against
 an independent high-precision equation oracle. This is not an executed MATLAB
 comparison. Outputs are CSV tables; classroom plots/notebooks remain to be added.
 
-Next useful work: generate upstream MATLAB/Octave reference outputs; audit/validate
-parameter domains; test AD in smooth regions; demonstrate actual CUDA and Metal
-batches; then add the next scientifically chosen leaf process with an independent
-benchmark. C4/TPU, explicit diffusion and stomatal coupling, and fluorescence need
-their own scoped designs, not a bulk port. Retain a small package throughout.
+After restart Christian requested prognostic stomata following Liu et al. (2024),
+oxygen exchange, abstract component interfaces, and explicit no-op implementations.
+LeafModel now composes photosynthesis, stomata, and oxygen. Core additions are:
+Ball–Berry/Medlyn targets; an instantaneous target wrapper; first-order prognostic
+conductance with independent opening/closing timescales; analytical signed C3 +
+minimum-limitation diffusion at known conductance; and a core oxygen budget.
+NoStomatalDynamics holds prescribed conductance fixed; NoOxygenExchange returns
+nothing without computing the budget. States remain external to parameter objects.
+See docs/core_exchange.md for units, equations, assumptions, and unsupported cases.
 
-Initial validation: 2,874 CPU checks pass on Julia 1.12.6, including both precisions,
-inferred output types, zero per-leaf heap allocation, all 324 Bonan response points
-per precision, dark/lit reordering, and extreme rate disparities. Both example
-runs write their three response tables successfully. The optional CUDA acceptance
-suite is in test/gpu, with batch-check logic also exercised by the CPU suite.
-Wurst exposes two NVIDIA L40S entries under /proc/driver/nvidia/gpus, but the agent
-session has no /dev/nvidia* files. nvidia-smi fails and CUDA 5.11.3 initialization
-returns CUDA_ERROR_NO_DEVICE. This is an access limitation; GPU execution is unverified.
+The oxygen budget uses realized linear electron demand, not potential J. Carbon
+limitations now combine positive capacities before multiplying by signed CO₂ excess;
+this keeps underlying turnover finite at compensation and selects the smaller positive
+capacity below it, rather than the most negative signed rate. Bonan's clipped example
+remains numerically consistent with its reference.
+Alternative O₂ sinks are deferred under Christian's instruction to start with the core.
+Gamma-star's oxygen dependence and O₂ diffusion/storage are not yet modeled.
+
+Validation after these additions: 3,648 CPU checks and 230 CUDA checks pass in
+FP32/FP64, including analytical diffusion versus a BigFloat bracketed root, carbon/O₂
+budgets, compensation/darkness, stomatal response, and disabled components. CUDA ran
+on physical GPU 1 (NVIDIA L40S), Julia 1.12.6, CUDA.jl 6.5.1. The earlier restricted
+session could not access GPU device files. Restarting with unrestricted execution
+resolved access; an old CUDA 5.11.3 environment then failed GPU compilation, resolved
+by the dedicated optional CUDA 6 environment. Metal is still untested.
+
+Christian also requested a 180 × 360 × 0.3 × 3000 = 58,320,000-leaf workload.
+benchmarks/leaf_batches.jl benchmarks the current C3 photosynthesis kernel (not the
+new stomatal/O₂ path or a complete ESM), with explicit workload settings, CPU serial
+and eight-thread comparisons, GPU event timing, and separate transfer costs. Measured
+results and limitations are in benchmarks/README.md and benchmarks/results/.
+
+Next useful work: complete the leaf-only 12.1 configurations without importing
+canopy/soil dynamics; generate upstream MATLAB/Octave reference outputs; audit
+parameter domains; test AD; validate Metal; then extend C4/TPU or fluorescence with
+scoped designs and independent benchmarks. Full equilibrium solving, boundary-layer
+and humidity treatments, and 12.1 validation are still pending. Retain a small package.
 
 Christian authorized creating/pushing RSFraLab/LeafPhotosynthesis.jl and explicitly
 selected private visibility. Use /usr/bin/gh if needed: ~/.local/bin/gh is a

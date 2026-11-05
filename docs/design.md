@@ -7,8 +7,9 @@ until tested against more models and coupled applications.
 
 ## Physical and software boundaries
 
-`LeafModel` contains concrete components. Initially its only component is
-`C3Photosynthesis`, composed from temperature responses, electron transport,
+`LeafModel` contains concrete photosynthesis, stomatal, and oxygen components under
+abstract interfaces. Explicit no-op types disable optional calculations.
+`C3Photosynthesis` composes temperature responses, electron transport,
 stoichiometry, rate limitation, and compensation treatment. Composition determines
 the compiled calculation through Julia dispatch. Model parameters are immutable;
 inputs and outputs are scalar values, not mutable per-leaf scratch containers.
@@ -19,9 +20,11 @@ rather than independently computing incompatible yields. Do not add placeholder
 components now. Dynamic induction/NPQ would have explicit state owned and advanced
 by the caller; no hidden relaxation on each function invocation.
 
-Stomatal and mesophyll diffusion are distinct from biochemical demand. A later
-gas-exchange composition layer will solve their joint residual with explicit
-convergence information. Leaf energy balance and hydraulics can be separate components
+Stomatal and mesophyll diffusion are distinct from biochemical demand. The core
+gas-exchange layer analytically closes diffusion at known conductance for signed C3
+with minimum limitation and reports its residual. The prognostic stomatal component
+exposes a tendency; fully coupled equilibrium solving remains separate future work.
+Leaf energy balance and hydraulics can be separate components
 without placing soils, canopy geometry, or atmosphere solvers in this package.
 
 Canopy optics, radiative transfer, air transport, spatial discretization, forcing,
@@ -74,8 +77,11 @@ Students call the production component functions, inspect named diagnostics, the
 compose a complete leaf calculation. No parallel teaching implementation of the same
 equations. Each example identifies its source exercise, assumptions, parameter file,
 units, expected curves, and validation status. Plotting and notebooks remain optional.
-The full Bonan exercise set is an ecosystem acceptance roadmap, including soil and
-biogeochemistry exercises that should never become leaf-package dependencies.
+Include only exercises solvable within this package's leaf-physics scope. Bonan
+11.1 is implemented; 12.1 is a candidate for discrete leaf gas-exchange components
+at prescribed temperature. Separate implemented cases from future work. Combined
+exercises will live in a separate example repository later, composing the individual
+physics packages without broadening this one into a land or canopy model.
 
 ## Atmosphere coupling
 

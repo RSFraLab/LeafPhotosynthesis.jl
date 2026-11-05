@@ -1,0 +1,13 @@
+# Christian's proposed 1-degree land-column workload; not a geographic land mask.
+[workload]
+latitudes = 180
+longitudes = 360
+land_fraction = 0.3
+leaves_per_column = 3000
+smaller_batches = [10000, 1000000]
+
+[timing]
+cpu_samples = 1
+gpu_samples = 3
+check_samples = 16
+check_tolerance_eps = 128.0

@@ -1,0 +1,31 @@
+# Illustrative core-component settings, NOT a fit to Liu et al. or Bonan 12.1.
+# Biochemistry is supplied independently by bonan_11_1.toml.
+# First-order dynamics: Liu et al. 2024, doi:10.5194/bg-21-1501-2024, Eq. 3.
+[stomata]
+minimum_conductance = 0.01     # mol H2O m^-2 leaf s^-1, illustrative
+ball_berry_slope = 9.0        # dimensionless, illustrative
+medlyn_slope = 126.49110640673517 # Pa^0.5; illustrative 4 kPa^0.5
+vpd_floor = 1.0               # Pa, chosen numerical regularization
+opening_timescale = 600.0     # s, illustrative, not inferred from a species
+closing_timescale = 300.0     # s, illustrative
+micromole_to_mole = 1.0e-6    # mol per micromol
+
+[diffusion]
+boundary_co2 = 1.0            # mol CO2 m^-2 leaf s^-1, prescribed
+mesophyll_co2 = 0.2           # mol CO2 m^-2 leaf s^-1, prescribed
+diffusivity_ratio = 1.6       # H2O/CO2 stomatal conductance ratio; Liu et al. Eq. 1 discussion
+mole_to_micromole = 1.0e6     # micromol per mol
+
+# Core stoichiometry: Gauthier et al. 2018, doi:10.1104/pp.16.00741.
+[oxygen]
+electrons_per_oxygen = 4.0    # electrons per O2 from water oxidation
+oxygen_per_oxygenation = 1.5  # net O2 uptake incl. Rubisco and photorespiratory pathway
+co2_per_oxygenation = 0.5     # photorespiratory CO2 per Rubisco oxygenation
+respiratory_quotient = 1.0    # CO2 released / O2 consumed; explicit assumption
+
+[experiment]
+initial_conductance = 0.02    # mol H2O m^-2 leaf s^-1
+relative_humidity = 0.6      # prescribed leaf-surface value
+vpd = 1200.0                 # Pa, prescribed leaf-surface value
+step = 1.0                   # s, illustrative explicit Euler step
+duration = 1800.0            # s, light-step duration

@@ -1,6 +1,6 @@
 using Test
 using LeafPhotosynthesis
-include("../examples/bonan_11_1.jl")
+include("../examples/core_exchange.jl")
 include("reference_bonan.jl")
 include("device_checks.jl")
 
@@ -12,6 +12,8 @@ function leaf_allocations(model, environment)
     photosynthesize(model, environment)
     return @allocated photosynthesize(model, environment)
 end
+
+include("core_exchange.jl")
 
 @testset "LeafPhotosynthesis" begin
     for FT in (Float32, Float64)
@@ -118,4 +120,5 @@ end
         end
     end
     check_leaf_batches(identity, () -> nothing, parameter_path)
+    check_core_batches(identity, () -> nothing, parameter_path)
 end

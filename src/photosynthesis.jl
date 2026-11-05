@@ -31,7 +31,10 @@ Base.@kwdef struct LeafEnvironment{FT}
     oxygen::FT
 end
 
-"""Evaluate a photosynthesis component for one leaf environment, returning named diagnostics."""
+"""
+Evaluate one leaf environment. The `electron_transport` diagnostic is available
+electron supply; the oxygen adapter separately reports realized `linear_electron_flow`.
+"""
 @inline function photosynthesize(p::C3Photosynthesis, env::LeafEnvironment)
     rates = biochemical_rates(p.temperature, env.temperature)
     electrons = electron_transport(p.electron_transport, env.absorbed_par, rates.jmax)

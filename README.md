@@ -2,13 +2,15 @@
 
 A small Julia package for composable leaf photosynthesis. Students and coupled
 models call the same process functions. Parameters and leaf environments use `FT`;
-the initial implementation supports CPU calculations in `Float32` and `Float64`.
+the implementation is tested on CPU and NVIDIA CUDA in `Float32` and `Float64`.
 
-**Initial scope:** C3 biochemistry at prescribed temperature, absorbed PAR, and
-biochemical-site CO₂/O₂. `LeafModel` contains a concrete `C3Photosynthesis` component.
-There are no runtime dependencies and no scientific parameter defaults in the core.
-C4, TPU limitation, stomatal/mesophyll diffusion, fluorescence, GPU execution, and
-ClimaLand integration are not implemented or validated yet.
+**Scope:** C3 biochemistry, analytical CO₂ diffusion at prescribed conductance,
+prognostic stomatal conductance, and a core oxygen budget. `LeafModel` composes
+concrete photosynthesis, stomatal, and oxygen components under abstract interfaces.
+`NoOxygenExchange` skips the oxygen calculation; `NoStomatalDynamics` keeps prescribed
+conductance fixed. There are no runtime dependencies or hidden scientific parameters.
+C4, TPU, fluorescence, a fully coupled equilibrium stomatal solve, Metal execution,
+and ClimaLand integration remain future work.
 
 ## Start here
 
@@ -17,6 +19,7 @@ From this directory:
 ```sh
 julia --project=. test/runtests.jl
 julia --project=. examples/bonan_11_1.jl
+julia --project=. examples/core_exchange.jl
 ```
 
 The example writes light, CO₂, and temperature response tables for both precisions
@@ -24,6 +27,8 @@ under `examples/output/bonan_11_1/`. It uses the settings of
 [Bonan supplemental program 11.1](https://github.com/gbonan/bonanmodeling/tree/master/sp_11_01).
 Numerical agreement is checked against an independent high-precision equation
 calculation; upstream MATLAB output has not yet been generated for comparison.
+The separate core-exchange example demonstrates prognostic conductance and O₂
+diagnostics with illustrative settings. It is not a reproduction of Bonan 12.1.
 
 To inspect one leaf, run this in Julia from the package directory:
 
@@ -59,12 +64,17 @@ carbon = carbon_assimilation(rates, environment.co2, environment.oxygen,
 | How is absorbed light converted to electron transport? | [src/electron_transport.jl](src/electron_transport.jl) |
 | How does CO₂ uptake depend on Rubisco and electrons? | [src/carbon_assimilation.jl](src/carbon_assimilation.jl) |
 | How are competing rates combined? | [src/rate_limitation.jl](src/rate_limitation.jl) |
+| How are stomatal targets and time evolution separated? | [src/stomatal_conductance.jl](src/stomatal_conductance.jl) |
+| How is CO₂ diffusion coupled to biochemical demand? | [src/gas_diffusion.jl](src/gas_diffusion.jl) |
+| How are gross and net O₂ exchange computed or disabled? | [src/oxygen_exchange.jl](src/oxygen_exchange.jl) |
+| How do the optional core components fit together? | [docs/core_exchange.md](docs/core_exchange.md), [examples/core_exchange.jl](examples/core_exchange.jl) |
 | Where are the scientific values, units, and sources? | [examples/parameters/bonan_11_1.toml](examples/parameters/bonan_11_1.toml) |
 | How does a student run an exercise? | [examples/bonan_11_1.jl](examples/bonan_11_1.jl) |
 | What is tested, and against what? | [test/runtests.jl](test/runtests.jl), [reference oracle](test/reference_bonan.jl) |
 | What belongs here, and how will coupling work? | [docs/design.md](docs/design.md) |
-| How will we cover the whole book? | [docs/bonan_exercises.md](docs/bonan_exercises.md) |
+| Which Bonan exercises fit this package? | [docs/bonan_exercises.md](docs/bonan_exercises.md) |
 | What did we decide and find in earlier reviews? | [docs/session_notes.md](docs/session_notes.md) |
+| How do CPU and GPU leaf batches compare? | [benchmarks/leaf_batches.jl](benchmarks/leaf_batches.jl) |
 
 ## Development scope
 
@@ -73,10 +83,11 @@ the caller owns arrays, devices, state evolution, and iteration. Broadcast can a
 the same function to independent leaves. A small number of concrete components
 should express physical choices without a large hierarchy of abstract containers.
 
-The ecosystem goal is to reproduce all supplemental programs in Bonan's
-*Climate Change and Terrestrial Ecosystem Modeling*. Soil, canopy transport,
-radiation, and biogeochemistry remain outside this package. Classroom exercises
-compose those tools instead of growing a single all-purpose model here.
+Examples here cover problems solvable within leaf physiology: Bonan 11.1 is
+implemented, and prescribed-temperature gas exchange in 12.1 is a candidate as
+the necessary leaf components are added. A separate example repository can later
+combine the physics packages for broader exercises. Whole-book coverage is not a
+requirement to expand this package into soil, canopy transport, or ecosystem dynamics.
 
 This is a new implementation organized by biophysics, not a file-by-file port of
 Photosynthesis.jl or Emerald. Scientific references and source provenance are in
@@ -96,5 +107,7 @@ The test disables scalar GPU indexing, evaluates every response-curve environmen
 plus mixed dark/lit leaves in both orders, and compares all diagnostics with CPU
 results for FP32 and FP64. Its batch checks also run on CPU in the regular suite.
 An unavailable device causes failure, not a skipped test that could look like success.
-In the initial agent session on wurst, the driver lists two L40S devices but device
-files are absent and CUDA reports `CUDA_ERROR_NO_DEVICE`; GPU acceptance remains pending.
+The core and no-op components pass on wurst's NVIDIA L40S with Julia 1.12.6 and
+CUDA.jl 6.5.1. Older CUDA 5.11.3 failed compilation in the tested Julia environment;
+support for every version in the optional environment's compatibility range is not implied.
+Apple Metal remains untested.

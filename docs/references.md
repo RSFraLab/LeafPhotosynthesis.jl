@@ -22,3 +22,20 @@ The test oracle recomputes the reference equations with BigFloat, mole fractions
 and the direct quadratic formula. It does not execute MATLAB. A future reference
 run should preserve interpreter/version, upstream revision, exact settings, and
 output hashes separately from this equation-based validation.
+
+## Core stomatal and oxygen components
+
+- [Liu, Wang, Magney, and Frankenberg (2024)](https://bg.copernicus.org/articles/21/1501/2024/):
+  analytical prescribed-conductance diffusion–biochemistry coupling and first-order
+  prognostic stomatal response. The example timescales are illustrative, not fitted
+  parameters or a reproduction of the paper's experiments.
+- [Gauthier et al. (2018)](https://pmc.ncbi.nlm.nih.gov/articles/PMC5933133/):
+  oxygen production/uptake accounting. Core stoichiometry and the respiratory-quotient
+  assumption are explicitly listed in the example parameter file.
+- [Historical CliMA/Land composition](https://github.com/CliMA/Land/blob/fabe2bb37a19303ac16212be96fab8ed4605cc22/src/Photosynthesis/leaf_photosynthesis.jl):
+  inspected as an early component-design reference, not current ClimaLand code or
+  an implementation to port. It combines typed model choices with mutable leaf state.
+- [Current ClimaLand shared photosynthesis interface](https://github.com/CliMA/ClimaLand.jl/blob/main/src/standalone/Vegetation/photosynthesis.jl):
+  the locally reviewed version is d81db246d. It is a coupling reference, with separate
+  Farquhar/P-model implementations. Its clipped net-assimilation helper is not our
+  signed respiratory carbon-flux convention.

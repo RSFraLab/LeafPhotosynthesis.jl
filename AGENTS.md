@@ -6,6 +6,9 @@ concrete component types, no embedded scientific constants, and Float32/Float64 
 
 - Organize by biophysical process, never by the layout of Emerald or Photosynthesis.jl.
 - LeafModel composes discrete, concrete types. Keep model choices explicit.
+- Define abstract interfaces at physical component boundaries. Disable optional
+  treatments with explicit NoOp types, such as NoOxygenExchange; do not report an
+  uncomputed flux as a measured zero. Keep conductance state separate from parameters.
 - Keep scalar physics independent of devices, ClimaCore, arrays, I/O, and timesteppers.
 - Every physical/empirical value is an explicit input. Put named experiment values,
   unit conversions, reference conditions, and stoichiometric coefficients in parameter
@@ -17,8 +20,10 @@ concrete component types, no embedded scientific constants, and Float32/Float64 
   mathematical formulations as reference oracles.
 - Keep a clear newcomer navigation map. No numbered files, catch-all utilities, or deep
   mutable containers. Add a file only for a distinct process or a clear software boundary.
-- Update docs/bonan_exercises.md as coverage advances. Full book coverage belongs to
-  the ecosystem, not to this leaf package. Avoid speculative package proliferation.
+- Keep Bonan examples within this package's leaf-physics scope: 11.1 is implemented;
+  12.1 is a candidate as discrete gas-exchange components are added. Distinguish
+  implemented cases from candidate work and full coverage from partial coverage.
+  Combined exercises belong in a separate example repository later, not here.
 - Keep prior source audits qualified: isolated reproduction is not a full model run.
 
 Validation: `julia --project=. test/runtests.jl` and

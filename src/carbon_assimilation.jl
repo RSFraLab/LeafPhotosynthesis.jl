@@ -18,6 +18,14 @@ struct NonnegativeAssimilation end
 @inline co2_excess(co2, gamma_star, ::NonnegativeAssimilation) =
     max(co2 - gamma_star, zero(co2 - gamma_star))
 
+# Co-limit positive biochemical capacities before multiplying by CO₂ excess.
+# This preserves turnover at the compensation point, including photorespiration.
+@inline function assimilation_capacity(r, co2, oxygen, electrons, s, limitation)
+    rubisco = r.vcmax / (co2 + r.kc * (one(oxygen) + oxygen / r.ko))
+    light = electrons / (s.electrons_per_carboxylation * (co2 + s.oxygenation_cost * r.gamma_star))
+    return colimit(rubisco, light, limitation)
+end
+
 """
     carbon_assimilation(rates, co2, oxygen, electrons, stoichiometry, limitation, compensation)
 
@@ -26,6 +34,10 @@ C3 assimilation at prescribed biochemical-site CO₂ and O₂ partial pressures
 electron-limited, combined pre-respiration, respiration, and net rates in
 μmol CO₂ m⁻² leaf s⁻¹. Positive net means uptake. Pre-respiration rates already
 include photorespiration; they are not raw Rubisco carboxylation fluxes.
+
+Limitation acts on nonnegative biochemical capacities before multiplying by CO₂
+excess. For signed sub-compensation fluxes this is an explicit extension of the
+usual positive-uptake minimum: it limits turnover, not the most negative rate.
 
 No stomatal or mesophyll diffusion is solved here. Equating this site's CO₂
 with intercellular CO₂ assumes negligible mesophyll resistance.
@@ -36,7 +48,7 @@ with intercellular CO₂ assumes negligible mesophyll resistance.
     rubisco = r.vcmax * excess / (co2 + r.kc * (one(oxygen) + oxygen / r.ko))
     light = electrons * excess /
             (s.electrons_per_carboxylation * (co2 + s.oxygenation_cost * r.gamma_star))
-    assimilation = colimit(rubisco, light, limitation)
+    assimilation = assimilation_capacity(r, co2, oxygen, electrons, s, limitation) * excess
     return (; rubisco_limited = rubisco, electron_limited = light,
         assimilation, respiration = r.respiration, net_assimilation = assimilation - r.respiration)
 end
