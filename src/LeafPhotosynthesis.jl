@@ -14,14 +14,24 @@ export AbstractStomatalTarget, AbstractStomatalModel, BallBerry, Medlyn,
 export AbstractLeafDiffusion, SeriesDiffusion, GasExchangeEnvironment,
     gas_exchange, leaf_tendencies
 
+export carbon_assimilation_derivative, assimilation_sensitivity,
+    WaterVaporDiffusion, transpiration_sensitivity,
+    AbstractEquilibriumMethod, Bisection, SafeguardedNewton, EquilibriumSolver,
+    EquilibriumSolution, EquilibriumStatus, EquilibriumConverged,
+    EquilibriumIterationLimit, EquilibriumPrecisionLimit, EquilibriumInvalidInput,
+    EquilibriumInvalidBracket, equilibrium_gas_exchange
+
 # Follow this list from physical responses to a complete prescribed-CO₂ leaf call.
 include("temperature_response.jl")
 include("rate_limitation.jl")
 include("electron_transport.jl")
 include("carbon_assimilation.jl")
+include("assimilation_derivatives.jl")
 include("photosynthesis.jl")
 include("stomatal_conductance.jl")
 include("gas_diffusion.jl")
+include("equilibrium_solver.jl")
+include("gas_exchange_sensitivities.jl")
 include("oxygen_exchange.jl")
 include("leaf_model.jl")
 

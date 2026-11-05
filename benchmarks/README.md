@@ -44,3 +44,44 @@ The benchmark checks sampled CPU/GPU outputs after downloading; the separate CUD
 test suite checks every reference-environment result, both precisions, dark/light
 ordering, and the new optional components. Larger coupled kernels need their own
 timing and memory budgets before predicting global-model performance.
+
+## Coupled A–Ci equilibrium
+
+`equilibrium_batches.jl` separately measures coupled C3–CO₂ diffusion–Ball–Berry
+solving with safeguarded Newton and bisection. The 1,000,000-leaf input repeats
+108 combinations of three temperatures, four light levels, three ambient CO₂
+values, and three VPD values specified in `workload.toml`. Ball–Berry uses the
+prescribed RH, so VPD variation does not change that particular law. This is a
+synthetic batch, not a realistic canopy population. One quarter of the leaves
+are dark and take the exact zero-iteration path. No warm-start guess is supplied.
+
+```sh
+CUDA_VISIBLE_DEVICES=1 julia --threads=8 --project=test/gpu \
+  benchmarks/equilibrium_batches.jl /tmp/equilibrium-throughput.csv
+```
+
+Measured on the same host/GPU/software listed above, November 5, 2026:
+
+| Precision | Method | 8-thread CPU | GPU evaluation | Mean CPU iterations | Maximum CPU iterations |
+| --- | --- | ---: | ---: | ---: | ---: |
+| FP32 | Safeguarded Newton | 29.70 ms | 0.203 ms | 2.92 | 8 |
+| FP32 | Bisection | 71.40 ms | 0.233 ms | 14.06 | 24 |
+| FP64 | Safeguarded Newton | 35.26 ms | 5.349 ms | 3.94 | 28 |
+| FP64 | Bisection | 120.19 ms | 6.949 ms | 24.42 | 37 |
+
+Newton reduced CPU time by about 2.4×/3.4× and GPU time by 1.15×/1.30× in FP32/FP64.
+Fewer iterations do not translate proportionally into GPU speed: per-step work,
+branch divergence, output traffic, and the device's FP64 throughput also matter.
+The Newton GPU evaluation was about 146×/6.6× faster than eight CPU threads.
+Upload + evaluation + download was 6.12 ms/15.92 ms for Newton, reducing that
+comparison to approximately 4.9×/2.2×. Transfers were warmed before timing.
+
+[Raw results](results/wurst-l40s-equilibrium-2026-11-05.csv) include separate transfers
+and GPU iteration statistics. All CPU/GPU leaves converged; sampled fluxes were
+cross-checked. FP32 bisection has slightly different iteration counts across devices
+because rounding can change which iteration meets the same residual tolerances.
+Timings are the minimum of three warmed CPU and five GPU event samples; allocations,
+compilation, input construction, and checking are excluded. Transfers are single
+warmed samples. This shared host was not isolated for statistical benchmarking.
+These measurements exclude prognostic integration, sensitivities, O₂, leaf energy
+balance, canopy transport, and ESM coupling. No full-model speedup is implied.

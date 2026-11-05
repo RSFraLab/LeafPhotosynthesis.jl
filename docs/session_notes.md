@@ -175,8 +175,8 @@ results and limitations are in benchmarks/README.md and benchmarks/results/.
 Next useful work: complete the leaf-only 12.1 configurations without importing
 canopy/soil dynamics; generate upstream MATLAB/Octave reference outputs; audit
 parameter domains; test AD; validate Metal; then extend C4/TPU or fluorescence with
-scoped designs and independent benchmarks. Full equilibrium solving, boundary-layer
-and humidity treatments, and 12.1 validation are still pending. Retain a small package.
+scoped designs and independent benchmarks. Boundary-layer parameterizations,
+coupled humidity treatments, and 12.1 validation are still pending. Retain a small package.
 
 Christian authorized creating/pushing RSFraLab/LeafPhotosynthesis.jl and explicitly
 selected private visibility. Use /usr/bin/gh if needed: ~/.local/bin/gh is a
@@ -187,3 +187,57 @@ Open scientific choices: steady-state versus dynamic NPQ/induction; first priori
 among SIF and gas exchange/hydraulics; whether standalone columns prescribe weather
 or evolve atmospheric columns; exact concerns/alternatives Tapio raised; whether
 AD/inference is a first-release requirement. These do not block the basic C3 kernel.
+
+## Equilibrium, derivatives, and optimality follow-up (November 5)
+
+Christian requested stable, fast A–Ci iterations alongside prognostic stomata with
+independent opening/closing timescales, and suggested nearly analytic derivatives
+of GPP, transpiration, and leaf temperature with respect to conductance.
+
+Implemented `EquilibriumSolver` with `SafeguardedNewton` and reference `Bisection`
+under `AbstractEquilibriumMethod`, separate from physical stomatal types. Supports
+C3 minimum/quadratic limitation, signed/clipped compensation, and Ball–Berry/Medlyn
+steady targets. Solves Cc with finite mesophyll resistance, reconstructs Ci/Cs,
+caches thermal rates/electron supply per solve, has a dark analytic path and explicit
+warm starts, and returns convergence/status/iterations plus pressure and flux residuals.
+The example TOML owns precision-specific tolerances and numerical settings. No
+hidden conductance iteration or tolerance relaxation; sealed leaves remain excluded.
+Prognostic target laws are unchanged apart from avoiding 0/0 for zero uptake/CO₂.
+Constant-forcing integrations from above/below equilibrium validate the two options'
+long-time consistency while retaining different transient behavior.
+
+`carbon_assimilation_derivative` supplies an analytic biochemical CO₂ derivative;
+`assimilation_sensitivity` implicitly differentiates steady diffusion at independently
+varied gs, holding T/light/boundary/mesophyll parameters fixed. It distinguishes net
+and pre-respiration assimilation from raw carboxylation; canopy GPP definitions and
+area aggregation remain external. `WaterVaporDiffusion` and `transpiration_sensitivity`
+provide E and dE/dgs for explicit water boundary conductance and leaf-to-air VPD.
+Do not substitute the stomatal law's leaf-surface VPD for that air gradient.
+
+Temperature sensitivity requires an energy balance: for a reduced equilibrium
+residual B(T,gs)=0, T_g=-B_g/B_T, followed by the temperature chain rule in carbon
+and water fluxes. No energy-balance component or temperature sensitivity is implemented;
+prescribed T must not be presented as a physical prediction of zero feedback.
+The full derivation and API limits are in docs/equilibrium_and_sensitivities.md.
+
+Actual Emerald sources inspected for Christian's optimality question:
+`../EmeraldDeveloping/src/Namespace/config/methods/stomatal-model.jl`,
+`../EmeraldDeveloping/src/StomatalModels/prognostic/daytime.jl`, and its
+`optimality/anderegg.jl` / `optimality/wang.jl`. Families include Anderegg, Eller,
+Sperry/Sperry2, and Wang/Wang2. Optimality tendencies use carbon gain minus hydraulic
+cost gradients (including critical transpiration in Wang); empirical models relax
+toward targets. Do not force all of these into a linear empirical target interface,
+port scratch/SPAC containers, or copy unexplained regularization constants. No
+optimization cost law has been implemented yet; the derivatives are building blocks.
+
+Independent BigFloat equilibrium and derivative checks pass, as do both precisions
+on physical GPU 1 (L40S). The CPU suite now comprises 27,074 checks (full suite passed,
+then the expanded 22,994-check equilibrium subset passed); CUDA has 662 checks.
+Both runnable examples also passed. Benchmarking one
+million heterogeneous leaves gives Newton GPU evaluation of 0.203 ms FP32 / 5.349 ms
+FP64, versus eight-thread CPU 29.70 / 35.26 ms. Mean CPU iterations are 2.92 / 3.94
+(including 25% exact-dark leaves), versus bisection 14.06 / 24.42. Transfer-inclusive
+Newton timings are 6.12 / 15.92 ms. These exclude O₂, sensitivities, energy balance,
+and model coupling; see benchmarks/README.md for methodology and raw results.
+Bonan 12.1 is still not a validated reproduction: its boundary/humidity treatments,
+product limitation, alternative formulations, and reference comparison remain separate.

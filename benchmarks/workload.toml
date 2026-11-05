@@ -11,3 +11,13 @@ cpu_samples = 1
 gpu_samples = 3
 check_samples = 16
 check_tolerance_eps = 128.0
+
+# Synthetic, heterogeneous equilibrium workload; both methods use identical inputs.
+[equilibrium]
+batch_size = 1000000
+cpu_samples = 3
+gpu_samples = 5
+temperature = [283.15, 298.15, 313.15] # K
+absorbed_par = [0.0, 1.0, 100.0, 1500.0] # micromol photons m^-2 leaf s^-1
+ambient_co2 = [4.0, 40.0, 100.0] # Pa
+vpd = [200.0, 1200.0, 5000.0] # Pa, leaf surface

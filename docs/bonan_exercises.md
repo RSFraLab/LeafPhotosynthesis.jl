@@ -8,7 +8,7 @@ example repository later; they are not requirements to build a canopy or land mo
 | Program | Calculation | Status |
 | --- | --- | --- |
 | 11.1 | C3 responses to light, CO₂, and temperature at prescribed internal CO₂ | Three numerical curves implemented in FP32/FP64; independent equation checks pass; upstream MATLAB output comparison and figures pending |
-| 12.1 | Leaf gas exchange at prescribed temperature, including light, CO₂, temperature, and vapor-pressure-deficit responses | Candidate within leaf-physics scope; coupled gas exchange is not implemented yet |
+| 12.1 | Leaf gas exchange at prescribed temperature, including light, CO₂, temperature, and vapor-pressure-deficit responses | Candidate; coupled C3 gas exchange is implemented, but exercise-specific treatments and reference comparison remain pending |
 
 ## Reproducing 11.1
 
@@ -33,9 +33,9 @@ is needed. It couples biochemical demand to leaf boundary-layer transport and
 stomatal regulation. Those are discrete leaf processes and can fit a small LeafModel.
 
 A first implementation could target the reference's default C3 + Medlyn case.
-The core now provides target laws and diffusion at prescribed conductance, but
-12.1 still needs its boundary-layer and vapor-pressure treatments and a converged
-coupled equilibrium solve. Prognostic conductance is a separate physical option;
+The core now provides target laws, diffusion at prescribed conductance, and a converged
+coupled equilibrium solver. 12.1 still needs its boundary-layer and vapor-pressure
+treatments and reference validation. Prognostic conductance is a separate physical option;
 using it does not reproduce a steady-state exercise automatically.
 The reference also includes product limitation and alternative co-limitation choices;
 these must be matched or any differences recorded. Full coverage additionally requires

@@ -23,7 +23,11 @@ by the caller; no hidden relaxation on each function invocation.
 Stomatal and mesophyll diffusion are distinct from biochemical demand. The core
 gas-exchange layer analytically closes diffusion at known conductance for signed C3
 with minimum limitation and reports its residual. The prognostic stomatal component
-exposes a tendency; fully coupled equilibrium solving remains separate future work.
+exposes a tendency. A separate safeguarded scalar solver closes C3 assimilation,
+CO₂ diffusion, and Ball–Berry/Medlyn targets at prescribed leaf temperature and
+surface humidity. Numerical methods are types independent of stomatal physics.
+Analytic sensitivities hold temperature and transport parameters fixed; energy-balance
+feedback must be supplied explicitly before interpreting total optimization gradients.
 Leaf energy balance and hydraulics can be separate components
 without placing soils, canopy geometry, or atmosphere solvers in this package.
 

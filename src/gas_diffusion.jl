@@ -1,4 +1,4 @@
-"""Interface for leaf CO₂ transport, separate from biochemical demand and stomatal dynamics."""
+"""Interface for leaf gas transport, separate from biochemical demand and stomatal dynamics."""
 abstract type AbstractLeafDiffusion end
 
 """

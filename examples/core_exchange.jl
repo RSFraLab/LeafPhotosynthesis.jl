@@ -26,6 +26,15 @@ function core_environment(::Type{FT}, p, settings) where {FT}
         pressure = c["pressure"], relative_humidity = x["relative_humidity"], vpd = x["vpd"])
 end
 
+function core_solver(::Type{FT}, settings; method = SafeguardedNewton(;
+    bisection_interval = Int(settings["solver"]["bisection_interval"]))) where {FT}
+    key = FT === Float32 ? "solver_float32" : "solver_float64"
+    s = settings[key]
+    return EquilibriumSolver(; method, co2_atol = s["co2_atol"], co2_rtol = s["co2_rtol"],
+        flux_atol = s["flux_atol"], flux_rtol = s["flux_rtol"],
+        max_iterations = Int(settings["solver"]["max_iterations"]))
+end
+
 if abspath(PROGRAM_FILE) == @__FILE__
     for FT in (Float32, Float64)
         p = read_bonan_parameters(FT, joinpath(@__DIR__, "parameters", "bonan_11_1.toml"))
@@ -42,5 +51,16 @@ if abspath(PROGRAM_FILE) == @__FILE__
         result = leaf_tendencies(leaf, environment, state, diffusion)
         println(FT, ": g_sw=", state.conductance, ", net CO2 uptake=",
             result.gas_exchange.carbon.net_assimilation, ", net O2 release=", result.oxygen.net_release)
+        steady = LeafModel(; photosynthesis = leaf.photosynthesis,
+            stomata = SteadyStateStomata(leaf.stomata.target))
+        equilibrium = equilibrium_gas_exchange(steady, environment, diffusion, core_solver(FT, settings))
+        equilibrium.converged || error("Equilibrium failed: $(equilibrium.status)")
+        sensitivity = assimilation_sensitivity(steady.photosynthesis, environment,
+            StomatalState(equilibrium.stomatal_conductance), diffusion, equilibrium)
+        water = settings["water"]
+        transpiration = transpiration_sensitivity(WaterVaporDiffusion(water["boundary_water"]),
+            StomatalState(equilibrium.stomatal_conductance), water["leaf_to_air_vpd"], environment.pressure)
+        println("  Equilibrium: gs=", equilibrium.stomatal_conductance, ", iterations=", equilibrium.iterations,
+            "; dA/dgs=", sensitivity.dnet_assimilation_dgs, "; dE/dgs=", transpiration.dtranspiration_dgs)
     end
 end

@@ -25,6 +25,9 @@ LeafModel(; photosynthesis, stomata = NoStomatalDynamics(), oxygen = NoOxygenExc
 @inline gas_exchange(leaf::LeafModel, env::GasExchangeEnvironment, state::StomatalState, diffusion::AbstractLeafDiffusion) =
     gas_exchange(leaf.photosynthesis, env, state, diffusion)
 
+@inline equilibrium_gas_exchange(leaf::LeafModel{P,S}, env, diffusion, solver; initial_co2 = nothing) where {P,S<:SteadyStateStomata} =
+    equilibrium_gas_exchange(leaf.photosynthesis, leaf.stomata, env, diffusion, solver; initial_co2)
+
 """
     leaf_tendencies(leaf, environment, stomatal_state, diffusion)
 

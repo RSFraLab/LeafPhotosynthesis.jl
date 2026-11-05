@@ -16,7 +16,10 @@ zero to its light-dependent opening term without clipping the carbon flux itself
 
 `SteadyStateStomata(target)` evaluates an instantaneous target. It does not by itself
 solve the coupled equilibrium of assimilation, diffusion, and stomatal conductance.
-That solver remains future work for Bonan 12.1.
+Call `equilibrium_gas_exchange` for that closure, with an explicit `EquilibriumSolver`.
+It uses safeguarded Newton or reference bisection and reports convergence, iterations,
+and pressure/flux residuals. It supports minimum or quadratic limitation and signed
+or clipped assimilation. See [equations and sensitivities](equilibrium_and_sensitivities.md).
 
 `PrognosticStomata` exposes `(target - conductance) / timescale`. Opening and closing
 timescales are independent parameters in seconds. This follows the first-order
@@ -33,7 +36,8 @@ the caller's prescribed conductance. It does not remove stomatal resistance.
 H₂O/CO₂ stomatal diffusivity ratio. `gas_exchange` combines these resistances,
 then solves the Rubisco and electron-limited supply–demand quadratics analytically.
 Its supported biochemical choice is `MinimumLimitation` with `SignedAssimilation`.
-Smooth co-limitation requires a different closure and is not silently approximated.
+Smooth co-limitation is supported in the iterative equilibrium solver, not silently
+approximated by this analytical prescribed-conductance closure.
 
 The reported CO₂ sites are distinct: leaf surface, intercellular space, and biochemical
 site. Finite mesophyll resistance makes Ci different from Cc. The returned diffusion

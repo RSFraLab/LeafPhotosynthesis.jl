@@ -5,12 +5,13 @@ models call the same process functions. Parameters and leaf environments use `FT
 the implementation is tested on CPU and NVIDIA CUDA in `Float32` and `Float64`.
 
 **Scope:** C3 biochemistry, analytical CO₂ diffusion at prescribed conductance,
-prognostic stomatal conductance, and a core oxygen budget. `LeafModel` composes
+coupled equilibrium and prognostic stomatal conductance, fixed-temperature gas-exchange
+sensitivities, and a core oxygen budget. `LeafModel` composes
 concrete photosynthesis, stomatal, and oxygen components under abstract interfaces.
 `NoOxygenExchange` skips the oxygen calculation; `NoStomatalDynamics` keeps prescribed
 conductance fixed. There are no runtime dependencies or hidden scientific parameters.
-C4, TPU, fluorescence, a fully coupled equilibrium stomatal solve, Metal execution,
-and ClimaLand integration remain future work.
+C4, TPU, fluorescence, leaf energy balance, Metal execution, and ClimaLand integration
+remain future work.
 
 ## Start here
 
@@ -66,6 +67,9 @@ carbon = carbon_assimilation(rates, environment.co2, environment.oxygen,
 | How are competing rates combined? | [src/rate_limitation.jl](src/rate_limitation.jl) |
 | How are stomatal targets and time evolution separated? | [src/stomatal_conductance.jl](src/stomatal_conductance.jl) |
 | How is CO₂ diffusion coupled to biochemical demand? | [src/gas_diffusion.jl](src/gas_diffusion.jl) |
+| How is coupled A–Ci equilibrium solved and checked? | [src/equilibrium_solver.jl](src/equilibrium_solver.jl) |
+| How does carbon demand change with CO₂? | [src/assimilation_derivatives.jl](src/assimilation_derivatives.jl) |
+| How do carbon uptake and water loss respond to stomatal opening? | [src/gas_exchange_sensitivities.jl](src/gas_exchange_sensitivities.jl), [equations and limits](docs/equilibrium_and_sensitivities.md) |
 | How are gross and net O₂ exchange computed or disabled? | [src/oxygen_exchange.jl](src/oxygen_exchange.jl) |
 | How do the optional core components fit together? | [docs/core_exchange.md](docs/core_exchange.md), [examples/core_exchange.jl](examples/core_exchange.jl) |
 | Where are the scientific values, units, and sources? | [examples/parameters/bonan_11_1.toml](examples/parameters/bonan_11_1.toml) |
@@ -79,7 +83,8 @@ carbon = carbon_assimilation(rates, environment.co2, environment.oxygen,
 ## Development scope
 
 Models are immutable parameter containers. Scalar evaluation returns named values;
-the caller owns arrays, devices, state evolution, and iteration. Broadcast can apply
+the caller owns arrays, devices, and state evolution. Equilibrium iteration has explicit
+settings and convergence diagnostics. Broadcast can apply
 the same function to independent leaves. A small number of concrete components
 should express physical choices without a large hierarchy of abstract containers.
 

@@ -76,11 +76,13 @@ end
 
 @inline function target_conductance(p::BallBerry, d::StomatalDrivers)
     uptake = max(d.assimilation, zero(d.assimilation)) * p.micromole_to_mole
+    iszero(uptake) && return p.minimum_conductance
     return p.minimum_conductance + p.slope * uptake * d.relative_humidity * d.pressure / d.surface_co2
 end
 
 @inline function target_conductance(p::Medlyn, d::StomatalDrivers)
     uptake = max(d.assimilation, zero(d.assimilation)) * p.micromole_to_mole
+    iszero(uptake) && return p.minimum_conductance
     sensitivity = one(d.vpd) + p.slope / sqrt(max(d.vpd, p.vpd_floor))
     return p.minimum_conductance + p.diffusivity_ratio * sensitivity * uptake * d.pressure / d.surface_co2
 end

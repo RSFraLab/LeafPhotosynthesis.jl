@@ -11,4 +11,5 @@ CUDA.allowscalar(false)
     path = joinpath(@__DIR__, "..", "..", "examples", "parameters", "bonan_11_1.toml")
     check_leaf_batches(CuArray, CUDA.synchronize, path)
     check_core_batches(CuArray, CUDA.synchronize, path)
+    check_equilibrium_batches(CuArray, CUDA.synchronize, path)
 end

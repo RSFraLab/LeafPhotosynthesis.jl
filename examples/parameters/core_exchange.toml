@@ -29,3 +29,25 @@ relative_humidity = 0.6      # prescribed leaf-surface value
 vpd = 1200.0                 # Pa, prescribed leaf-surface value
 step = 1.0                   # s, illustrative explicit Euler step
 duration = 1800.0            # s, light-step duration
+
+# Illustrative independent water boundary; not inferred from CO2 diffusivity.
+[water]
+boundary_water = 1.4         # mol H2O m^-2 leaf s^-1
+leaf_to_air_vpd = 1400.0     # Pa; distinct from leaf-surface VPD above
+
+# Explicit numerical choices, validated by the equilibrium test grid.
+[solver]
+max_iterations = 80
+bisection_interval = 8
+
+[solver_float32]
+co2_atol = 2.0e-5            # Pa
+co2_rtol = 2.0e-6
+flux_atol = 2.0e-5           # micromol CO2 m^-2 leaf s^-1
+flux_rtol = 2.0e-6
+
+[solver_float64]
+co2_atol = 1.0e-9            # Pa
+co2_rtol = 1.0e-10
+flux_atol = 1.0e-9           # micromol CO2 m^-2 leaf s^-1
+flux_rtol = 1.0e-10
