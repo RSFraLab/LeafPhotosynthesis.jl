@@ -1,0 +1,13 @@
+name = "LeafPhotosynthesis"
+uuid = "bfe390c8-7f61-4a4f-8d37-6e1fe760b449"
+version = "0.1.0"
+
+[compat]
+julia = "1.10"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+
+[targets]
+test = ["Test", "TOML"]

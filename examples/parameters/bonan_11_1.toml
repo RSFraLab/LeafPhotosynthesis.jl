@@ -1,0 +1,62 @@
+# Scientific configuration for Bonan supplemental program 11.1.
+# Source: gbonan/bonanmodeling, commit a10cf764013be58c2def1dbe7c7e52a3213e061e,
+# sp_11_01/LeafPhysiologyParams.m and sp_11_01/sp_11_01.m.
+# Parameter values below reproduce that exercise, not universal plant defaults.
+
+[constants]
+gas_constant = 8.31446           # J mol^-1 K^-1
+temperature_ref = 298.15        # K
+celsius_offset = 273.15         # K
+pressure = 101325.0             # Pa; chosen conversion reference for mole fractions
+micromole_per_mole = 1.0e-6      # mol / micromol
+millimole_per_mole = 1.0e-3      # mol / mmol
+
+[biochemistry]
+vcmax_ref = 60.0                # micromol CO2 m^-2 leaf s^-1
+jmax_vcmax_ratio = 1.67         # electron / CO2 capacity ratio
+respiration_vcmax_ratio = 0.015 # dimensionless
+kc_ref = 404.9                  # micromol mol^-1; converted to Pa on loading
+ko_ref = 278.4                  # mmol mol^-1; converted to Pa on loading
+gamma_star_ref = 42.75          # micromol mol^-1; converted to Pa on loading
+vcmax_activation = 65330.0      # J mol^-1
+jmax_activation = 43540.0       # J mol^-1
+respiration_activation = 46390.0 # J mol^-1
+kc_activation = 79430.0         # J mol^-1
+ko_activation = 36380.0         # J mol^-1
+gamma_star_activation = 37830.0 # J mol^-1
+vcmax_deactivation = 150000.0   # J mol^-1
+jmax_deactivation = 150000.0    # J mol^-1
+respiration_deactivation = 150000.0 # J mol^-1
+vcmax_entropy = 490.0          # J mol^-1 K^-1
+jmax_entropy = 490.0           # J mol^-1 K^-1
+respiration_entropy = 490.0    # J mol^-1 K^-1
+
+[electron_transport]
+psii_fraction = 0.5            # fraction of absorbed photons reaching PSII
+psii_yield = 0.85              # electrons per PSII photon
+curvature = 0.90               # dimensionless
+
+[carbon_assimilation]
+electrons_per_carboxylation = 4.0 # electron / CO2 stoichiometry
+oxygenation_cost = 2.0           # coefficient multiplying gamma_star
+limitation = "quadratic"         # "minimum" is also supported by the example loader
+curvature = 0.98                 # dimensionless
+compensation = "nonnegative"     # reproduce Bonan clipping; "signed" is also supported
+
+[experiment]
+atmospheric_co2 = 380.0        # micromol mol^-1
+oxygen = 209.0                # mmol mol^-1
+internal_co2_fraction = 0.7    # prescribed Ci/Ca; not a stomatal model
+incident_par = 2000.0          # micromol photons m^-2 leaf s^-1
+temperature_celsius = 25.0     # deg C
+reflectance = 0.10             # PAR fraction
+transmittance = 0.10           # PAR fraction
+light_start = 0.0
+light_step = 10.0
+light_stop = 2000.0
+co2_start = 40.0               # internal CO2, micromol mol^-1
+co2_step = 10.0
+co2_stop = 1000.0
+temperature_start = 10.0       # deg C
+temperature_step = 1.0
+temperature_stop = 35.0
