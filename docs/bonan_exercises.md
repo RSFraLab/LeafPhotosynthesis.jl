@@ -7,7 +7,7 @@ example repository later; they are not requirements to build a canopy or land mo
 
 | Program | Calculation | Status |
 | --- | --- | --- |
-| 11.1 | C3 responses to light, CO₂, and temperature at prescribed internal CO₂ | Three numerical curves implemented in FP32/FP64; independent equation checks pass; upstream MATLAB output comparison and figures pending |
+| 11.1 | C3 responses to light, CO₂, and temperature at prescribed internal CO₂ | Three curves implemented and plotted in FP32/FP64; independent equation checks pass; upstream MATLAB output comparison pending |
 | 12.1 | Leaf gas exchange at prescribed temperature, including light, CO₂, temperature, and vapor-pressure-deficit responses | Candidate; coupled C3 gas exchange is implemented, but exercise-specific treatments and reference comparison remain pending |
 
 ## Reproducing 11.1
@@ -25,6 +25,22 @@ while its plot label says Ci; our CSV stores both explicitly. PAR absorption is
 applied once by the example, and prescribed Ci/Ca is visible in its configuration.
 The example uses clipped sub-compensation rates to match upstream; the core also
 provides a signed policy and minimum limitation as explicit alternatives.
+
+### Response plots
+
+These Float64 previews are exported from the [interactive Chart.js gallery](examples.html).
+Open the gallery from a checkout to switch precision, inspect values, or download CSVs.
+TOML reading and component assembly are separate from the response-curve script.
+
+![Net assimilation and limiting rates versus incident light](assets/figures/light.png)
+
+![Net assimilation and limiting rates versus internal CO₂](assets/figures/co2.png)
+
+![Net assimilation and limiting rates versus prescribed leaf temperature](assets/figures/temperature.png)
+
+The dashed curves subtract respiration from each limiting rate. They share the net
+assimilation units and are not gross carboxylation. Fixed inputs are listed in the
+gallery and parameter file. [Regenerate figures and data](README.md#reproduce-the-plots).
 
 ## Why 12.1 fits, and what it needs
 

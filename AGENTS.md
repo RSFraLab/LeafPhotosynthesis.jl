@@ -18,6 +18,9 @@ concrete component types, no embedded scientific constants, and Float32/Float64 
 - Scientific changes require equations, units, independent checks, and boundary cases.
 - Do not duplicate core equations in classroom examples. Tests may use independent
   mathematical formulations as reference oracles.
+- Keep main examples focused on executing biophysics. Put TOML reading, conversion,
+  component assembly, and output formatting in clearly named setup files. Include
+  documentation plots generated from the example functions, with units and provenance.
 - Keep a clear newcomer navigation map. No numbered files, catch-all utilities, or deep
   mutable containers. Add a file only for a distinct process or a clear software boundary.
 - Keep Bonan examples within this package's leaf-physics scope: 11.1 is implemented;

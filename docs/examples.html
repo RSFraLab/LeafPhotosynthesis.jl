@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LeafPhotosynthesis · Learn by running a leaf</title>
+  <link rel="stylesheet" href="assets/examples.css">
+  <script defer src="assets/vendor/chart.umd.js"></script>
+  <script defer src="assets/examples-data.js"></script>
+  <script defer src="assets/examples.js"></script>
+</head>
+<body>
+  <header>
+    <a class="brand" href="../README.md">LeafPhotosynthesis.jl</a>
+    <nav aria-label="Examples"><a href="#one-leaf">One leaf</a><a href="#bonan">Response curves</a><a href="#equilibrium">Equilibrium</a><a href="#stomata">Stomatal dynamics</a></nav>
+  </header>
+  <main>
+    <div class="intro">
+      <p class="eyebrow">LEAF PHYSIOLOGY / WORKED EXAMPLES</p>
+      <h1>Start with a leaf.<br>See how it responds.</h1>
+      <p class="lead">Small Julia examples, real model output. Change one input, inspect the response, then combine the components.</p>
+      <div class="toolbar"><label for="precision">Numerical precision</label><select id="precision"><option value="Float64">Float64 · double</option><option value="Float32">Float32 · single</option></select><span id="status" role="status">Loading model output…</span></div>
+      <p class="quiet">Plots show saved Julia results. Switching precision selects a separate Julia run; the browser does not simulate physiology. Hover for values or use the series controls and data tables below each plot.</p>
+      <noscript><p>JavaScript is required for interactive plots. Download the <a href="assets/data/Float64/light.csv">light</a>, <a href="assets/data/Float64/co2.csv">CO₂</a>, <a href="assets/data/Float64/temperature.csv">temperature</a>, and <a href="assets/data/Float64/stomata.csv">stomatal</a> tables, or run the Julia examples below.</p></noscript>
+    </div>
+
+    <section id="one-leaf">
+      <p class="eyebrow">01 / THE FIRST CALL</p><h2>Evaluate one leaf</h2>
+      <p>Prescribe light, internal CO₂, and leaf temperature. <code>photosynthesize</code> returns carbon uptake and its component rates. Positive net assimilation means CO₂ uptake; negative values mean release.</p>
+      <pre><code>julia --project=. examples/one_leaf.jl</code></pre>
+      <details class="source"><summary>Read the complete example</summary><pre><code data-source="one_leaf"></code></pre></details>
+      <p class="quiet">Configuration stays in <a href="../examples/setup/read_parameters.jl">read_parameters.jl</a>; physical component assembly is visible in <a href="../examples/setup/bonan_leaf.jl">bonan_leaf.jl</a>. The main script calls the biophysics.</p>
+    </section>
+
+    <section id="bonan">
+      <p class="eyebrow">02 / BONAN 11.1</p><h2>Change one forcing at a time</h2>
+      <p>These three curves use Bonan's C3 parameterization. In each panel, only the horizontal-axis variable changes. The Rubisco- and electron-limited curves have respiration subtracted, so they can be compared with net assimilation.</p>
+      <pre><code>julia --project=. examples/bonan_11_1.jl</code></pre>
+      <details class="source"><summary>Read the complete response-curve example</summary><pre><code data-source="bonan_11_1"></code></pre></details>
+      <p id="bonan-settings" class="settings"></p>
+      <div id="bonan-plots" class="plot-grid"></div>
+      <p class="note">The CO₂ axis is internal CO₂ mole fraction, not ambient CO₂. It represents the biochemical site here, with no mesophyll diffusion solve. Numerical curves pass an independent high-precision equation check; comparison with executed upstream MATLAB output remains pending. <a href="bonan_exercises.md">Scope and provenance →</a></p>
+    </section>
+
+    <section id="equilibrium">
+      <p class="eyebrow">03 / CONNECT THE COMPONENTS</p><h2>Solve a leaf at equilibrium</h2>
+      <p>Now prescribe ambient CO₂ and solve assimilation, diffusion, and Ball–Berry stomata together. CO₂ at the leaf surface, intercellular space, and biochemical site can differ. Temperature and humidity remain prescribed.</p>
+      <pre><code>julia --project=. examples/core_exchange.jl</code></pre>
+      <details class="source"><summary>Read the complete equilibrium example</summary><pre><code data-source="core_exchange"></code></pre></details>
+      <div id="equilibrium-values" class="results"></div>
+      <p>The derivatives describe the response to stomatal opening at fixed temperature. This is an illustrative component example, not a reproduction of Bonan 12.1. <a href="equilibrium_and_sensitivities.md">Equations and assumptions →</a></p>
+    </section>
+
+    <section id="stomata">
+      <p class="eyebrow">04 / LET STOMATA TAKE THEIR TIME</p><h2>Turn the light on, then off</h2>
+      <p>The prognostic model moves toward the current stomatal target. Its opening and closing time constants are separate parameters. Dashed lines show the fully coupled equilibrium for the same forcing, not the instantaneous target used in each prognostic step.</p>
+      <pre><code>julia --project=. examples/stomatal_response.jl</code></pre>
+      <details class="source"><summary>Read the complete time-integration example</summary><pre><code data-source="stomatal_response"></code></pre></details>
+      <p id="stomatal-settings" class="settings"></p>
+      <div id="stomatal-plots" class="plot-grid"></div>
+      <p class="note">Temperature, surface humidity, and transport conductances stay fixed. The example uses an explicit Euler step; it does not provide a general-purpose integrator. Net O₂ release and net CO₂ uptake overlap for this example's core stoichiometry and respiratory quotient of one. This equality is not a universal physiological constraint. <a href="core_exchange.md">Oxygen budget and model limits →</a></p>
+    </section>
+
+    <section id="reproduce">
+      <p class="eyebrow">KEEP EXPLORING</p><h2>Change a parameter. Rebuild the figures.</h2>
+      <p>Edit the named values in <a href="../examples/parameters/bonan_11_1.toml">bonan_11_1.toml</a> or <a href="../examples/parameters/core_exchange.toml">core_exchange.toml</a>, then regenerate all plotted data:</p>
+      <pre><code>julia --project=. docs/build_examples.jl</code></pre>
+      <p>Reopen this file in a browser. Chart.js and all model results are bundled locally, so the gallery works offline. No server or JavaScript package installation is needed to view it.</p>
+      <p>Try changing <code>opening_timescale</code> while keeping <code>closing_timescale</code> fixed. Which part of the response changes? Then change the Ball–Berry slope and compare the new equilibrium.</p>
+    </section>
+  </main>
+  <footer>LeafPhotosynthesis.jl · Data computed in Julia · Figures rendered with <a href="assets/vendor/README.md">Chart.js 4.4.8</a> · <a href="../README.md">Package documentation</a></footer>
+</body>
+</html>

@@ -29,6 +29,8 @@ relative_humidity = 0.6      # prescribed leaf-surface value
 vpd = 1200.0                 # Pa, prescribed leaf-surface value
 step = 1.0                   # s, illustrative explicit Euler step
 duration = 1800.0            # s, light-step duration
+dark_duration = 1800.0       # s, subsequent dark interval for the teaching example
+dark_absorbed_par = 0.0      # micromol photons m^-2 leaf s^-1, light switched off
 
 # Illustrative independent water boundary; not inferred from CO2 diffusivity.
 [water]

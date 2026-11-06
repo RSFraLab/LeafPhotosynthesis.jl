@@ -1,6 +1,6 @@
 # Session notes for continuing the modular land model work
 
-Updated 2026-11-05. These notes preserve Christian's requirements, the code review,
+Updated 2026-11-06. These notes preserve Christian's requirements, the code review,
 and the initial implementation scope. They are working notes, not a completed
 scientific validation of the reference models.
 
@@ -138,7 +138,8 @@ The first slice contains thermal responses, electron transport, C3 carbon demand
 explicit rate limitation and compensation policies. Bonan 11.1 supplies explicit
 parameters and all three response grids. Every grid point is compared against
 an independent high-precision equation oracle. This is not an executed MATLAB
-comparison. Outputs are CSV tables; classroom plots/notebooks remain to be added.
+comparison. Outputs are CSV tables; interactive documentation plots were added
+on November 6 (see the later entry). Notebooks remain optional.
 
 After restart Christian requested prognostic stomata following Liu et al. (2024),
 oxygen exchange, abstract component interfaces, and explicit no-op implementations.
@@ -241,3 +242,41 @@ Newton timings are 6.12 / 15.92 ms. These exclude O₂, sensitivities, energy ba
 and model coupling; see benchmarks/README.md for methodology and raw results.
 Bonan 12.1 is still not a validated reproduction: its boundary/humidity treatments,
 product limitation, alternative formulations, and reference comparison remain separate.
+
+## Simple examples and documentation plots (November 6)
+
+Christian explicitly requested simple, readable examples with Chart.js or D3 plots,
+then emphasized putting TOML reading in a separate file so main scripts execute
+biophysics. `examples/setup/read_parameters.jl` now owns parsing/FT conversion;
+`bonan_leaf.jl` and `core_leaf.jl` own explicit parameter assembly, and
+`write_tables.jl` owns CSV output. The main scripts are one_leaf.jl,
+bonan_11_1.jl, core_exchange.jl (equilibrium/O₂/sensitivities), and the new
+stomatal_response.jl (caller-owned Euler integration through light and dark phases).
+The physiology library is unchanged. Default time-course settings are illustrative,
+explicit in TOML, with exact output on both sides of the light switch.
+
+`docs/examples.html` is an offline Chart.js gallery; assets, pinned library/licenses,
+and model-generated data are committed. It includes three Bonan response curves,
+stomatal conductance and gas-exchange time courses, equilibrium diagnostics, the
+actual example source, FP32/FP64 selection, keyboard-accessible series controls,
+full data tables, CSV downloads, and PNG export. `docs/build_examples.jl` calls the
+example functions and regenerates data/source. Optional `docs/export_figures.cjs`
+exports the static figures embedded in Markdown docs. Do not implement physiology
+in JavaScript, silently claim Bonan 12.1 coverage, or expose a public deployment:
+the repository remains private and the gallery is viewed from the checkout.
+
+Christian also asked how to clarify Tapio's PBL concern. Suggested asking for the
+specific failure mechanism/equation and an observational or LES acceptance case:
+inside-canopy versus roughness-sublayer versus atmospheric-PBL coupling; local
+transport/MOST assumptions; vegetation distributed over atmospheric levels versus
+a separate canopy-column boundary; required momentum/TKE/scalar statistics in
+addition to mean fluxes; and relevant regimes and resolution. These are questions,
+not evidence of Tapio's exact concern or a decision about the final closure.
+
+Validation for the example/documentation changes: all 27,074 existing CPU checks
+pass, all four example entry points run, and 28 additional time-course checks
+confirm finite FP32/FP64 output, continuity at the light switch, direction of
+response, carbon/O₂ agreement, invalid-step rejection, and agreement after halving
+the Euler step. Headless Chromium checks passed for five charts, both precisions,
+keyboard series toggles, complete data tables, PNG download, desktop/mobile layout,
+and zero network requests. Static previews were exported with titles and legends.

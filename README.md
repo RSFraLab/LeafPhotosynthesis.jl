@@ -19,8 +19,10 @@ From this directory:
 
 ```sh
 julia --project=. test/runtests.jl
+julia --project=. examples/one_leaf.jl
 julia --project=. examples/bonan_11_1.jl
 julia --project=. examples/core_exchange.jl
+julia --project=. examples/stomatal_response.jl
 ```
 
 The example writes light, CO₂, and temperature response tables for both precisions
@@ -28,8 +30,16 @@ under `examples/output/bonan_11_1/`. It uses the settings of
 [Bonan supplemental program 11.1](https://github.com/gbonan/bonanmodeling/tree/master/sp_11_01).
 Numerical agreement is checked against an independent high-precision equation
 calculation; upstream MATLAB output has not yet been generated for comparison.
-The separate core-exchange example demonstrates prognostic conductance and O₂
-diagnostics with illustrative settings. It is not a reproduction of Bonan 12.1.
+The core-exchange example demonstrates equilibrium, O₂, and analytic sensitivities;
+the separate stomatal-response example shows opening in light and closing in darkness.
+Both use illustrative settings and are not reproductions of Bonan 12.1.
+
+**Plots and walkthroughs:** open [docs/examples.html](docs/examples.html) from your
+local checkout for the offline Chart.js gallery, including FP32/FP64 selection,
+data downloads, and the exact runnable source. GitHub-readable static figures and
+regeneration instructions are in [docs/README.md](docs/README.md).
+TOML parsing and parameter assembly live in `examples/setup/`, leaving the main
+scripts focused on executing the biophysics.
 
 To inspect one leaf, run this in Julia from the package directory:
 
@@ -37,7 +47,7 @@ To inspect one leaf, run this in Julia from the package directory:
 include("examples/bonan_11_1.jl")
 FT = Float32                          # or Float64
 p = read_bonan_parameters(FT, "examples/parameters/bonan_11_1.toml")
-leaf = bonan_leaf(FT, p)              # composition is visible in the example
+leaf = bonan_leaf(FT, p)              # composition is in examples/setup/bonan_leaf.jl
 e = p["experiment"]
 environment = bonan_environment(FT, p;
     incident_par = e["incident_par"],
@@ -74,6 +84,8 @@ carbon = carbon_assimilation(rates, environment.co2, environment.oxygen,
 | How do the optional core components fit together? | [docs/core_exchange.md](docs/core_exchange.md), [examples/core_exchange.jl](examples/core_exchange.jl) |
 | Where are the scientific values, units, and sources? | [examples/parameters/bonan_11_1.toml](examples/parameters/bonan_11_1.toml) |
 | How does a student run an exercise? | [examples/bonan_11_1.jl](examples/bonan_11_1.jl) |
+| Where are the plotted walkthroughs and simple examples? | [docs/README.md](docs/README.md), [interactive gallery](docs/examples.html) |
+| Where is TOML reading kept out of the examples? | [examples/setup/read_parameters.jl](examples/setup/read_parameters.jl) |
 | What is tested, and against what? | [test/runtests.jl](test/runtests.jl), [reference oracle](test/reference_bonan.jl) |
 | What belongs here, and how will coupling work? | [docs/design.md](docs/design.md) |
 | Which Bonan exercises fit this package? | [docs/bonan_exercises.md](docs/bonan_exercises.md) |

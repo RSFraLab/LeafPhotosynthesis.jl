@@ -111,7 +111,7 @@ include("equilibrium.jl")
                     end
                 end
                 mktempdir() do directory
-                    write_bonan_curves(directory, curves)
+                    write_tables(directory, curves)
                     @test length(readdir(directory)) == length(curves)
                     for name in keys(curves)
                         @test countlines(joinpath(directory, name * ".csv")) == length(curves[name]) + 1

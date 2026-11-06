@@ -6,6 +6,28 @@ Arrays, device selection, time integration, canopy transport, and soils are exte
 See [the runnable example](../examples/core_exchange.jl) and its
 [explicit settings](../examples/parameters/core_exchange.toml).
 
+The short equilibrium script calls the production solver, oxygen budget, and
+sensitivities. TOML parsing and parameter construction live in `examples/setup/`.
+For time evolution, run [stomatal_response.jl](../examples/stomatal_response.jl).
+
+## Worked light-to-dark example
+
+![Prognostic conductance follows a light-to-dark step with separate opening and closing times](assets/figures/conductance.png)
+
+![Net CO₂ uptake and O₂ release during the same light-to-dark step](assets/figures/gas-exchange.png)
+
+These Float64 plots use the illustrative TOML settings: 1800 s in light followed
+by 1800 s of darkness, opening/closing timescales of 600/300 s, and a 1 s Euler step.
+Dashed equilibrium curves are fully coupled solves for each forcing interval;
+they are distinct from the instantaneous target driving the prognostic tendency.
+The state is continuous at the light switch; fluxes may change immediately.
+Net O₂ and CO₂ overlap for the chosen core stoichiometry and respiratory quotient
+of one, not as a general constraint on all leaves. Leaf temperature and humidity
+are held fixed. This is not an observed time-course fit or a Bonan 12.1 reproduction.
+
+Open the [interactive gallery](examples.html) locally for FP32/FP64 selection,
+data inspection, and downloads. [Regeneration instructions](README.md#reproduce-the-plots).
+
 ## Stomatal targets and evolution
 
 `BallBerry` and `Medlyn` implement `AbstractStomatalTarget`. Their inputs are net

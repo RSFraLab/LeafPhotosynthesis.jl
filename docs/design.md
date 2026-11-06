@@ -80,7 +80,11 @@ must be explicit and tests must distinguish smooth regions from those kinks.
 Students call the production component functions, inspect named diagnostics, then
 compose a complete leaf calculation. No parallel teaching implementation of the same
 equations. Each example identifies its source exercise, assumptions, parameter file,
-units, expected curves, and validation status. Plotting and notebooks remain optional.
+units, expected curves, and validation status. Main scripts focus on biophysics;
+TOML parsing, parameter assembly, and output formatting live in named setup files.
+Documentation plots are generated from the same example functions, with local
+Chart.js interactivity and static Markdown previews. Plotting dependencies remain
+outside the Julia core; notebooks are optional.
 Include only exercises solvable within this package's leaf-physics scope. Bonan
 11.1 is implemented; 12.1 is a candidate for discrete leaf gas-exchange components
 at prescribed temperature. Separate implemented cases from future work. Combined
