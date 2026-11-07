@@ -1,0 +1,7 @@
+# Illustrative prescribed-CO2 diagnostic, not an additional Bonan exercise.
+# All biochemistry and light/temperature inputs come from bonan_11_1.toml.
+# CO2 is expressed relative to the model's actual gamma-star at that temperature.
+[experiment]
+co2_gamma_ratio_start = 0.0 # dimensionless
+co2_gamma_ratio_step = 0.1
+co2_gamma_ratio_stop = 8.0

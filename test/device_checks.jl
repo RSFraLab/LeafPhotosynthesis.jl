@@ -147,3 +147,41 @@ function check_equilibrium_batches(to_device, synchronize_device, parameter_path
         end
     end
 end
+
+function check_turnover_batches(to_device, synchronize_device, parameter_path)
+    for FT in (Float32, Float64)
+        @testset "Batched biochemical turnover $FT" begin
+            p = read_bonan_parameters(FT, parameter_path)
+            settings = read_bonan_parameters(FT, joinpath(dirname(parameter_path), "core_exchange.toml"))
+            leaf, _ = core_leaf(FT, p, settings)
+            env = core_environment(FT, p, settings)
+            base = leaf.photosynthesis
+            rates = biochemical_rates(base.temperature, env.temperature)
+            for limitation in (MinimumLimitation(), QuadraticLimitation(p["carbon_assimilation"]["curvature"]))
+                model = C3Photosynthesis(; temperature = base.temperature,
+                    electron_transport = base.electron_transport, stoichiometry = base.stoichiometry,
+                    limitation, compensation = SignedAssimilation())
+                disabled = LeafModel(; photosynthesis = model, oxygen = NoOxygenExchange())
+                lit = LeafEnvironment(env.temperature, env.absorbed_par, env.co2, env.oxygen)
+                dark = LeafEnvironment(env.temperature, zero(FT), env.co2, env.oxygen)
+                compensation = LeafEnvironment(env.temperature, env.absorbed_par, rates.gamma_star, env.oxygen)
+                below = LeafEnvironment(env.temperature, env.absorbed_par, zero(FT), env.oxygen)
+                inputs = [dark, lit, compensation, below, dark]
+                for order in (eachindex(inputs), reverse(eachindex(inputs)))
+                    ordered = inputs[order]
+                    expected = biochemical_turnover.(Ref(disabled), ordered)
+                    result = biochemical_turnover.(Ref(disabled), to_device(ordered))
+                    synchronize_device()
+                    actual = Array(result)
+                    @test eltype(actual) == eltype(expected)
+                    @test all(r -> all(isfinite, values(r)), actual)
+                    @test all(r -> all(x -> x >= zero(FT), values(r)), actual)
+                    for key in keys(first(expected))
+                        @test all(isapprox(a[key], e[key]; rtol = 128eps(FT),
+                            atol = 32eps(FT) * rates.vcmax) for (a, e) in zip(actual, expected))
+                    end
+                end
+            end
+        end
+    end
+end

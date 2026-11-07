@@ -33,7 +33,7 @@ end
 
 """
 Evaluate one leaf environment. The `electron_transport` diagnostic is available
-electron supply; the oxygen adapter separately reports realized `linear_electron_flow`.
+electron supply; `biochemical_turnover` separately reports realized `linear_electron_flow`.
 """
 @inline function photosynthesize(p::C3Photosynthesis, env::LeafEnvironment)
     rates = biochemical_rates(p.temperature, env.temperature)
@@ -41,4 +41,21 @@ electron supply; the oxygen adapter separately reports realized `linear_electron
     carbon = carbon_assimilation(rates, env.co2, env.oxygen, electrons,
         p.stoichiometry, p.limitation, p.compensation)
     return (; carbon..., electron_transport = electrons)
+end
+
+"""
+    biochemical_turnover(photosynthesis, environment)
+
+Signed-C3 carboxylation, photorespiratory CO₂ release, respiration and realized
+linear electron flow, with `electron_supply` reported separately. Uses the
+prescribed biochemical-site environment; does not solve stomatal diffusion.
+Independent of whether optional oxygen exchange is enabled.
+"""
+@inline function biochemical_turnover(p::C3Photosynthesis{T,E,S,L,SignedAssimilation},
+    env::LeafEnvironment) where {T,E,S,L}
+    r = biochemical_rates(p.temperature, env.temperature)
+    electrons = electron_transport(p.electron_transport, env.absorbed_par, r.jmax)
+    turnover = biochemical_turnover(r, env.co2, env.oxygen, electrons,
+        p.stoichiometry, p.limitation, p.compensation)
+    return (; turnover..., electron_supply = electrons)
 end

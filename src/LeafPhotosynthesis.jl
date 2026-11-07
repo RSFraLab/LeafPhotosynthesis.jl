@@ -4,7 +4,8 @@ export AbstractPhotosynthesis, C3Photosynthesis, LeafModel, LeafEnvironment,
     Arrhenius, PeakedArrhenius, temperature_response, C3TemperatureResponse,
     C3Rates, biochemical_rates, ElectronTransportParameters, electron_transport,
     C3Stoichiometry, MinimumLimitation, QuadraticLimitation, colimit,
-    SignedAssimilation, NonnegativeAssimilation, carbon_assimilation, photosynthesize
+    SignedAssimilation, NonnegativeAssimilation, carbon_assimilation, photosynthesize,
+    biochemical_turnover
 
 export AbstractStomatalTarget, AbstractStomatalModel, BallBerry, Medlyn,
     SteadyStateStomata, PrognosticStomata, NoStomatalDynamics, StomatalState, StomatalDrivers,

@@ -91,6 +91,18 @@ at prescribed temperature. Separate implemented cases from future work. Combined
 exercises will live in a separate example repository later, composing the individual
 physics packages without broadening this one into a land or canopy model.
 
+## Biochemical turnover and fluorescence inputs
+
+`biochemical_turnover` exposes gross carbon turnover and realized linear electron
+flow for the signed C3 closure, independently of the optional oxygen component.
+Available light-driven electron supply and realized biochemical use remain distinct.
+The same positive capacity drives carbon and oxygen calculations, avoiding a 0/0
+carbon-efficiency reconstruction at compensation. See the
+[equations and limits](biochemical_turnover.md). This API does not select an NPQ
+or fluorescence-yield parameterization. Leaf internal emission/escape, canopy
+transport, and atmospheric transfer belong to separate components with explicit
+photon, spectral, and area conventions.
+
 ## Atmosphere coupling
 
 Leaf physiology reports local source responses to local temperature, CO₂, humidity

@@ -316,3 +316,38 @@ validated timescales; it is not yet a selected physical parameterization.
 Keep conservative radiation weights and transient forcing consistency explicit.
 Relevant observed dynamics and canopy-depth dependence:
 https://doi.org/10.1111/nph.18222 .
+
+## 2026-11-07: shared biochemical turnover for future SIF coupling
+
+Added `biochemical_turnover` for signed C3 models and LeafModel. It reports
+carboxylation, photorespiratory CO₂ release, respiration, realized linear electron
+flow, and available electron supply. The low-level method takes existing C3 rates
+and stoichiometry. The oxygen adapter now reuses this calculation; its outputs and
+numerical operation order are preserved. The diagnostic works with NoOxygenExchange
+and does not add a fluorescence or NPQ component.
+
+Motivation: a separate historical Photosynthesis.jl audit in CanopyModelExamples
+reproduced compensation-point NaNs when realized electrons were reconstructed
+from carbon/efficiency. Our existing oxygen path already avoided that division;
+the shared API makes its finite turnover available without enabling O₂. Clipped
+sub-compensation models deliberately lack this method. Positive biochemical
+denominators and oxygen-consistent Γ* remain input requirements.
+
+Validation: full CPU suite 28,160 checks; NVIDIA L40S CUDA suite 726 checks, both
+Float32/Float64, scalar GPU indexing disabled. New turnover tests include an
+independent BigFloat electron-demand formulation, both limitation choices,
+compensation and neighboring values, darkness, low light, zero CO₂ with positive
+Γ*, inferred types, zero scalar allocations, oxygen consistency, and reordered
+dark/lit batches. Required Bonan entry point and the new turnover entry point
+completed successfully. Logs are under `/tmp/canopy-overnight-20261107/leaf-turnover-*`.
+
+Added a short prescribed-CO₂ example with TOML/setup/output kept in separate
+files. Documentation uses generated Julia tables, two new Chart.js plots, and
+static previews. Offline Chromium checks passed for seven plots, both precisions,
+compensation-point values, tables, keyboard series toggles, PNG download and
+desktop/mobile layout with no network requests. No new runtime dependency.
+
+Next physiology decision remains the fluorescence/NPQ closure and its parameter
+provenance. Shared turnover is necessary input, not a validated fluorescence
+yield. Spectral leaf escape and canopy/atmospheric transport belong outside this
+package; the private CanopyModelExamples repo holds their current prototypes.

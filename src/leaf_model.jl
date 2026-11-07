@@ -16,6 +16,9 @@ LeafModel(; photosynthesis, stomata = NoStomatalDynamics(), oxygen = NoOxygenExc
 @inline photosynthesize(leaf::LeafModel, env::LeafEnvironment) =
     photosynthesize(leaf.photosynthesis, env)
 
+@inline biochemical_turnover(leaf::LeafModel, env::LeafEnvironment) =
+    biochemical_turnover(leaf.photosynthesis, env)
+
 @inline oxygen_exchange(leaf::LeafModel, env::LeafEnvironment) =
     oxygen_exchange(leaf.oxygen, leaf.photosynthesis, env)
 

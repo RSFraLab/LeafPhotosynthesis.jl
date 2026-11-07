@@ -52,3 +52,31 @@ with intercellular CO₂ assumes negligible mesophyll resistance.
     return (; rubisco_limited = rubisco, electron_limited = light,
         assimilation, respiration = r.respiration, net_assimilation = assimilation - r.respiration)
 end
+
+"""
+    biochemical_turnover(rates, co2, oxygen, electrons, stoichiometry, limitation, SignedAssimilation())
+
+Realized C3 turnover before cancellation of carboxylation and photorespiratory
+CO₂ release. Carbon fluxes and respiration are μmol CO₂ m⁻² leaf s⁻¹;
+`linear_electron_flow` is μmol electrons m⁻² leaf s⁻¹. The supplied `electrons`
+is available capacity, not necessarily realized flow.
+
+Assumes linear electron flow serves carboxylation/photorespiration only. No
+alternative sinks, cyclic flow, oxygen limitation of respiration or fluorescence
+yield is inferred. Gamma-star must match the supplied oxygen. Require finite,
+nonnegative inputs and positive biochemical denominators, as in C3 assimilation.
+Clipped sub-compensation carbon models do not define this turnover contract.
+
+Computing the positive capacity before multiplying by `co2 - gamma_star` keeps
+turnover finite at the photorespiratory compensation point; no carbon/efficiency
+ratio or small denominator floor is used.
+"""
+@inline function biochemical_turnover(r::C3Rates, co2, oxygen, electrons,
+    s::C3Stoichiometry, limitation, ::SignedAssimilation)
+    capacity = assimilation_capacity(r, co2, oxygen, electrons, s, limitation)
+    return (; carboxylation = capacity * co2,
+        photorespiratory_co2 = capacity * r.gamma_star,
+        respiration = r.respiration,
+        linear_electron_flow = s.electrons_per_carboxylation * capacity *
+            (co2 + s.oxygenation_cost * r.gamma_star))
+end

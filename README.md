@@ -23,6 +23,7 @@ julia --project=. examples/one_leaf.jl
 julia --project=. examples/bonan_11_1.jl
 julia --project=. examples/core_exchange.jl
 julia --project=. examples/stomatal_response.jl
+julia --project=. examples/biochemical_turnover.jl
 ```
 
 The example writes light, CO₂, and temperature response tables for both precisions
@@ -33,6 +34,8 @@ calculation; upstream MATLAB output has not yet been generated for comparison.
 The core-exchange example demonstrates equilibrium, O₂, and analytic sensitivities;
 the separate stomatal-response example shows opening in light and closing in darkness.
 Both use illustrative settings and are not reproductions of Bonan 12.1.
+The [turnover example](docs/biochemical_turnover.md) separates available electron
+supply from realized flow, including at the CO₂ compensation point.
 
 **Plots and walkthroughs:** open [docs/examples.html](docs/examples.html) from your
 local checkout for the offline Chart.js gallery, including FP32/FP64 selection,
@@ -74,6 +77,7 @@ carbon = carbon_assimilation(rates, environment.co2, environment.oxygen,
 | How do biochemical rates depend on temperature? | [src/temperature_response.jl](src/temperature_response.jl) |
 | How is absorbed light converted to electron transport? | [src/electron_transport.jl](src/electron_transport.jl) |
 | How does CO₂ uptake depend on Rubisco and electrons? | [src/carbon_assimilation.jl](src/carbon_assimilation.jl) |
+| How are gross turnover and realized electron flow diagnosed? | [docs/biochemical_turnover.md](docs/biochemical_turnover.md), [examples/biochemical_turnover.jl](examples/biochemical_turnover.jl) |
 | How are competing rates combined? | [src/rate_limitation.jl](src/rate_limitation.jl) |
 | How are stomatal targets and time evolution separated? | [src/stomatal_conductance.jl](src/stomatal_conductance.jl) |
 | How is CO₂ diffusion coupled to biochemical demand? | [src/gas_diffusion.jl](src/gas_diffusion.jl) |

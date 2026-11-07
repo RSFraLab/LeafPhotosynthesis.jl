@@ -106,7 +106,7 @@ function plot(parent, {id, title, description, rows, x, xLabel, yLabel, series, 
 
 function render() {
   charts.forEach(chart => chart.destroy()); charts.length = 0;
-  ["bonan-plots", "stomatal-plots", "equilibrium-values"].forEach(id => document.getElementById(id).replaceChildren());
+  ["bonan-plots", "stomatal-plots", "turnover-plots", "equilibrium-values"].forEach(id => document.getElementById(id).replaceChildren());
   const precision = document.getElementById("precision").value;
   const data = window.leafExamples.data[precision];
   const csv = name => `assets/data/${precision}/${name}.csv`;
@@ -133,6 +133,14 @@ function render() {
     rows: data.stomata, x: "time", xLabel: "Time (s)", yLabel: "Net exchange (μmol m⁻² leaf s⁻¹)", file: csv("stomata"),
     series: [{key: "net_assimilation", label: "CO₂ uptake"}, {key: "equilibrium_assimilation", label: "Equilibrium CO₂ uptake", dash: [6, 4]}, {key: "net_oxygen", label: "O₂ release", dash: [2, 4]}]});
   const equilibrium = data.equilibrium;
+  plot("turnover-plots", {id: "electron-use", title: "Available and realized electrons",
+    description: "Electron supply is fixed by light and capacity. Realized flow also depends on carbon metabolism and photorespiration.",
+    rows: data.turnover, x: "co2_gamma_ratio", xLabel: "Biochemical-site CO₂ / Γ*", yLabel: "μmol electrons m⁻² leaf s⁻¹", file: csv("turnover"),
+    series: [{key: "linear_electron_flow", label: "Realized linear flow"}, {key: "electron_supply", label: "Available supply", dash: [6, 4]}]});
+  plot("turnover-plots", {id: "carbon-turnover", title: "Gross turnover and net carbon uptake",
+    description: "At CO₂/Γ* = 1, carboxylation and photorespiratory release match. Their cancellation does not switch off electron flow.",
+    rows: data.turnover, x: "co2_gamma_ratio", xLabel: "Biochemical-site CO₂ / Γ*", yLabel: "μmol CO₂ m⁻² leaf s⁻¹", file: csv("turnover"),
+    series: [{key: "carboxylation", label: "Carboxylation"}, {key: "photorespiratory_co2", label: "Photorespiratory release", dash: [6, 4]}, {key: "net_assimilation", label: "Net CO₂ uptake", dash: [2, 4]}]});
   const metrics = [
     ["Equilibrium conductance", "conductance", "mol H₂O m⁻² leaf s⁻¹"],
     ["Net CO₂ uptake", "net_assimilation", "μmol CO₂ m⁻² leaf s⁻¹"],

@@ -56,14 +56,10 @@ not inferred from a temperature law.
 """
 @inline function oxygen_exchange(p::CoreOxygenExchange,
     model::C3Photosynthesis{T,E,S,L,SignedAssimilation}, env::LeafEnvironment) where {T,E,S,L}
-    r = biochemical_rates(model.temperature, env.temperature)
-    electrons = electron_transport(model.electron_transport, env.absorbed_par, r.jmax)
-    capacity = assimilation_capacity(r, env.co2, env.oxygen, electrons, model.stoichiometry, model.limitation)
-    oxygenation = capacity * r.gamma_star / p.co2_per_oxygenation
-    used_electrons = model.stoichiometry.electrons_per_carboxylation * capacity *
-        (env.co2 + model.stoichiometry.oxygenation_cost * r.gamma_star)
-    inputs = OxygenFluxInputs(used_electrons, oxygenation, r.respiration)
+    turnover = biochemical_turnover(model, env)
+    oxygenation = turnover.photorespiratory_co2 / p.co2_per_oxygenation
+    inputs = OxygenFluxInputs(turnover.linear_electron_flow, oxygenation, turnover.respiration)
     return (; oxygen_exchange(p, inputs)...,
-        carboxylation = capacity * env.co2, rubisco_oxygenation = oxygenation,
-        linear_electron_flow = used_electrons)
+        carboxylation = turnover.carboxylation, rubisco_oxygenation = oxygenation,
+        linear_electron_flow = turnover.linear_electron_flow)
 end

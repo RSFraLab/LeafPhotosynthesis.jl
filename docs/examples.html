@@ -12,7 +12,7 @@
 <body>
   <header>
     <a class="brand" href="../README.md">LeafPhotosynthesis.jl</a>
-    <nav aria-label="Examples"><a href="#one-leaf">One leaf</a><a href="#bonan">Response curves</a><a href="#equilibrium">Equilibrium</a><a href="#stomata">Stomatal dynamics</a></nav>
+    <nav aria-label="Examples"><a href="#one-leaf">One leaf</a><a href="#bonan">Response curves</a><a href="#equilibrium">Equilibrium</a><a href="#stomata">Stomatal dynamics</a><a href="#turnover">Electron use</a></nav>
   </header>
   <main>
     <div class="intro">
@@ -61,9 +61,18 @@
       <p class="note">Temperature, surface humidity, and transport conductances stay fixed. The example uses an explicit Euler step; it does not provide a general-purpose integrator. Net O₂ release and net CO₂ uptake overlap for this example's core stoichiometry and respiratory quotient of one. This equality is not a universal physiological constraint. <a href="core_exchange.md">Oxygen budget and model limits →</a></p>
     </section>
 
+    <section id="turnover">
+      <p class="eyebrow">05 / SUPPLY AND USE</p><h2>Electron flow survives carbon cancellation</h2>
+      <p>At the photorespiratory compensation point Γ*, carboxylation balances photorespiratory CO₂ release. Both processes still turn over, so realized linear electron flow remains positive even though pre-respiration carbon uptake is zero. Net uptake additionally subtracts respiration.</p>
+      <pre><code>julia --project=. examples/biochemical_turnover.jl</code></pre>
+      <details class="source"><summary>Read the complete turnover example</summary><pre><code data-source="biochemical_turnover"></code></pre></details>
+      <div id="turnover-plots" class="plot-grid"></div>
+      <p class="note">Light and temperature are fixed; CO₂ is prescribed at the biochemical site. The example uses signed C3 assimilation and computes turnover with oxygen exchange disabled. Alternative electron sinks, cyclic flow and fluorescence yield are not inferred. <a href="biochemical_turnover.md">Equations and limits →</a></p>
+    </section>
+
     <section id="reproduce">
       <p class="eyebrow">KEEP EXPLORING</p><h2>Change a parameter. Rebuild the figures.</h2>
-      <p>Edit the named values in <a href="../examples/parameters/bonan_11_1.toml">bonan_11_1.toml</a> or <a href="../examples/parameters/core_exchange.toml">core_exchange.toml</a>, then regenerate all plotted data:</p>
+      <p>Edit the named values in <a href="../examples/parameters/bonan_11_1.toml">bonan_11_1.toml</a>, <a href="../examples/parameters/core_exchange.toml">core_exchange.toml</a>, or the CO₂ sweep in <a href="../examples/parameters/turnover.toml">turnover.toml</a>, then regenerate all plotted data:</p>
       <pre><code>julia --project=. docs/build_examples.jl</code></pre>
       <p>Reopen this file in a browser. Chart.js and all model results are bundled locally, so the gallery works offline. No server or JavaScript package installation is needed to view it.</p>
       <p>Try changing <code>opening_timescale</code> while keeping <code>closing_timescale</code> fixed. Which part of the response changes? Then change the Ball–Berry slope and compare the new equilibrium.</p>

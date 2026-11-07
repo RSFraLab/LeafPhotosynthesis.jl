@@ -14,6 +14,7 @@ function leaf_allocations(model, environment)
 end
 
 include("core_exchange.jl")
+include("turnover.jl")
 include("equilibrium.jl")
 
 @testset "LeafPhotosynthesis" begin
@@ -122,5 +123,6 @@ include("equilibrium.jl")
     end
     check_leaf_batches(identity, () -> nothing, parameter_path)
     check_core_batches(identity, () -> nothing, parameter_path)
+    check_turnover_batches(identity, () -> nothing, parameter_path)
     check_equilibrium_batches(identity, () -> nothing, parameter_path)
 end
