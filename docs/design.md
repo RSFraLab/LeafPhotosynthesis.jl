@@ -100,3 +100,33 @@ mappings. Future coupling must assign storage once, exchange equal/opposite flux
 and close ground–leaf–air budgets. Mean fluxes alone may not supply the atmospheric
 turbulence boundary: momentum drag, turbulent energy, scalar statistics, and nonlocal
 transport need explicit scientific review, particularly within the roughness sublayer.
+
+## Within-layer illumination handed to leaf physiology
+
+Canopy radiation must supply a leaf-area-weighted APAR distribution within each
+layer, not only its mean. The canopy package owns continuous leaf orientations,
+within-layer depth integration, illumination/exposure assumptions, and quadrature.
+LeafPhotosynthesis evaluates each representative population with its own absorbed
+photon flux and physiological state; the caller integrates the resulting fluxes.
+
+For a layer of positive one-sided leaf area index ΔL, representative leaf-area
+fractions w_i and absorbed PAR q_i [μmol photons m⁻² leaf s⁻¹] must satisfy
+sum(w_i)=1 and ΔL*sum(w_i*q_i)=Q_layer_leaf, where Q_layer_leaf is independently
+resolved leaf-only PAR absorption in μmol photons m⁻² ground s⁻¹. Keep energy and
+photon budgets separate, using explicit spectral conversion. Empty layers return
+no leaf populations, without division by zero. Pigment-specific absorption is a
+separate diagnostic with its convention stated explicitly.
+
+Continuous orientation PDFs do not eliminate numerical quadrature. Illumination
+can be a mixture of sunlit/shaded populations and need not have a smooth APAR PDF.
+The number of representative populations is a numerical choice, converged against
+both absorption and integrated physiology, rather than a fixed biological leaf count.
+A two-stream solver needs an explicit angular closure to reconstruct leaf exposure;
+its hemispheric fluxes alone do not uniquely determine the APAR distribution.
+Multistream radiance resolves more angular information but does not, by itself,
+resolve spatial gap variability or the temporal statistics of sunflecks.
+
+For prognostic stomata and future induction/NPQ, maintain physical population
+identity or an explicit exposure-transition/state-remapping model. Independently
+sorting leaves into APAR bins each timestep must not shuffle their physiological
+history. A marginal APAR distribution alone does not specify that history.

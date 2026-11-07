@@ -280,3 +280,22 @@ response, carbon/O₂ agreement, invalid-step rejection, and agreement after hal
 the Euler step. Headless Chromium checks passed for five charts, both precisions,
 keyboard series toggles, complete data tables, PNG download, desktop/mobile layout,
 and zero network requests. Static previews were exported with titles and legends.
+
+### Explicit within-layer APAR requirement
+
+Christian emphasized that the RT interface must compute the APAR distribution
+across leaves inside each canopy layer to represent differing light stress. Added
+this to docs/design.md: area-weighted leaf populations, continuous orientation
+physics with separate quadrature, explicit sunlit/shaded and diffuse-light closure,
+leaf-only photon conservation, and preservation of prognostic physiological history.
+A two-stream flux solution cannot uniquely supply that distribution without angular
+assumptions; a multistream solution also needs an explicit spatial/exposure model.
+This is a design requirement, not an implemented canopy-distribution feature.
+
+Read-only source check: Emerald shortwave.jl already exposes angle-dependent
+sunlit APAR and a shared shaded APAR per layer; CanopyColumn's UNIT_CONTRACT.md
+explicitly documents the current RRTMGP sun/shade outputs as a no-split fallback
+(equal to layer APAR). Preserve the useful illumination physics when cleaning up
+the architecture, without treating those fallback fields as a resolved distribution.
+SCOPE 2.0 provides a useful comparison of full versus aggregated sunlit physiology:
+https://gmd.copernicus.org/articles/14/4697/2021/ .
