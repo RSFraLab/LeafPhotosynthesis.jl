@@ -126,7 +126,28 @@ its hemispheric fluxes alone do not uniquely determine the APAR distribution.
 Multistream radiance resolves more angular information but does not, by itself,
 resolve spatial gap variability or the temporal statistics of sunflecks.
 
-For prognostic stomata and future induction/NPQ, maintain physical population
-identity or an explicit exposure-transition/state-remapping model. Independently
-sorting leaves into APAR bins each timestep must not shuffle their physiological
-history. A marginal APAR distribution alone does not specify that history.
+Individual leaves and their exact sunfleck trajectories are not tracked. For
+prognostic stomata and future induction/NPQ, represent physiological memory
+statistically: a joint distribution of illumination and physiological state, or a
+weighted ensemble of representative histories with an explicit exposure-transition
+model. These are statistical representatives, not identified physical leaves.
+A marginal APAR distribution alone does not specify temporal exposure. Independent
+redraws each timestep impose a timestep-dependent decorrelation assumption; use
+explicit persistence/duration parameters and test timestep convergence instead.
+
+Keep temporal exposure separate from stationary RT. A small sun/shade Markov
+closure is a possible starting experiment, not a validated default: it needs
+transition timescales and its stationary weights must match the assumed illumination
+statistics. Changing forcing also needs a consistent transient treatment. More
+general duration distributions may be required by observations. For finite sampled
+ensembles, maintain the radiation budget with an explicitly conservative weighting
+scheme; ensemble-mean conservation is not identical to per-step conservation.
+
+Begin with steady physiology integrated over the APAR distribution. Evaluate
+dynamic closures separately using light sequences with equal APAR histograms but
+different persistence. Where light fluctuations are much faster than a physiological
+state, investigate averaging that state's tendency over the light distribution,
+rather than evaluating it at mean APAR. For slower or comparable fluctuations,
+illumination–state correlations need to be retained. No temporal closure is yet
+selected or implemented; representative histories must not be presented as resolved
+canopy geometry.

@@ -299,3 +299,20 @@ explicitly documents the current RRTMGP sun/shade outputs as a no-split fallback
 the architecture, without treating those fallback fields as a resolved distribution.
 SCOPE 2.0 provides a useful comparison of full versus aggregated sunlit physiology:
 https://gmd.copernicus.org/articles/14/4697/2021/ .
+
+### Statistical exposure, not individual-leaf tracking
+
+Christian clarified that individual leaves cannot be tracked and sunflecks may
+change randomly. Revised the design to remove any requirement to retain physical
+leaf identity. Radiation supplies within-layer APAR statistics; a separate, optional
+temporal exposure closure supplies persistence/transition statistics for prognostic
+physiology. Representative histories are statistical samples, not actual leaves.
+Independent random redraws every model step would impose an arbitrary decorrelation
+time. Compare identical APAR histograms with different persistence before choosing
+model complexity. Potential closures include an averaged slow-state tendency in
+the fast-fluctuation limit or a joint illumination–state distribution/weighted
+history ensemble otherwise. A two-state Markov experiment would need explicit,
+validated timescales; it is not yet a selected physical parameterization.
+Keep conservative radiation weights and transient forcing consistency explicit.
+Relevant observed dynamics and canopy-depth dependence:
+https://doi.org/10.1111/nph.18222 .
