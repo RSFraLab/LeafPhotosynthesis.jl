@@ -445,3 +445,18 @@ and host environment/device milestones do not substitute for this new gate.
 CanopyModelExamples' separate adapter draft now forwards the input, with1,800
 real CliMA CPU-field checks and5,286 original scalar checks passing; both reviewers
 cleared it before the next combined-example step. Its CUDA gate is likewise queued.
+
+### Explicit excitation device gates complete, 2026-11-08 around04:55UTC
+
+The queued device runs completed on unchanged reviewed scientific source: full
+Leaf CUDA35,864checks (7,032existing +28,832new), and real CliMA host CUDA1,800.
+Both independent reviewers inspected final logs and confirmed acceptance closure.
+The same FP32/64 light input now has actual CPU/CUDA validation, including mixedFT
+rejection, NoOps, native statuses and a second excitation-family extension.
+Validation JSON includes full test summaries; no throughput or Metal claim.
+
+The separate CanopyModelExamples teaching exercise now joins actual PROSPECT
+absorption and pigment/antenna selection to this shared physiological input.
+Its2,570checks, actual-database/artifact provenance mutation checks and three
+offlineChartJSplot browser tests pass. Both reviewers clear; PROSPECT preparation
+is host-side, with no calibrated leaf escape, directionalSIF or energy-budget claim.

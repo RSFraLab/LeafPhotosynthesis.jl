@@ -102,7 +102,7 @@ broadband calls; explicit new inputs require an implementation. Likewise the
 `LeafModel` broadband wrappers preserve older component entry arities.
 
 The built-in prescribed convention covers the **same PAR domain only**. A test-only
-second family permits a different relation between Q₂ and PAR and is included in the CUDA acceptance suite,
+second family permits a different relation between Q₂ and PAR and compiles in the CUDA acceptance suite,
 demonstrating the extension boundary. It is not a UV/far-red calibration or a
 coupled PSI/PSII model. Such physics may require richer inputs and a different
 photosynthesis family; this interface does not claim to supply those equations.
@@ -119,8 +119,8 @@ for exact agreement, with custom component arities exercised separately.
 
 Heterogeneous FP32/FP64 batch tests cover carbon, turnover, oxygen, fluorescence,
 analytical diffusion, equilibrium, stomatal tendencies and sensitivities on CPU
-and CUDA. The full CPU suite passes 72,269 checks. The new CUDA acceptance run
-is currently queued behind another workload holding the shared GPU lock; this
-input is not yet claimed as device-validated. Native status/Bool/Int fields are retained; iteration counts and bracket
+and CUDA. The full CPU suite passes 72,269 checks, and the full CUDA suite passes 35,864
+checks on the NVIDIA L40S (7,032 existing and 28,832 new batch checks). Both
+precisions and the alternate input family are device-validated. Native status/Bool/Int fields are retained; iteration counts and bracket
 widths may differ across arithmetic backends. Geometry, optics and spectral
 integration examples belong in the separate combined-model repository.

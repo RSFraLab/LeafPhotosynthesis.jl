@@ -1,5 +1,5 @@
 {
-  "timestamp_utc": "2026-11-08T04:35:54.907158+00:00",
+  "timestamp_utc": "2026-11-08T04:55:56.601579+00:00",
   "source_parent": "d32a739d4e8b03d3332337527538faffd5beba97",
   "scope": "Optional same-PAR prescribed PSII excitation across leaf physiology, preserving broadband/custom components and environment layouts.",
   "source_sha256": {
@@ -26,14 +26,14 @@
     "test/parameters/excitation.toml": "ca656ad2e10587c82785bdfe260d7cb161ac6a99255ed946cd63d68853b696d0",
     "test/runtests.jl": "c1ef39fc1b2747fae21841290212c1c2e14f5dd5e7e4d08f970ac208a8d429aa",
     "test/gpu/runtests.jl": "f045c00cc36b31f7721317941e4d23ff0cff5cb62b101079aeb739d13fc1b5e6",
-    "docs/excitation.md": "c63348842206955d6c67552159fa32841d7d627f1c1da96070f4988ef871eefb"
+    "docs/excitation.md": "3e75d271179e25cc9ae3d2aaa7bf1ccab5667607f5cc16e310e3e73bf4f14e2c"
   },
   "validation": {
     "cpu_full_suite": 72269,
     "new_scalar": 4333,
     "new_cpu_batch": 28832,
-    "cuda_full_suite": null,
-    "cuda_status": "Pending shared gpu0.lock, queued behind another workload; no new device claim.",
+    "cuda_full_suite": 35864,
+    "cuda_status": "Passed on NVIDIA L40S under shared gpu0.lock, scalar indexing disabled.",
     "precision": [
       "Float32",
       "Float64"
@@ -41,17 +41,24 @@
     "julia": "1.12.6",
     "required_bonan": "passed",
     "offline_gallery": "13 plots passed; all 29 pre-existing CSV/PNG artifacts byte-identical",
-    "logs": "/tmp/leaf-excitation-20261108/"
+    "logs": "/tmp/leaf-excitation-20261108/",
+    "new_cuda_batch": 28832,
+    "cuda": "6.5.1",
+    "runtime": "13.4.0",
+    "test_summaries": {
+      "cpu": "Test Summary:                          | Pass  Total  Time\nCore gas exchange, stomata, and oxygen |  576    576  2.2s\nTest Summary:                                                   | Pass  Total  Time\nRealized biochemical turnover independent of oxygen diagnostics | 1022   1022  0.9s\nTest Summary:                          |  Pass  Total  Time\nEquilibrium and analytic sensitivities | 22994  22994  7.6s\nTest Summary:                                  | Pass  Total  Time\nOxygen-dependent photorespiratory compensation | 2320   2320  1.2s\nTest Summary:                      | Pass  Total  Time\nPSII fluorescence rate competition | 2318   2318  0.8s\nTest Summary:            | Pass  Total  Time\nFluorescence CPU batches | 1438   1438  1.5s\nTest Summary:            | Pass  Total  Time\nOxygen-aware CPU batches | 4868   4868  1.8s\nTest Summary:      | Pass  Total  Time\nLeafPhotosynthesis | 3568   3568  9.1s\nTest Summary:                                                 | Pass  Total  Time\nExplicit excitation interfaces and independent leaf responses | 1847   1847  1.1s\nTest Summary:                                                            | Pass  Total  Time\nExplicit excitation in diffusion, equilibrium, stomata and sensitivities |  524    524  1.3s\nTest Summary:                                                   | Pass  Total  Time\nInvalid light, optional diagnostics and extension compatibility |  186    186  0.6s\nTest Summary:                                          | Pass  Total  Time\nExcitation across carbon closures and stomatal targets | 1776   1776  4.4s\nTest Summary:                   |  Pass  Total  Time\nExplicit excitation CPU batches | 28832  28832  4.8s\n",
+      "cuda": "Test Summary:     | Pass  Total   Time\nCUDA leaf physics | 7032   7032  48.8s\nTest Summary:                    |  Pass  Total   Time\nExplicit excitation CUDA batches | 28832  28832  16.1s\n"
+    }
   },
   "review": {
-    "structure": "review_structure final source/test/docs review clear; mixed-FT finding resolved. Device gate pending.",
-    "physics": "review_scope_audit final source/test/docs review clear; same Q2, solved Cc, PSII-dark and cache provenance explicit. Device gate pending."
+    "structure": "review_structure confirmed final source/tests/docs and completed device acceptance; no remaining blocker.",
+    "physics": "review_scope_audit confirmed final source/tests/docs and completed device acceptance; no remaining blocker."
   },
   "limits": [
     "Same PAR spectral interval and leaf area for built-in prescribed input; no UV/far-red or coupled PSI model.",
     "No extra optical dependency, grid, array/device owner or state timestepper.",
     "Signed turnover restrictions unchanged; clipped models do not acquire fluorescence/O2 turnover.",
     "Fixed-light gs partial derivative; cached exchange provenance is caller responsibility.",
-    "Metal and new CUDA acceptance not established by this CPU milestone."
+    "Metal execution remains untested; PROSPECT and spectral orchestration are outside the leaf core."
   ]
 }
