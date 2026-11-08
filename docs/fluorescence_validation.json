@@ -1,0 +1,71 @@
+{
+  "timestamp_utc": "2026-11-08T02:53:33.640354+00:00",
+  "source_parent": "36ca55f076dbaf264d5f8e3628b75e833d6bc3d0",
+  "scope": "Steady PSII rate competition with explicit constant and instantaneous empirical quenching; no PSI source, dynamic NPQ or leaf optical dependency.",
+  "source_sha256": {
+    "src/LeafPhotosynthesis.jl": "617bc4dd60f5c9892b1835bac49db5bd77d7cfd417a11586de10131f4b8fc215",
+    "src/temperature_response.jl": "9e6cad7392ea2f3018652bd36ed88894a6d06a898b5db14e137f48b0d6a25325",
+    "src/rate_limitation.jl": "cb5f99aab3f7502f258db44b7625e1566126096d3676a670de84b2097f7de261",
+    "src/electron_transport.jl": "55d428e0093f59008eb67e5ffcc9934f2d5f4316cada0c96fdc04222b81d2d8d",
+    "src/carbon_assimilation.jl": "5eaa336547ca022aab2262c1501487c1a5f9a620c19648ccab51fdd4eea8b80b",
+    "src/photosynthesis.jl": "212a3e353eb1aa02d7d9a08118a6a9c7ed61561d4b7caf77e1a48dd75b9bf75f",
+    "src/leaf_model.jl": "23c8f1841a87fa005ca1fc431f5b413821420b9f1dc8facfb20b8b0a5b89b420",
+    "src/stomatal_conductance.jl": "bcfdca71ab25517ef996533340156bba810c26ba4104b0adb5b639f1f78d7901",
+    "src/oxygen_exchange.jl": "9f373bae079bcf40f105c16afa2e39f25a5487c2476f7e09e0df165874a40a5a",
+    "src/gas_diffusion.jl": "2d9e299cd1ffa71e8d00b8a2d6b843398d71be0f5ed9bb7bbacf67f38fb3d5eb",
+    "src/assimilation_derivatives.jl": "9a60d749a08fa9ba36b1a9a8093feade8cb54b3a08a41d4c8da855bcdf6f30be",
+    "src/equilibrium_solver.jl": "62522b172b69bc3aaefe7ee9a0a8ea0dbb6b0c569cd3ce1acbc1d37ad91634ae",
+    "src/gas_exchange_sensitivities.jl": "3185bf68abb541c8279bc14b92c704d9fb078e043b3ab642c24642cdd02c7079",
+    "src/photorespiratory_compensation.jl": "372e06c3c6def76ca535396f415c1758a319c7ee154b46a1c4ca62c618e0450f",
+    "src/fluorescence.jl": "a6837a14f2e2fd5594db3428cfb0eb1a76ee005e65da0e87f30774ecb9ba0565",
+    "examples/fluorescence.jl": "d755d1414cf55133e31ddaa8005d1c907f69e0b565044125762f60b8968fe9c6",
+    "examples/setup/fluorescence.jl": "e56ac36501734e79a234dd5e1a9bc22cb4a1dfb9da297e04c39bd81115f95957",
+    "examples/parameters/fluorescence.toml": "7094606ed27a341ae18ec65ed577332bb471d462458f59800853865c94467135",
+    "examples/parameters/bonan_11_1.toml": "70addf0ad7faf61ed33867d6a17f5922f4affe6a2b0148cf788c091e4ea958d1",
+    "examples/parameters/core_exchange.toml": "3f9992aceb54b5467391f75433ef0a60827e6f44677d3e54fcf4b70fd913dc81",
+    "test/fluorescence.jl": "7789cd23819648c53619c8b7f25846d5768ef68ccaaea82239e143469dbeac32",
+    "test/fluorescence_batches.jl": "92e61fddd1890100e7ce617784c8a5432e8505cebb3009a492748c85e6545e22",
+    "test/runtests.jl": "d17116ce6dfe2e729adf86ead63940cf73d393bcfca44a7c1b7788aa4011a94d",
+    "test/gpu/runtests.jl": "389c07202cc1d57c0e02da331b80bfa2646c924066bb02a2966dd66597c6e40a",
+    "docs/build_examples.jl": "733e5de7d6b0d5b401412a546c8d0fb9e761443e53038ba07053239f5b844ae8",
+    "docs/check_examples.cjs": "6fcd51866a804991893a8ef41daddd4059d55ccfb7fb38af6907570ea1bbc0a1",
+    "docs/assets/examples.js": "7ec44264892c73fe3d58790bb1f667ac3730ee562e8428dc104b1776488f68ec"
+  },
+  "validation": {
+    "cpu_full_suite": 39104,
+    "cuda_full_suite": 7032,
+    "new_scalar": 2318,
+    "new_cpu_or_cuda_batch": 1438,
+    "precision": [
+      "Float32",
+      "Float64"
+    ],
+    "julia": "1.12.6",
+    "cuda": "6.5.1",
+    "runtime": "13.4.0",
+    "gpu": "NVIDIA L40S; shared GPU0 lock, scalar indexing disabled",
+    "oracles": [
+      "Independent BigFloat reconstruction of effective KP and normalized rate probabilities",
+      "Compensation-point turnover, dark/lit ordering, all-rate normalization invariance",
+      "Invalid rates/input domains, explicit 8-epsilon numerical boundary, custom quenching low-light hook",
+      "CUDA NoOp bypass and concrete status/Bool/FT result parity"
+    ],
+    "documentation": "13 offline plots, exact FP32/64 data, dark gaps versus zero photons, tables/toggles/PNG/mobile/no-network; old 9 CSV/figure sets unchanged.",
+    "logs": "/tmp/canopy-modern-20261108/fluorescence-*.log"
+  },
+  "review": {
+    "structure": "review_structure cleared design, implementation, public low-light extension hook and test/doc refinements",
+    "physics": "review_scope_audit cleared shared excitation, rate equations, boundary policy, yield-once spectral handoff and stated physical limits"
+  },
+  "primary_sources": [
+    "https://doi.org/10.1002/2014JG002713",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC8292351/"
+  ],
+  "limits": [
+    "Constant KD and empirical mixed-PAM fit interpreted as a PSII-only approximation, not calibrated pure-PSII physiology.",
+    "Result is internal photon production; optical escape and spectral coupling stay external.",
+    "Yield probabilities do not close a leaf joule budget.",
+    "Prescribed biochemical-site CO2; solved gas-exchange callers must verify convergence and use accepted Cc.",
+    "No hidden parameter/default change; original Bonan low-light yield remains unchanged."
+  ]
+}

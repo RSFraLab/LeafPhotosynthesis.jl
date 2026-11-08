@@ -19,6 +19,12 @@ include("equilibrium.jl")
 include("../examples/setup/oxygen_response.jl")
 include("oxygen_compensation.jl")
 include("oxygen_batches.jl")
+include("../examples/setup/fluorescence.jl")
+include("fluorescence.jl")
+include("fluorescence_batches.jl")
+@testset "Fluorescence CPU batches" begin
+    check_fluorescence_batches(identity, () -> nothing)
+end
 @testset "Oxygen-aware CPU batches" begin
     check_oxygen_batches(identity, () -> nothing)
 end

@@ -17,6 +17,7 @@ or approximate the physiology.
 | [stomatal_response.jl](../examples/stomatal_response.jl) | Opening in light, closing in darkness, and comparison with equilibrium |
 | [biochemical_turnover.jl](../examples/biochemical_turnover.jl) | Available and realized electrons, including carbon cancellation at compensation |
 | [oxygen_response.jl](../examples/oxygen_response.jl) | Explicit O₂-dependent compensation point and coupled carbon uptake |
+| [fluorescence.jl](../examples/fluorescence.jl) | Shared PSII excitation, replaceable quenching and internal fluorescence |
 
 TOML parsing is isolated in [read_parameters.jl](../examples/setup/read_parameters.jl).
 Explicit component assembly lives in [bonan_leaf.jl](../examples/setup/bonan_leaf.jl)
@@ -34,6 +35,8 @@ See all three [Bonan curves](bonan_exercises.md) and the
 [stomatal and gas-exchange plots](core_exchange.md) in the Markdown documentation.
 The [biochemical turnover walkthrough](biochemical_turnover.md) includes electron
 and gross carbon flux plots.
+The [fluorescence walkthrough](fluorescence.md) distinguishes internal PSII
+production from leaf optical escape and explains valid dark plot gaps.
 Static previews use Float64; the interactive gallery lets you choose either precision.
 
 ## Reproduce the plots
@@ -47,6 +50,7 @@ julia --project=. examples/core_exchange.jl
 julia --project=. examples/stomatal_response.jl
 julia --project=. examples/biochemical_turnover.jl
 julia --project=. examples/oxygen_response.jl
+julia --project=. examples/fluorescence.jl
 julia --project=. docs/build_examples.jl
 ```
 
@@ -57,7 +61,7 @@ fails on a nonconverged equilibrium or nonfinite plot value. Numerical formattin
 JSON serialization, and browser presentation stay outside the model and examples.
 Reopen `examples.html` after rebuilding. No npm, web server, or network is needed.
 
-For a quick figure, use **Save PNG** under a plot. To regenerate all nine committed
+For a quick figure, use **Save PNG** under a plot. To regenerate all thirteen committed
 Markdown previews with a browser, the optional maintainer workflow is:
 
 ```sh

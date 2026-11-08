@@ -10,6 +10,13 @@ export AbstractPhotosynthesis, C3Photosynthesis, LeafModel, LeafEnvironment,
 export AbstractCompensationPoint, PrescribedCompensationPoint,
     OxygenScaledCompensationPoint, compensation_point
 
+export AbstractFluorescence, NoFluorescence, AbstractQuenching, ConstantQuenching,
+    SaturationQuenching, RateCompetitionFluorescence, PSIIFluxInputs,
+    RateCompetitionResult, FluorescenceStatus, FluorescenceLit, FluorescenceDark,
+    FluorescenceInvalidInput, FluorescenceIncompatibleRates,
+    fluorescence, fluorescence_valid, quenching_rate, maximum_photochemical_yield,
+    psii_flux_inputs, fluorescence_low_light_yield, validate_fluorescence_coupling
+
 export AbstractStomatalTarget, AbstractStomatalModel, BallBerry, Medlyn,
     SteadyStateStomata, PrognosticStomata, NoStomatalDynamics, StomatalState, StomatalDrivers,
     target_conductance, stomatal_tendency,
@@ -33,6 +40,7 @@ include("electron_transport.jl")
 include("carbon_assimilation.jl")
 include("assimilation_derivatives.jl")
 include("photosynthesis.jl")
+include("fluorescence.jl")
 include("stomatal_conductance.jl")
 include("gas_diffusion.jl")
 include("equilibrium_solver.jl")

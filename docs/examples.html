@@ -12,7 +12,7 @@
 <body>
   <header>
     <a class="brand" href="../README.md">LeafPhotosynthesis.jl</a>
-    <nav aria-label="Examples"><a href="#one-leaf">One leaf</a><a href="#bonan">Response curves</a><a href="#equilibrium">Equilibrium</a><a href="#stomata">Stomatal dynamics</a><a href="#turnover">Electron use</a></nav>
+    <nav aria-label="Examples"><a href="#one-leaf">One leaf</a><a href="#bonan">Response curves</a><a href="#equilibrium">Equilibrium</a><a href="#stomata">Stomatal dynamics</a><a href="#turnover">Electron use</a><a href="#fluorescence">Fluorescence</a></nav>
   </header>
   <main>
     <div class="intro">
@@ -68,6 +68,20 @@
       <details class="source"><summary>Read the complete turnover example</summary><pre><code data-source="biochemical_turnover"></code></pre></details>
       <div id="turnover-plots" class="plot-grid"></div>
       <p class="note">Light and temperature are fixed; CO₂ is prescribed at the biochemical site. The example uses signed C3 assimilation and computes turnover with oxygen exchange disabled. Alternative electron sinks, cyclic flow and fluorescence yield are not inferred. <a href="biochemical_turnover.md">Equations and limits →</a></p>
+    </section>
+
+    <section id="fluorescence">
+      <h2>PSII excitation and fluorescence</h2>
+      <p>Compare two replaceable quenching components using the same C3 model and the same absorbed photons.
+      Rates and the low-light electron yield are explicitly compatible in this new exercise;
+      the earlier Bonan exercises retain their original values.</p>
+      <pre><code>julia --project=. examples/fluorescence.jl</code></pre>
+      <details class="source"><summary>Read the complete fluorescence example</summary><pre><code data-source="fluorescence"></code></pre></details>
+      <div id="fluorescence-plots" class="plot-grid"></div>
+      <p class="note">Temperature and biochemical-site CO₂ are prescribed. The empirical KN fit has PAM/PSI-contamination limitations;
+      its PSII-only interpretation is an explicit approximation. There is no NPQ memory, PSI source or leaf optical escape here.
+      Yield probabilities close an excitation budget, not a complete leaf energy budget.
+      <a href="fluorescence.md">Equations, parameter conventions and limits →</a></p>
     </section>
 
     <section id="oxygen-response">

@@ -10,7 +10,7 @@ const assert = require('assert');
     page.on('pageerror', e=>errors.push(e.message));
     page.on('request', r=>{if(/^https?:/.test(r.url()))requests.push(r.url());});
     await page.goto('file://'+path.join(__dirname,'examples.html'));
-    await page.waitForFunction(()=>document.querySelectorAll('canvas').length===9);
+    await page.waitForFunction(()=>document.querySelectorAll('canvas').length===13);
     for(const precision of ['Float64','Float32']) {
       await page.selectOption('#precision',precision);
       for(const index of ['0','1','2']) {
@@ -25,11 +25,29 @@ const assert = require('assert');
               s.data.every((p,i)=>p.x===rows[i].oxygen&&p.y===rows[i][keys[j]])) &&
               c.getDatasetMeta(0).data.every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y));
           }) && Array.from(document.querySelectorAll('canvas')).every(canvas=>{
-            const c=Chart.getChart(canvas);return c.data.datasets.every(s=>s.data.every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)));
+            const c=Chart.getChart(canvas);return c.data.datasets.every(s=>s.data.every(p=>Number.isFinite(p.x)&&(Number.isFinite(p.y)||p.x===0&&p.y===null)));
           });
         },{precision,index});
         assert(checked);
       }
+      assert(await page.evaluate(precision=>{
+        const rows=window.leafExamples.data[precision].fluorescence;
+        const specs=[['fluorescence-carbon',['net_assimilation']],
+          ['fluorescence-photochemistry',['photochemical_yield']],
+          ['fluorescence-yield',['unquenched_yield','regulated_yield']],
+          ['fluorescence-photons',['unquenched_photons','regulated_photons']]];
+        return rows[0].dark && rows[0].regulated_photons===0 && rows[0].regulated_yield===null &&
+          specs.every(([id,keys])=>{
+            const chart=Chart.getChart(id);
+            return chart.data.datasets.every((s,k)=>s.data.length===rows.length &&
+              s.data.every((p,i)=>p.x===rows[i].absorbed_par&&p.y===rows[i][keys[k]]) &&
+              chart.getDatasetMeta(k).data.every((p,i)=>s.data[i].y===null?p.skip:Number.isFinite(p.x)&&Number.isFinite(p.y)));
+          });
+      },precision));
+      const fluorescenceCard=page.locator('article').filter({has:page.locator('#fluorescence-yield')});
+      await fluorescenceCard.locator('details summary').click();
+      await fluorescenceCard.locator('tbody tr').first().waitFor();
+      assert((await fluorescenceCard.locator('tbody tr').first().innerText()).includes('Undefined (dark)'));
       const card=page.locator('article').filter({has:page.locator('#oxygen-carbon')});
       await card.locator('details summary').click();
       await card.locator('tbody tr').first().waitFor();
@@ -46,6 +64,6 @@ const assert = require('assert');
     await page.waitForTimeout(300);
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     assert.deepStrictEqual(errors,[]);assert.deepStrictEqual(requests,[]);
-    console.log('PASS: nine plots, FP32/64, three oxygen temperatures, exact data, rendered points, tables, series toggles, PNG download, mobile and offline');
+    console.log('PASS: thirteen plots, FP32/64, oxygen temperatures, exact fluorescence data, dark gaps/zero source, rendered points, tables, series toggles, PNG download, mobile and offline');
   } finally { await browser.close(); }
 })().catch(e=>{console.error(e);process.exitCode=1;});

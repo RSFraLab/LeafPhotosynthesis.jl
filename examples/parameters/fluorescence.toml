@@ -1,0 +1,34 @@
+# Constant-temperature illustration of PSII rate competition, not a fitted SIF model.
+# van der Tol et al. (2014), relative rates Eqs 2–7 and cotton KN fit Eq19.
+# Constant KD omits the paper's thermal law. Applying its PAM-derived fit to
+# a PSII-only source is an approximation (the paper discusses PSI contamination).
+[rates]
+fluorescence = 0.05
+constitutive_heat = 0.95
+maximum_photochemistry = 4.0
+constant_quenching = 0.0
+
+[saturation_quenching]
+maximum_rate = 2.48
+exponent = 2.83
+half_saturation = 0.114
+
+[experiment]
+psii_fraction = 0.5
+psii_low_light_yield = 0.8 # Explicitly compatible with 4/(4+.05+.95); Bonan remains .85.
+temperature_K = 298.15
+oxygen_Pa = 21176.925
+biochemical_co2_Pa = 30.0
+absorbed_par_start = 0.0
+absorbed_par_stop = 2000.0
+absorbed_par_step = 20.0
+test_light = [0.0, 1.0e-12, 1.0e-6, 1.0, 50.0, 200.0, 1600.0, 2000.0]
+test_co2_gamma_factors = [0.0, 0.5, 1.0, 8.0]
+
+[validation]
+float32_yield_tolerance = 0.00000095367431640625 # 8 eps(Float32), numeric boundary only
+float64_yield_tolerance = 0.0000000000000017763568394002505 # 8 eps(Float64)
+float32_relative_tolerance = 0.00002
+float64_relative_tolerance = 0.00000000000005
+float32_flux_absolute_tolerance = 0.00005
+float64_flux_absolute_tolerance = 0.000000000005

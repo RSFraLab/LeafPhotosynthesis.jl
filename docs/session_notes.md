@@ -385,3 +385,32 @@ browser checks including selectors, actual data, rendering, tables, series toggl
 PNG download and mobile layout. Selected temperature is embedded in exported
 plot titles. Existing seven CSV/figure sets did not change. Required Bonan and
 new standalone examples run successfully. No remote publication.
+
+### Reviewed physiological PSII fluorescence, 2026-11-08
+
+Added AbstractFluorescence, explicit NoFluorescence, and a scalar relative-rate
+competition component with separately dispatched constant/instantaneous empirical
+quenching. The shared excitation adapter uses production PSII fraction and actual
+signed-C3 biochemical turnover at prescribed Cc, independent of optional O2.
+No LeafModel layout or prior Bonan coefficients changed. Setup verifies low-light
+compatibility; a new example explicitly uses the paper-normalized .8 yield.
+
+Darkness has zero photons and undefined flux-derived yields; NoOp returns nothing;
+invalid sources carry explicit status and NaN photons. Numerical yield-boundary
+handling preserves actual J/PhiP/KP/photons and flags roundoff. Custom quenching
+and low-light validation hooks are exercised without editing dispatch switches.
+All scientific rates and tolerances live in explicit parameters/TOML.
+
+Both independent reviewers cleared design and implementation. Full CPU39,104 and
+CUDA7,032 checks pass (new scalar2,318 and batch1,438 in each backend), FP32/64.
+Independent BigFloat rate reconstruction, normalization invariance, dark/compensation,
+invalid/quenching-limit cases, allocation/inference and CUDA NoOp are covered.
+Validation sources/versions/reviews are recorded in docs/fluorescence_validation.json.
+
+The short example and Bonan entry point pass. Thirteen offline Chart.js plots pass
+browser checks including exact data and valid-dark gaps; four new static previews
+were exported and the yield preview visually inspected. The nine previous CSV and
+figure sets remain byte-for-byte unchanged. Constant KD, mixed-PAM fit interpreted
+as a PSII-only approximation, no NPQ memory/PSI and excitation-vs-joule closure
+are explicit limitations. CanopyModelExamples tests the source-to-synthetic-optics
+handoff separately (344 CPU/344 CUDA checks). No remote publication.

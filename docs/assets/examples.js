@@ -2,7 +2,7 @@
 "use strict";
 const charts = [];
 const palette = ["#176a53", "#ba641e", "#526bb0"];
-const format = value => Number(value).toLocaleString("en-US", {maximumSignificantDigits: 7});
+const format = value => value === null ? "Undefined (dark)" : Number(value).toLocaleString("en-US", {maximumSignificantDigits: 7});
 const element = (tag, text, className) => {
   const node = document.createElement(tag);
   if (text !== undefined) node.textContent = text;
@@ -106,7 +106,7 @@ function plot(parent, {id, title, description, rows, x, xLabel, yLabel, series, 
 
 function render() {
   charts.forEach(chart => chart.destroy()); charts.length = 0;
-  ["bonan-plots", "stomatal-plots", "turnover-plots", "oxygen-plots", "equilibrium-values"].forEach(id => document.getElementById(id).replaceChildren());
+  ["bonan-plots", "stomatal-plots", "turnover-plots", "oxygen-plots", "fluorescence-plots", "equilibrium-values"].forEach(id => document.getElementById(id).replaceChildren());
   const precision = document.getElementById("precision").value;
   const data = window.leafExamples.data[precision];
   const csv = name => `assets/data/${precision}/${name}.csv`;
@@ -141,6 +141,22 @@ function render() {
     description: "At CO₂/Γ* = 1, carboxylation and photorespiratory release match. Their cancellation does not switch off electron flow.",
     rows: data.turnover, x: "co2_gamma_ratio", xLabel: "Biochemical-site CO₂ / Γ*", yLabel: "μmol CO₂ m⁻² leaf s⁻¹", file: csv("turnover"),
     series: [{key: "carboxylation", label: "Carboxylation"}, {key: "photorespiratory_co2", label: "Photorespiratory release", dash: [6, 4]}, {key: "net_assimilation", label: "Net CO₂ uptake", dash: [2, 4]}]});
+  const fluorescencePlots = [
+    {id:"fluorescence-carbon",title:"Carbon uptake with shared PSII excitation",yLabel:"Net CO₂ uptake (μmol m⁻² leaf s⁻¹)",
+      description:"Both fluorescence choices use the same realized electron flow. This one-way diagnostic does not change carbon uptake.",
+      series:[{key:"net_assimilation",label:"Net carbon uptake"}]},
+    {id:"fluorescence-photochemistry",title:"PSII photochemical yield",yLabel:"Electrons per PSII excitation",
+      description:"Realized linear electron flow divided by the PSII excitation used by photosynthesis. The ratio is undefined in darkness.",
+      series:[{key:"photochemical_yield",label:"Realized photochemical yield"}]},
+    {id:"fluorescence-yield",title:"Internal PSII fluorescence yield",yLabel:"Photons per PSII excitation",
+      description:"The empirical quenching law redirects excitation toward heat. This constant-KD illustration is not a calibrated pure-PSII SIF prediction; dark yields are gaps.",
+      series:[{key:"unquenched_yield",label:"KN = 0 control"},{key:"regulated_yield",label:"Instantaneous empirical KN",dash:[6,4]}]},
+    {id:"fluorescence-photons",title:"Internal PSII fluorescence source",yLabel:"μmol photons m⁻² leaf s⁻¹",
+      description:"A valid dark population emits zero photons. These sources precede within-leaf escape and canopy transport; PSI emission is absent.",
+      series:[{key:"unquenched_photons",label:"KN = 0 control"},{key:"regulated_photons",label:"Instantaneous empirical KN",dash:[6,4]}]},
+  ];
+  fluorescencePlots.forEach(spec=>plot("fluorescence-plots",{...spec,rows:data.fluorescence,
+    x:"absorbed_par",xLabel:"Leaf-absorbed PAR (μmol photons m⁻² leaf s⁻¹)",file:csv("fluorescence")}));
   const temperatures = [...new Set(data.oxygen_response.map(row => row.temperature))];
   const temperatureControl = document.getElementById("oxygen-temperature");
   const selectedIndex = Number(temperatureControl.value);

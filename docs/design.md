@@ -14,10 +14,11 @@ stoichiometry, rate limitation, and compensation treatment. Composition determin
 the compiled calculation through Julia dispatch. Model parameters are immutable;
 inputs and outputs are scalar values, not mutable per-leaf scratch containers.
 
-Leaf fluorescence and more detailed photochemistry are potential additions after an
-equation audit. They must share electron and energy accounting with photosynthesis,
-rather than independently computing incompatible yields. Do not add placeholder
-components now. Dynamic induction/NPQ would have explicit state owned and advanced
+The audited [PSII fluorescence source](fluorescence.md) is composed alongside
+LeafModel, sharing its actual PSII excitation and realized linear electron flow.
+Its rate-competition and quenching interfaces do not constrain future coupled
+photosystem families to the same inputs. Spectral optics remain external.
+Dynamic induction/NPQ would have explicit state owned and advanced
 by the caller; no hidden relaxation on each function invocation.
 
 Stomatal and mesophyll diffusion are distinct from biochemical demand. The core
@@ -104,7 +105,8 @@ Available light-driven electron supply and realized biochemical use remain disti
 The same positive capacity drives carbon and oxygen calculations, avoiding a 0/0
 carbon-efficiency reconstruction at compensation. See the
 [equations and limits](biochemical_turnover.md). This API does not select an NPQ
-or fluorescence-yield parameterization. Leaf internal emission/escape, canopy
+or fluorescence-yield parameterization; the separate fluorescence component does.
+Leaf optical escape, canopy
 transport, and atmospheric transfer belong to separate components with explicit
 photon, spectral, and area conventions.
 

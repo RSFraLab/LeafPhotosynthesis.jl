@@ -6,12 +6,17 @@ the implementation is tested on CPU and NVIDIA CUDA in `Float32` and `Float64`.
 
 **Scope:** C3 biochemistry, analytical CO₂ diffusion at prescribed conductance,
 coupled equilibrium and prognostic stomatal conductance, fixed-temperature gas-exchange
-sensitivities, explicit oxygen-dependent photorespiratory compensation, and a core oxygen budget. `LeafModel` composes
+sensitivities, explicit oxygen-dependent photorespiratory compensation, a core oxygen budget,
+and a replaceable steady-state PSII fluorescence source. `LeafModel` composes
 concrete photosynthesis, stomatal, and oxygen components under abstract interfaces.
 `NoOxygenExchange` skips the oxygen calculation; `NoStomatalDynamics` keeps prescribed
 conductance fixed. There are no runtime dependencies or hidden scientific parameters.
-C4, TPU, fluorescence, leaf energy balance, Metal execution, and ClimaLand integration
+C4, TPU, coupled PSI/PSII photochemistry, dynamic NPQ, leaf energy balance, Metal execution, and ClimaLand integration
 remain future work.
+
+The [fluorescence component](docs/fluorescence.md) shares realized electron flow
+and PSII excitation with photosynthesis. Leaf optical escape and canopy transport
+remain outside this package; its empirical quenching example is explicitly illustrative.
 
 ## Start here
 
@@ -25,6 +30,7 @@ julia --project=. examples/core_exchange.jl
 julia --project=. examples/stomatal_response.jl
 julia --project=. examples/biochemical_turnover.jl
 julia --project=. examples/oxygen_response.jl
+julia --project=. examples/fluorescence.jl
 ```
 
 The example writes light, CO₂, and temperature response tables for both precisions

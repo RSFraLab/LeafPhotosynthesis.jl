@@ -5,7 +5,7 @@ function write_tables(output_directory, curves)
         open(joinpath(output_directory, name * ".csv"), "w") do io
             println(io, join(string.(keys(first(rows))), ','))
             for row in rows
-                println(io, join(values(row), ','))
+                println(io, join((value === nothing ? "" : value for value in values(row)), ','))
             end
         end
     end
