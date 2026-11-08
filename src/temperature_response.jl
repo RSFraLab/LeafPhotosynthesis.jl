@@ -46,7 +46,7 @@ end
     return a.value_ref * exp(exponent + softplus(inhibition_ref) - softplus(inhibition))
 end
 
-"""Six independent responses for C3 biochemical rates; see [`C3Rates`](@ref) for units."""
+"""C3 rate responses; `gamma_star` can be a temperature law or explicit compensation-point component."""
 Base.@kwdef struct C3TemperatureResponse{V,J,R,C,O,G}
     vcmax::V
     jmax::J
@@ -59,7 +59,7 @@ end
 """
     C3Rates{FT}(; vcmax, jmax, respiration, kc, ko, gamma_star)
 
-Parameters at the actual leaf temperature. Rates `vcmax`, `respiration`:
+Parameters at the actual leaf temperature and, when selected, biochemical O₂. Rates `vcmax`, `respiration`:
 μmol CO₂ m⁻² leaf s⁻¹; `jmax`: μmol electrons m⁻² leaf s⁻¹.
 `kc`, `ko`, `gamma_star`: Pa. Require nonnegative rates and gamma_star,
 positive kc/ko, and positive assimilation denominators.
@@ -81,4 +81,22 @@ end
     temperature_response(p.kc, temperature),
     temperature_response(p.ko, temperature),
     temperature_response(p.gamma_star, temperature),
+)
+
+"""
+    biochemical_rates(responses, temperature, oxygen)
+
+Rates at temperature [K] and biochemical O₂ [Pa], including the selected Γ* law.
+The two-argument form remains available for oxygen-independent responses. Custom
+whole-rate models implementing `biochemical_rates(model,T)` retain that behavior;
+implement the three-argument method when their kinetics also depend on oxygen.
+"""
+@inline biochemical_rates(responses, temperature, oxygen) = biochemical_rates(responses, temperature)
+@inline biochemical_rates(p::C3TemperatureResponse, temperature, oxygen) = C3Rates(
+    temperature_response(p.vcmax, temperature),
+    temperature_response(p.jmax, temperature),
+    temperature_response(p.respiration, temperature),
+    temperature_response(p.kc, temperature),
+    temperature_response(p.ko, temperature),
+    compensation_point(p.gamma_star, temperature, oxygen),
 )

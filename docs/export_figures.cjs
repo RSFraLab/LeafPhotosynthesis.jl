@@ -15,7 +15,7 @@ const { pathToFileURL } = require('node:url');
     await page.waitForFunction(() => document.getElementById('status').textContent.includes('converged'));
     const directory = join(__dirname, 'assets', 'figures');
     await mkdir(directory, {recursive: true});
-    const figures = ['light', 'co2', 'temperature', 'conductance', 'gas-exchange', 'electron-use', 'carbon-turnover'];
+    const figures = ['light', 'co2', 'temperature', 'conductance', 'gas-exchange', 'electron-use', 'carbon-turnover', 'oxygen-gamma', 'oxygen-carbon'];
     for (const id of figures) {
       const image = await page.evaluate(id => chartImage(Chart.getChart(id)), id);
       await writeFile(join(directory, `${id}.png`), Buffer.from(image.split(',')[1], 'base64'));

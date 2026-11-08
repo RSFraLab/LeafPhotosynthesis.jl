@@ -1,0 +1,23 @@
+# Controlled O2 response, not an experimental calibration or anaerobic model.
+# Gamma*(T,O)=Gamma*(T,Oref)*O/Oref: Farquhar et al. 1980, section4.2 Eq38.
+# Reference thermal response remains Bonan11.1; Oref below is its explicit
+# 209 mmol/mol at101325 Pa convention. No new empirical Gamma*(T) fit is selected.
+[experiment]
+reference_oxygen_Pa = 21176.925
+oxygen_Pa = [2000.0, 10000.0, 21176.925, 30000.0, 40000.0]
+temperature_K = [283.15, 298.15, 313.15]
+absorbed_par_micromol_m2_s = [0.0, 200.0, 1600.0]
+response_absorbed_par_micromol_m2_s = 1600.0
+co2_Pa = 40.0
+co2_gamma_factors = [0.5, 1.0, 8.0]
+conductance_mol_m2_s = 0.08
+
+[validation]
+float32_relative_tolerance = 0.00003
+float64_relative_tolerance = 0.000000000002
+float32_flux_absolute_tolerance = 0.0002 # micromol m^-2 s^-1
+float64_flux_absolute_tolerance = 0.000000002
+float32_derivative_step = 0.0002 # mol H2O m^-2 s^-1, central difference
+float64_derivative_step = 0.000001
+float32_derivative_relative_tolerance = 0.002
+float64_derivative_relative_tolerance = 0.000001

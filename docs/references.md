@@ -25,6 +25,14 @@ output hashes separately from this equation-based validation.
 
 ## Core stomatal and oxygen components
 
+- [Farquhar, von Caemmerer & Berry (1980), §4.2 Eq.38](https://biocycle.atmos.colostate.edu/Documents/SiB/Farquhar_1980.pdf):
+  compensation-point oxygen dependence; DOI10.1007/BF00386231. The component
+  scales an explicitly supplied reference-O₂ calibration; no thermal coefficients
+  from the paper replace the Bonan exercise settings.
+- [Moreno-Echeverry et al. (2026)](https://doi.org/10.1111/pce.70808):
+  recent Γ*(T) estimation study in sunflower, motivating replaceable calibration;
+  not implemented as a universal parameter set.
+
 - [Liu, Wang, Magney, and Frankenberg (2024)](https://bg.copernicus.org/articles/21/1501/2024/):
   analytical prescribed-conductance diffusion–biochemistry coupling and first-order
   prognostic stomatal response. The example timescales are illustrative, not fitted

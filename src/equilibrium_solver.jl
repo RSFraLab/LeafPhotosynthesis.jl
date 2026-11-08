@@ -183,7 +183,7 @@ Requires positive minimum conductance; fully sealed leaves need CO₂ storage.
     s = p.stoichiometry
     all(x -> isfinite(x) && x > zero(FT), (s.electrons_per_carboxylation, s.oxygenation_cost)) ||
         return invalid_equilibrium(FT, EquilibriumInvalidInput)
-    r = biochemical_rates(p.temperature, env.temperature)
+    r = biochemical_rates(p.temperature, env.temperature, env.oxygen)
     all(isfinite, (r.vcmax, r.jmax, r.respiration, r.kc, r.ko, r.gamma_star)) &&
         min(r.vcmax, r.jmax, r.respiration) >= zero(FT) && min(r.kc, r.ko, r.gamma_star) > zero(FT) ||
         return invalid_equilibrium(FT, EquilibriumInvalidInput)

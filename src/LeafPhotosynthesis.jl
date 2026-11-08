@@ -7,6 +7,9 @@ export AbstractPhotosynthesis, C3Photosynthesis, LeafModel, LeafEnvironment,
     SignedAssimilation, NonnegativeAssimilation, carbon_assimilation, photosynthesize,
     biochemical_turnover
 
+export AbstractCompensationPoint, PrescribedCompensationPoint,
+    OxygenScaledCompensationPoint, compensation_point
+
 export AbstractStomatalTarget, AbstractStomatalModel, BallBerry, Medlyn,
     SteadyStateStomata, PrognosticStomata, NoStomatalDynamics, StomatalState, StomatalDrivers,
     target_conductance, stomatal_tendency,
@@ -24,6 +27,7 @@ export carbon_assimilation_derivative, assimilation_sensitivity,
 
 # Follow this list from physical responses to a complete prescribed-CO₂ leaf call.
 include("temperature_response.jl")
+include("photorespiratory_compensation.jl")
 include("rate_limitation.jl")
 include("electron_transport.jl")
 include("carbon_assimilation.jl")

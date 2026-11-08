@@ -55,8 +55,13 @@ Biochemical-site CO₂ is prescribed. Using intercellular CO₂ assumes negligib
 mesophyll resistance. The Bonan exercise fixes Ci/Ca externally; this is not a
 stomatal closure. Its mole-fraction kinetic constants and gases are converted together
 at an explicit reference pressure. This conversion is not a validated altitude response.
-Gamma-star is prescribed by its thermal response; varying oxygen requires a separately
-specified oxygen-dependent gamma-star model before interpreting such experiments.
+Legacy gamma-star temperature responses remain prescribed. Explicit
+`PrescribedCompensationPoint` and `OxygenScaledCompensationPoint` components select
+the convention in the existing gamma_star slot. The latter requires a declared
+reference O₂ partial pressure and all environment-aware paths pass O₂ through
+`biochemical_rates(responses,T,O)`. It adds no ambient default or empirical
+recalibration. See [oxygen response](oxygen_response.md) for the positive-O₂
+gas-exchange domain, specificity convention and zero-O₂ limitations.
 
 ## Numerical and hardware contract
 

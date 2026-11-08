@@ -351,3 +351,37 @@ Next physiology decision remains the fluorescence/NPQ closure and its parameter
 provenance. Shared turnover is necessary input, not a validated fluorescence
 yield. Spectral leaf escape and canopy/atmospheric transport belong outside this
 package; the private CanopyModelExamples repo holds their current prototypes.
+
+## Explicit oxygen-dependent compensation point, 2026-11-08
+
+Added AbstractCompensationPoint, PrescribedCompensationPoint and
+OxygenScaledCompensationPoint in the existing C3TemperatureResponse.gamma_star
+slot. The scaled law uses the entire reference Gamma*(T) calibration times O/Oref,
+with explicit positive Oref in Pa. No C3Photosynthesis layout, runtime dependency,
+empirical default or existing example parameter changed. Generic legacy custom
+temperature-response and whole-biochemical-rate extensions remain supported.
+Oxygen-dependent models require the oxygen argument; none is silently supplied.
+
+All five environment-aware rate call sites now pass O2: photosynthesis, turnover,
+diffusion, equilibrium and sensitivities. Optional O2 diagnostics stay separate.
+The scalar law returns zero at O2=0; full gas exchange with the scaled component
+is validated at positive O2/Gamma*. No anaerobic respiration, internal O2 transport
+or zero-gas degeneracy treatment is claimed. Equations follow FvCB1980 section4.2;
+the recent sunflower Gamma*(T) paper is context for replaceable calibration only.
+
+Both required reviewers cleared design, source, tests and example interpretation.
+Full CPU35,348 and CUDA5,594 checks passed in FP32/64. New checks include independent
+BigFloat temperature/specificity equations, exact reference-O2 legacy equivalence,
+finite positive turnover at Gamma* with Apre=0 and An=-Rd, Vo/Vc and electron/O2
+identities, NoOp parity, fixed-O2 gs derivatives, custom extension compatibility,
+state/residual checks, zero allocations and reordered device batches. Logs:
+/tmp/canopy-modern-20261108/oxygen-package-tests.log and oxygen-gpu-tests.log.
+
+Short oxygen_response example keeps config/assembly/output in setup/TOML. It
+compares oxygen-scaled Gamma* with an explicitly inconsistent prescribed-Gamma*
+control away from reference O2, at three temperatures. Two new gallery plots,
+CSV tables and static previews were generated; all nine plots pass offline
+browser checks including selectors, actual data, rendering, tables, series toggles,
+PNG download and mobile layout. Selected temperature is embedded in exported
+plot titles. Existing seven CSV/figure sets did not change. Required Bonan and
+new standalone examples run successfully. No remote publication.

@@ -14,7 +14,7 @@ No stomatal target law is differentiated: gs is the independent control variable
 """
 @inline function assimilation_sensitivity(p::C3Photosynthesis, env::GasExchangeEnvironment,
     state::StomatalState, d::SeriesDiffusion, exchange = gas_exchange(p, env, state, d))
-    r = biochemical_rates(p.temperature, env.temperature)
+    r = biochemical_rates(p.temperature, env.temperature, env.oxygen)
     slope = carbon_assimilation_derivative(r, exchange.biochemical_co2, env.oxygen,
         exchange.electron_transport, p.stoichiometry, p.limitation, p.compensation)
     conductance = exchange.conductance

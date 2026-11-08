@@ -36,7 +36,7 @@ Evaluate one leaf environment. The `electron_transport` diagnostic is available
 electron supply; `biochemical_turnover` separately reports realized `linear_electron_flow`.
 """
 @inline function photosynthesize(p::C3Photosynthesis, env::LeafEnvironment)
-    rates = biochemical_rates(p.temperature, env.temperature)
+    rates = biochemical_rates(p.temperature, env.temperature, env.oxygen)
     electrons = electron_transport(p.electron_transport, env.absorbed_par, rates.jmax)
     carbon = carbon_assimilation(rates, env.co2, env.oxygen, electrons,
         p.stoichiometry, p.limitation, p.compensation)
@@ -53,7 +53,7 @@ Independent of whether optional oxygen exchange is enabled.
 """
 @inline function biochemical_turnover(p::C3Photosynthesis{T,E,S,L,SignedAssimilation},
     env::LeafEnvironment) where {T,E,S,L}
-    r = biochemical_rates(p.temperature, env.temperature)
+    r = biochemical_rates(p.temperature, env.temperature, env.oxygen)
     electrons = electron_transport(p.electron_transport, env.absorbed_par, r.jmax)
     turnover = biochemical_turnover(r, env.co2, env.oxygen, electrons,
         p.stoichiometry, p.limitation, p.compensation)

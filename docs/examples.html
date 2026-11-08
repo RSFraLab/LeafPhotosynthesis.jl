@@ -70,6 +70,20 @@
       <p class="note">Light and temperature are fixed; CO₂ is prescribed at the biochemical site. The example uses signed C3 assimilation and computes turnover with oxygen exchange disabled. Alternative electron sinks, cyclic flow and fluorescence yield are not inferred. <a href="biochemical_turnover.md">Equations and limits →</a></p>
     </section>
 
+    <section id="oxygen-response">
+      <p class="eyebrow">06 / AN EXPLICIT OXYGEN RESPONSE</p><h2>Let the compensation point respond to O₂</h2>
+      <p>Rubisco competition and the photorespiratory compensation point must use the same oxygen level.
+      Here Γ* scales with O₂ from a declared reference partial pressure. The prescribed-Γ* curve is a controlled
+      comparison, incompatible with an oxygen sweep away from its calibration; it is not an alternative calibrated prediction.</p>
+      <pre><code>julia --project=. examples/oxygen_response.jl</code></pre>
+      <details class="source"><summary>Read the complete oxygen-response example</summary><pre><code data-source="oxygen_response"></code></pre></details>
+      <label>Leaf temperature <select id="oxygen-temperature"><option value="1">Loading temperatures…</option></select></label>
+      <div id="oxygen-plots" class="plot-grid"></div>
+      <p class="note">Ambient CO₂, light, surface humidity and diffusion conductances are prescribed. The A–Ci solve adjusts
+      biochemical-site CO₂ and equilibrium stomata at each oxygen level. O₂ transport and anaerobic respiration are not solved.
+      <a href="oxygen_response.md">Equations, reference calibration and limits →</a></p>
+    </section>
+
     <section id="reproduce">
       <p class="eyebrow">KEEP EXPLORING</p><h2>Change a parameter. Rebuild the figures.</h2>
       <p>Edit the named values in <a href="../examples/parameters/bonan_11_1.toml">bonan_11_1.toml</a>, <a href="../examples/parameters/core_exchange.toml">core_exchange.toml</a>, or the CO₂ sweep in <a href="../examples/parameters/turnover.toml">turnover.toml</a>, then regenerate all plotted data:</p>

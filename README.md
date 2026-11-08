@@ -6,7 +6,7 @@ the implementation is tested on CPU and NVIDIA CUDA in `Float32` and `Float64`.
 
 **Scope:** C3 biochemistry, analytical CO₂ diffusion at prescribed conductance,
 coupled equilibrium and prognostic stomatal conductance, fixed-temperature gas-exchange
-sensitivities, and a core oxygen budget. `LeafModel` composes
+sensitivities, explicit oxygen-dependent photorespiratory compensation, and a core oxygen budget. `LeafModel` composes
 concrete photosynthesis, stomatal, and oxygen components under abstract interfaces.
 `NoOxygenExchange` skips the oxygen calculation; `NoStomatalDynamics` keeps prescribed
 conductance fixed. There are no runtime dependencies or hidden scientific parameters.
@@ -24,6 +24,7 @@ julia --project=. examples/bonan_11_1.jl
 julia --project=. examples/core_exchange.jl
 julia --project=. examples/stomatal_response.jl
 julia --project=. examples/biochemical_turnover.jl
+julia --project=. examples/oxygen_response.jl
 ```
 
 The example writes light, CO₂, and temperature response tables for both precisions
@@ -75,6 +76,7 @@ carbon = carbon_assimilation(rates, environment.co2, environment.oxygen,
 | How are leaf components assembled? | [src/leaf_model.jl](src/leaf_model.jl) |
 | What is a complete C3 calculation? | [src/photosynthesis.jl](src/photosynthesis.jl) |
 | How do biochemical rates depend on temperature? | [src/temperature_response.jl](src/temperature_response.jl) |
+| How does Γ* respond to oxygen? | [src/photorespiratory_compensation.jl](src/photorespiratory_compensation.jl), [oxygen example](docs/oxygen_response.md) |
 | How is absorbed light converted to electron transport? | [src/electron_transport.jl](src/electron_transport.jl) |
 | How does CO₂ uptake depend on Rubisco and electrons? | [src/carbon_assimilation.jl](src/carbon_assimilation.jl) |
 | How are gross turnover and realized electron flow diagnosed? | [docs/biochemical_turnover.md](docs/biochemical_turnover.md), [examples/biochemical_turnover.jl](examples/biochemical_turnover.jl) |

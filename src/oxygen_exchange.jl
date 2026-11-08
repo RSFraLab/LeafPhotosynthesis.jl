@@ -51,8 +51,9 @@ Close the core O₂ budget with a signed C3 model, assuming linear electron flow
 serves carboxylation/photorespiration only. Calculate realized biochemical turnover
 before net cancellation, so the compensation point does not cause a 0/0 singularity.
 Clipped sub-compensation models are intentionally unsupported for this budget.
-Gamma-star must be appropriate for the supplied oxygen level; its O₂ response is
-not inferred from a temperature law.
+Gamma-star follows the explicitly selected compensation-point component. A
+prescribed temperature-only response must match the supplied oxygen; select
+OxygenScaledCompensationPoint to apply a declared reference-O₂ dependence.
 """
 @inline function oxygen_exchange(p::CoreOxygenExchange,
     model::C3Photosynthesis{T,E,S,L,SignedAssimilation}, env::LeafEnvironment) where {T,E,S,L}

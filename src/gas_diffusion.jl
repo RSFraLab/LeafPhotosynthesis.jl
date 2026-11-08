@@ -65,7 +65,7 @@ CO₂ would require an internal storage equation. Do not pass zero conductance.
     env::GasExchangeEnvironment, state::StomatalState, d::SeriesDiffusion) where {T,E,S}
     conductance = inv(inv(d.boundary_co2) + d.diffusivity_ratio / state.conductance + inv(d.mesophyll_co2))
     g = conductance * d.mole_to_micromole / env.pressure
-    r = biochemical_rates(p.temperature, env.temperature)
+    r = biochemical_rates(p.temperature, env.temperature, env.oxygen)
     electrons = electron_transport(p.electron_transport, env.absorbed_par, r.jmax)
     km = r.kc * (one(env.oxygen) + env.oxygen / r.ko)
     rubisco_co2 = diffusion_co2_root(r.vcmax, km, r.gamma_star, r.respiration, env.co2, g)

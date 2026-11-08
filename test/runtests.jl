@@ -16,6 +16,12 @@ end
 include("core_exchange.jl")
 include("turnover.jl")
 include("equilibrium.jl")
+include("../examples/setup/oxygen_response.jl")
+include("oxygen_compensation.jl")
+include("oxygen_batches.jl")
+@testset "Oxygen-aware CPU batches" begin
+    check_oxygen_batches(identity, () -> nothing)
+end
 
 @testset "LeafPhotosynthesis" begin
     for FT in (Float32, Float64)

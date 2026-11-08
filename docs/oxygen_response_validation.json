@@ -1,0 +1,72 @@
+{
+  "timestamp_utc": "2026-11-08T02:30:03.828514+00:00",
+  "source_parent": "a5f5f0a3c9e1ce03fd17ceb9a26c0c0c0460bc48",
+  "scope": "Explicit prescribed and oxygen-scaled Gamma-star components in existing C3 temperature composition; positive-O2 full gas exchange, no empirical recalibration.",
+  "source_sha256": {
+    "src/LeafPhotosynthesis.jl": "bc0a31d71a7af37527ab30493ba75840da623c6ca7175d5b3521daf8c880de66",
+    "src/temperature_response.jl": "9e6cad7392ea2f3018652bd36ed88894a6d06a898b5db14e137f48b0d6a25325",
+    "src/rate_limitation.jl": "cb5f99aab3f7502f258db44b7625e1566126096d3676a670de84b2097f7de261",
+    "src/electron_transport.jl": "55d428e0093f59008eb67e5ffcc9934f2d5f4316cada0c96fdc04222b81d2d8d",
+    "src/carbon_assimilation.jl": "5eaa336547ca022aab2262c1501487c1a5f9a620c19648ccab51fdd4eea8b80b",
+    "src/photosynthesis.jl": "212a3e353eb1aa02d7d9a08118a6a9c7ed61561d4b7caf77e1a48dd75b9bf75f",
+    "src/leaf_model.jl": "23c8f1841a87fa005ca1fc431f5b413821420b9f1dc8facfb20b8b0a5b89b420",
+    "src/stomatal_conductance.jl": "bcfdca71ab25517ef996533340156bba810c26ba4104b0adb5b639f1f78d7901",
+    "src/oxygen_exchange.jl": "9f373bae079bcf40f105c16afa2e39f25a5487c2476f7e09e0df165874a40a5a",
+    "src/gas_diffusion.jl": "2d9e299cd1ffa71e8d00b8a2d6b843398d71be0f5ed9bb7bbacf67f38fb3d5eb",
+    "src/assimilation_derivatives.jl": "9a60d749a08fa9ba36b1a9a8093feade8cb54b3a08a41d4c8da855bcdf6f30be",
+    "src/equilibrium_solver.jl": "62522b172b69bc3aaefe7ee9a0a8ea0dbb6b0c569cd3ce1acbc1d37ad91634ae",
+    "src/gas_exchange_sensitivities.jl": "3185bf68abb541c8279bc14b92c704d9fb078e043b3ab642c24642cdd02c7079",
+    "src/photorespiratory_compensation.jl": "372e06c3c6def76ca535396f415c1758a319c7ee154b46a1c4ca62c618e0450f",
+    "examples/oxygen_response.jl": "6818f1a6c75d77bdc94184690e5cb7416742c23775a361d4c9ff772761c5f93a",
+    "examples/setup/oxygen_response.jl": "2bac3c9b2344a98fbacf4a95fdd21aa9123a01c08c4d46f38459b20af8992fc0",
+    "examples/parameters/oxygen_response.toml": "f6fb6282386d94477765013a992b8baeed7c9023b24a8df3fbf46d6b332d3e6b",
+    "examples/parameters/bonan_11_1.toml": "70addf0ad7faf61ed33867d6a17f5922f4affe6a2b0148cf788c091e4ea958d1",
+    "examples/parameters/core_exchange.toml": "3f9992aceb54b5467391f75433ef0a60827e6f44677d3e54fcf4b70fd913dc81",
+    "test/oxygen_compensation.jl": "23e0239802c95df370cce206192af5fc8e632230175801150ea9db5f2b4758de",
+    "test/oxygen_batches.jl": "210cccc1294ca121512228a2491eaa1eb674ee1f35f95cf79c27cde9513c6111",
+    "test/runtests.jl": "d15815d4f730a922013500d6316bac9760197bf7ac0f5cb6210fabf92d004f8b",
+    "test/gpu/runtests.jl": "01f9182be1b841b61584529ff5ccd1c351bed34c8ae6f0e8c5cdacbc9c12a480",
+    "docs/check_examples.cjs": "1d122b6bf29013dbd1da45ad01df6ab062952cec5b0eeaaf44e9cc601f483a69",
+    "docs/build_examples.jl": "4002f77820d7b8429e7ba762d5bdb79b6acf7ef4ac32cd277cbead13ece2e170",
+    "docs/assets/examples.js": "fcafa6b62a912e518029615aa349712ae582f540cac873f4ce4c2a9571245339"
+  },
+  "validation": {
+    "cpu_full_suite": 35348,
+    "cuda_full_suite": 5594,
+    "new_scalar": 2320,
+    "new_cpu_or_cuda_batch": 4868,
+    "legacy_cpu": 28160,
+    "legacy_cuda": 726,
+    "precision": [
+      "Float32",
+      "Float64"
+    ],
+    "julia": "1.12.6",
+    "cuda": "6.5.1",
+    "runtime": "13.4.0",
+    "compiler": "13.4.92",
+    "gpu": "NVIDIA L40S, visible device0, scalar indexing disabled, shared lock",
+    "examples": [
+      "Bonan11.1 entry point passed",
+      "oxygen_response entry point passed"
+    ],
+    "documentation": "9 offline plots; both precisions and three temperature choices; exact model data/rendering/tables/toggles/PNG/mobile/no-network passed. Two new static previews inspected; existing seven CSV/figure sets unchanged.",
+    "logs": "/tmp/canopy-modern-20261108/oxygen-*.log"
+  },
+  "review": {
+    "structure": "review_structure cleared design, code, extension compatibility, example and docs; optional selected-T export title implemented",
+    "physics": "review_scope_audit cleared equations, reference pressure, compensation/turnover/stoichiometry/NoOp tests and controlled-comparator interpretation"
+  },
+  "primary_sources": [
+    "https://doi.org/10.1007/BF00386231",
+    "https://doi.org/10.1007/s10265-020-01169-0",
+    "https://doi.org/10.1111/pce.70808"
+  ],
+  "limits": [
+    "Reference Gamma*(T) law must be calibrated at the supplied biochemical O2 partial pressure.",
+    "No ambient-O2 default or additional total-pressure factor.",
+    "No anaerobic respiration, O2 diffusion or degenerate zero-gas closure.",
+    "NoOxygenExchange disables diagnostics only; chemical O2 response remains active.",
+    "Prescribed-Gamma sweep comparator is a controlled inconsistency, not a second calibrated model."
+  ]
+}

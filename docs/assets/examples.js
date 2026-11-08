@@ -106,7 +106,7 @@ function plot(parent, {id, title, description, rows, x, xLabel, yLabel, series, 
 
 function render() {
   charts.forEach(chart => chart.destroy()); charts.length = 0;
-  ["bonan-plots", "stomatal-plots", "turnover-plots", "equilibrium-values"].forEach(id => document.getElementById(id).replaceChildren());
+  ["bonan-plots", "stomatal-plots", "turnover-plots", "oxygen-plots", "equilibrium-values"].forEach(id => document.getElementById(id).replaceChildren());
   const precision = document.getElementById("precision").value;
   const data = window.leafExamples.data[precision];
   const csv = name => `assets/data/${precision}/${name}.csv`;
@@ -141,6 +141,23 @@ function render() {
     description: "At CO₂/Γ* = 1, carboxylation and photorespiratory release match. Their cancellation does not switch off electron flow.",
     rows: data.turnover, x: "co2_gamma_ratio", xLabel: "Biochemical-site CO₂ / Γ*", yLabel: "μmol CO₂ m⁻² leaf s⁻¹", file: csv("turnover"),
     series: [{key: "carboxylation", label: "Carboxylation"}, {key: "photorespiratory_co2", label: "Photorespiratory release", dash: [6, 4]}, {key: "net_assimilation", label: "Net CO₂ uptake", dash: [2, 4]}]});
+  const temperatures = [...new Set(data.oxygen_response.map(row => row.temperature))];
+  const temperatureControl = document.getElementById("oxygen-temperature");
+  const selectedIndex = Number(temperatureControl.value);
+  temperatureControl.replaceChildren(...temperatures.map((T,i) => {
+    const option = element("option", format(T)+" K"); option.value=String(i); return option;
+  }));
+  temperatureControl.value = String(Math.min(selectedIndex, temperatures.length-1));
+  const oxygenRows = data.oxygen_response.filter(row => row.temperature===temperatures[Number(temperatureControl.value)]);
+  const oxygenTemperatureLabel = format(temperatures[Number(temperatureControl.value)])+" K";
+  plot("oxygen-plots", {id:"oxygen-gamma",title:"Photorespiratory compensation point · "+oxygenTemperatureLabel,
+    description:"Both components agree at the declared reference O₂. The scaled component retains the calibrated specificity as O₂ changes.",
+    rows:oxygenRows,x:"oxygen",xLabel:"Biochemical O₂ partial pressure (Pa)",yLabel:"Γ* (Pa)",file:csv("oxygen_response"),
+    series:[{key:"scaled_gamma",label:"O₂-dependent Γ*"},{key:"prescribed_gamma",label:"Prescribed Γ* control",dash:[6,4]}]});
+  plot("oxygen-plots", {id:"oxygen-carbon",title:"Coupled carbon uptake · "+oxygenTemperatureLabel,
+    description:"The reference control varies Rubisco O₂ competition while holding Γ* fixed. The scaled calculation changes both consistently.",
+    rows:oxygenRows,x:"oxygen",xLabel:"Biochemical O₂ partial pressure (Pa)",yLabel:"Net CO₂ uptake (μmol m⁻² leaf s⁻¹)",file:csv("oxygen_response"),
+    series:[{key:"scaled_assimilation",label:"O₂-dependent Γ*"},{key:"prescribed_assimilation",label:"Prescribed Γ* control",dash:[6,4]}]});
   const metrics = [
     ["Equilibrium conductance", "conductance", "mol H₂O m⁻² leaf s⁻¹"],
     ["Net CO₂ uptake", "net_assimilation", "μmol CO₂ m⁻² leaf s⁻¹"],
@@ -163,6 +180,7 @@ try {
   });
   render();
   document.getElementById("precision").addEventListener("change", render);
+  document.getElementById("oxygen-temperature").addEventListener("change", render);
 } catch (error) {
   document.getElementById("status").textContent = "Plots could not load. Keep the assets folder beside examples.html, or regenerate with docs/build_examples.jl.";
   console.error(error);
