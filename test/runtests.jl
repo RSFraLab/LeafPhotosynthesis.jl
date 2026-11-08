@@ -138,3 +138,9 @@ end
     check_turnover_batches(identity, () -> nothing, parameter_path)
     check_equilibrium_batches(identity, () -> nothing, parameter_path)
 end
+
+include("excitation.jl")
+include("excitation_batches.jl")
+@testset "Explicit excitation CPU batches" begin
+    check_excitation_batches(identity,()->nothing)
+end

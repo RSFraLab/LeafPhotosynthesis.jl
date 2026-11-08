@@ -1,0 +1,21 @@
+# Synthetic interface-validation inputs, not a calibrated light experiment.
+# All physical leaf/oxygen/stomatal parameters come from the existing example TOMLs.
+[inputs]
+absorbed_par = [0.0, 1.0, 300.0, 1500.0] # micromol photons m^-2 leaf s^-1
+psii_fractions = [0.0, 0.25, 0.5, 1.0]
+co2_gamma_factors = [0.5, 1.0, 5.0]
+extra_band_factor = 1.5 # test-only alternate input contract, not a UV/FR calibration
+carbon_curvature = 0.95 # synthetic smooth-limitation case
+sensitivity_light = 1500.0 # micromol photons m^-2 leaf s^-1
+sensitivity_fraction = 0.25
+reference_difference_fraction = 1.0e-15 # relative BigFloat gs perturbation
+
+[float32]
+flux_atol = 0.0002 # micromol m^-2 leaf s^-1
+relative_tolerance = 0.00003
+sensitivity_relative_tolerance = 0.0002
+
+[float64]
+flux_atol = 0.00000000001
+relative_tolerance = 0.000000000002
+sensitivity_relative_tolerance = 0.000000001

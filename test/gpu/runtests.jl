@@ -20,3 +20,7 @@ CUDA.allowscalar(false)
     check_oxygen_batches(CuArray, CUDA.synchronize)
     check_fluorescence_batches(CuArray, CUDA.synchronize)
 end
+include("../excitation_batches.jl")
+@testset "Explicit excitation CUDA batches" begin
+    check_excitation_batches(CuArray,CUDA.synchronize)
+end

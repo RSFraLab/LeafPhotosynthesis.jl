@@ -99,8 +99,7 @@ end
 
 @inline function invalid_equilibrium(::Type{FT}, status) where {FT}
     n = FT(NaN)
-    carbon = (; rubisco_limited = n, electron_limited = n, assimilation = n,
-        respiration = n, net_assimilation = n)
+    carbon = invalid_carbon(FT)
     return EquilibriumSolution(carbon, n, n, n, n, n, n, n, n, n, 0, status, false)
 end
 
@@ -159,7 +158,7 @@ end
 
 """
     equilibrium_gas_exchange(photosynthesis, SteadyStateStomata(target), environment,
-        diffusion, solver; initial_co2=nothing)
+        diffusion, solver[, excitation]; initial_co2=nothing)
 
 Solve coupled C3 assimilation–diffusion–stomatal equilibrium at prescribed leaf
 temperature/humidity. Supports BallBerry/Medlyn, minimum or quadratic limitation,
@@ -175,9 +174,11 @@ Invalid inputs, exhausted iterations, and unattainable precision are explicit st
 Requires positive minimum conductance; fully sealed leaves need CO₂ storage.
 """
 @inline function equilibrium_gas_exchange(p::C3Photosynthesis, stomata::SteadyStateStomata,
-    env::GasExchangeEnvironment{FT}, d::SeriesDiffusion, solver::EquilibriumSolver;
+    env::GasExchangeEnvironment{FT}, d::SeriesDiffusion, solver::EquilibriumSolver,
+    excitation::AbstractExcitation = BroadbandExcitation();
     initial_co2 = nothing) where {FT}
     valid_equilibrium_inputs(env, d, stomata.target) || return invalid_equilibrium(FT, EquilibriumInvalidInput)
+    valid_excitation(excitation, env.absorbed_par) || return invalid_equilibrium(FT, EquilibriumInvalidInput)
     g0, gain = equilibrium_coefficients(stomata.target, env)
     isfinite(gain) || return invalid_equilibrium(FT, EquilibriumInvalidInput)
     s = p.stoichiometry
@@ -187,7 +188,7 @@ Requires positive minimum conductance; fully sealed leaves need CO₂ storage.
     all(isfinite, (r.vcmax, r.jmax, r.respiration, r.kc, r.ko, r.gamma_star)) &&
         min(r.vcmax, r.jmax, r.respiration) >= zero(FT) && min(r.kc, r.ko, r.gamma_star) > zero(FT) ||
         return invalid_equilibrium(FT, EquilibriumInvalidInput)
-    electrons = electron_transport(p.electron_transport, env.absorbed_par, r.jmax)
+    electrons = electron_transport(p.electron_transport, env.absorbed_par, r.jmax, excitation)
     isfinite(electrons) && electrons >= zero(FT) || return invalid_equilibrium(FT, EquilibriumInvalidInput)
     resistance0 = inv(d.boundary_co2) + d.diffusivity_ratio / g0 + inv(d.mesophyll_co2)
     if iszero(electrons) || iszero(r.vcmax)

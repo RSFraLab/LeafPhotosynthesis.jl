@@ -414,3 +414,34 @@ figure sets remain byte-for-byte unchanged. Constant KD, mixed-PAM fit interpret
 as a PSII-only approximation, no NPQ memory/PSI and excitation-vs-joule closure
 are explicit limitations. CanopyModelExamples tests the source-to-synthetic-optics
 handoff separately (344 CPU/344 CUDA checks). No remote publication.
+
+### Explicit PSII excitation, CPU gates complete, 2026-11-08
+
+Added AbstractExcitation, BroadbandExcitation and PrescribedPSIIExcitation{FT}
+without changing LeafModel or either environment layout. Externally allocated Q2
+passes through carbon, realized turnover, analytical diffusion, equilibrium,
+stomatal tendencies, O2, fixed-light gs sensitivities and PSII fluorescence.
+Same-PAR Q2 is finite, nonnegative, bounded by total PAR and same-FT; invalid light
+returns native-FT unavailable diagnostics/status rather than clipping or promotion.
+NoOp remains nothing. Legacy arities and broadband multiplication order remain.
+
+Two independent final source reviews cleared the implementation. The structure
+review caught mixed-FT input widening; explicit same-FT validity now rejects both
+directions, with scalar inference and queued device tests. New input families opt
+in through validity/electron-supply/PSII methods; a test-only second family proves
+no environment or dispatch-switch changes are required. Cached sensitivities must
+reuse the same light. PSII-dark does not imply zero material absorption.
+
+Full CPU72,269 checks pass, including4,333 new scalar and28,832 new batch checks.
+Independent BigFloat references cover carbon/turnover, fixed-gs and coupled roots,
+conductance derivatives, smooth/minimum and signed/clipped responses, both target
+laws and numerical solvers. Required Bonan and gallery regeneration pass;13offline
+plots pass browser checks, and29existing CSV/PNG artifacts are byte-identical.
+Logs: /tmp/leaf-excitation-20261108/.
+
+CUDA acceptance is PENDING, queued under gpu0.lock behind a separate ERA5/MERRA2
+workload using both GPUs. No new GPU claim or publication yet. The original core
+and host environment/device milestones do not substitute for this new gate.
+CanopyModelExamples' separate adapter draft now forwards the input, with1,800
+real CliMA CPU-field checks and5,286 original scalar checks passing; both reviewers
+cleared it before the next combined-example step. Its CUDA gate is likewise queued.

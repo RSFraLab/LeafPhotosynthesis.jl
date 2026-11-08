@@ -142,7 +142,9 @@ Concrete scalar rate-competition result. `photon_flux` is internal PSII
 fluorescence [μmol photons m⁻² one-sided leaf s⁻¹], before leaf optical escape.
 All yields are per PSII excitation; rates retain the input normalization.
 
-Darkness has zero photon flux and undefined (NaN) flux-derived yields/rates.
+`FluorescenceDark` means zero PSII excitation and realized electron flow. It has
+zero photon flux and undefined (NaN) flux-derived yields/rates; total PAR or absorbed
+energy may still be positive if none excites PSII.
 Invalid results have NaN photon flux. Check `fluorescence_valid` before consuming
 the source. `boundary_roundoff` marks a tolerated maximum-yield exceedance.
 Yield closure partitions excitation events, not joules or chemical energy.
@@ -206,7 +208,7 @@ end
 end
 
 """
-    psii_flux_inputs(photosynthesis, site::LeafEnvironment)
+    psii_flux_inputs(photosynthesis, site::LeafEnvironment[, excitation])
 
 Extract the SAME PSII excitation used by C3 electron supply, and realized
 linear flow from signed C3 turnover. `site.co2` is biochemical-site CO₂.
@@ -217,6 +219,7 @@ an ambient `GasExchangeEnvironment`. Independent of the optional O₂ diagnostic
 @inline function psii_flux_inputs(
     p::C3Photosynthesis{T,E,S,L,SignedAssimilation},
     site::LeafEnvironment{FT},
+    excitation::AbstractExcitation = BroadbandExcitation(),
 ) where {T,E,S,L,FT}
     isfinite(site.temperature) &&
     site.temperature > zero(FT) &&
@@ -226,9 +229,10 @@ an ambient `GasExchangeEnvironment`. Independent of the optional O₂ diagnostic
     site.co2 >= zero(FT) &&
     isfinite(site.oxygen) &&
     site.oxygen >= zero(FT) || return PSIIFluxInputs(FT(NaN), FT(NaN))
-    turnover = biochemical_turnover(p, site)
+    valid_excitation(excitation, site.absorbed_par) || return PSIIFluxInputs(FT(NaN), FT(NaN))
+    turnover = biochemical_turnover(p, site, excitation)
     return PSIIFluxInputs(
-        p.electron_transport.psii_fraction*site.absorbed_par,
+        psii_excitation(p.electron_transport, site.absorbed_par, excitation),
         turnover.linear_electron_flow,
     )
 end

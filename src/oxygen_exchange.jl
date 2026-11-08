@@ -45,7 +45,7 @@ end
 end
 
 """
-    oxygen_exchange(oxygen_model, photosynthesis, environment)
+    oxygen_exchange(oxygen_model, photosynthesis, environment[, excitation])
 
 Close the core O₂ budget with a signed C3 model, assuming linear electron flow
 serves carboxylation/photorespiration only. Calculate realized biochemical turnover
@@ -56,8 +56,9 @@ prescribed temperature-only response must match the supplied oxygen; select
 OxygenScaledCompensationPoint to apply a declared reference-O₂ dependence.
 """
 @inline function oxygen_exchange(p::CoreOxygenExchange,
-    model::C3Photosynthesis{T,E,S,L,SignedAssimilation}, env::LeafEnvironment) where {T,E,S,L}
-    turnover = biochemical_turnover(model, env)
+    model::C3Photosynthesis{T,E,S,L,SignedAssimilation}, env::LeafEnvironment,
+    excitation::AbstractExcitation = BroadbandExcitation()) where {T,E,S,L}
+    turnover = biochemical_turnover(model, env, excitation)
     oxygenation = turnover.photorespiratory_co2 / p.co2_per_oxygenation
     inputs = OxygenFluxInputs(turnover.linear_electron_flow, oxygenation, turnover.respiration)
     return (; oxygen_exchange(p, inputs)...,

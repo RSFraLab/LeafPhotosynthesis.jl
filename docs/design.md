@@ -18,6 +18,14 @@ The audited [PSII fluorescence source](fluorescence.md) is composed alongside
 LeafModel, sharing its actual PSII excitation and realized linear electron flow.
 Its rate-competition and quenching interfaces do not constrain future coupled
 photosystem families to the same inputs. Spectral optics remain external.
+The [excitation interface](excitation.md) is a separate scalar input, so pigment
+selection and spectral optics do not enlarge `LeafModel` or its gas/temperature
+environments. `BroadbandExcitation` preserves existing components;
+`PrescribedPSIIExcitation{FT}` carries already allocated same-PAR PSII photons.
+New excitation families opt in through validity, electron supply and PSII diagnostic
+methods. Unsupported component/input combinations fail dispatch instead of silently
+reverting to broadband light.
+
 Dynamic induction/NPQ would have explicit state owned and advanced
 by the caller; no hidden relaxation on each function invocation.
 

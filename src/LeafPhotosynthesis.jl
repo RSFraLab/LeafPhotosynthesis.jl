@@ -10,6 +10,9 @@ export AbstractPhotosynthesis, C3Photosynthesis, LeafModel, LeafEnvironment,
 export AbstractCompensationPoint, PrescribedCompensationPoint,
     OxygenScaledCompensationPoint, compensation_point
 
+export AbstractExcitation, BroadbandExcitation, PrescribedPSIIExcitation,
+    valid_excitation, psii_excitation
+
 export AbstractFluorescence, NoFluorescence, AbstractQuenching, ConstantQuenching,
     SaturationQuenching, RateCompetitionFluorescence, PSIIFluxInputs,
     RateCompetitionResult, FluorescenceStatus, FluorescenceLit, FluorescenceDark,
@@ -36,6 +39,7 @@ export carbon_assimilation_derivative, assimilation_sensitivity,
 include("temperature_response.jl")
 include("photorespiratory_compensation.jl")
 include("rate_limitation.jl")
+include("excitation.jl")
 include("electron_transport.jl")
 include("carbon_assimilation.jl")
 include("assimilation_derivatives.jl")

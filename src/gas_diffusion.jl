@@ -48,7 +48,7 @@ end
 end
 
 """
-    gas_exchange(photosynthesis, environment, state, diffusion)
+    gas_exchange(photosynthesis, environment, state, diffusion[, excitation])
 
 Analytical C3 diffusion–biochemistry closure at known positive stomatal conductance,
 following the structure of Liu et al. (2024), Eqs. (1–2). Supports signed assimilation
@@ -62,11 +62,18 @@ Exactly sealed leaves are outside this quasi-steady diffusion closure: respired
 CO₂ would require an internal storage equation. Do not pass zero conductance.
 """
 @inline function gas_exchange(p::C3Photosynthesis{T,E,S,MinimumLimitation,SignedAssimilation},
-    env::GasExchangeEnvironment, state::StomatalState, d::SeriesDiffusion) where {T,E,S}
+    env::GasExchangeEnvironment{FT}, state::StomatalState, d::SeriesDiffusion,
+    excitation::AbstractExcitation = BroadbandExcitation()) where {T,E,S,FT}
+    if !valid_excitation(excitation, env.absorbed_par)
+        n = FT(NaN)
+        return (; carbon = invalid_carbon(FT), electron_transport = n,
+            surface_co2 = n, intercellular_co2 = n, biochemical_co2 = n,
+            conductance = n, diffusion_residual = n)
+    end
     conductance = inv(inv(d.boundary_co2) + d.diffusivity_ratio / state.conductance + inv(d.mesophyll_co2))
     g = conductance * d.mole_to_micromole / env.pressure
     r = biochemical_rates(p.temperature, env.temperature, env.oxygen)
-    electrons = electron_transport(p.electron_transport, env.absorbed_par, r.jmax)
+    electrons = electron_transport(p.electron_transport, env.absorbed_par, r.jmax, excitation)
     km = r.kc * (one(env.oxygen) + env.oxygen / r.ko)
     rubisco_co2 = diffusion_co2_root(r.vcmax, km, r.gamma_star, r.respiration, env.co2, g)
     light_co2 = diffusion_co2_root(electrons / p.stoichiometry.electrons_per_carboxylation,

@@ -14,6 +14,12 @@ end
 struct SignedAssimilation end
 """Clip the CO₂ response at zero, as in Bonan supplemental program 11.1."""
 struct NonnegativeAssimilation end
+
+@inline function invalid_carbon(::Type{FT}) where {FT}
+    n = FT(NaN)
+    return (; rubisco_limited = n, electron_limited = n, assimilation = n,
+        respiration = n, net_assimilation = n)
+end
 @inline co2_excess(co2, gamma_star, ::SignedAssimilation) = co2 - gamma_star
 @inline co2_excess(co2, gamma_star, ::NonnegativeAssimilation) =
     max(co2 - gamma_star, zero(co2 - gamma_star))

@@ -15,7 +15,9 @@ C4, TPU, coupled PSI/PSII photochemistry, dynamic NPQ, leaf energy balance, Meta
 remain future work.
 
 The [fluorescence component](docs/fluorescence.md) shares realized electron flow
-and PSII excitation with photosynthesis. Leaf optical escape and canopy transport
+and PSII excitation with photosynthesis.
+[Explicit excitation](docs/excitation.md) accepts photons already allocated by an
+external pigment/antenna model, while preserving the original broadband calculation. Leaf optical escape and canopy transport
 remain outside this package; its empirical quenching example is explicitly illustrative.
 
 ## Start here
@@ -83,6 +85,7 @@ carbon = carbon_assimilation(rates, environment.co2, environment.oxygen,
 | What is a complete C3 calculation? | [src/photosynthesis.jl](src/photosynthesis.jl) |
 | How do biochemical rates depend on temperature? | [src/temperature_response.jl](src/temperature_response.jl) |
 | How does Γ* respond to oxygen? | [src/photorespiratory_compensation.jl](src/photorespiratory_compensation.jl), [oxygen example](docs/oxygen_response.md) |
+| How do external optics supply PSII photons? | [src/excitation.jl](src/excitation.jl), [input contract](docs/excitation.md) |
 | How is absorbed light converted to electron transport? | [src/electron_transport.jl](src/electron_transport.jl) |
 | How does CO₂ uptake depend on Rubisco and electrons? | [src/carbon_assimilation.jl](src/carbon_assimilation.jl) |
 | How are gross turnover and realized electron flow diagnosed? | [docs/biochemical_turnover.md](docs/biochemical_turnover.md), [examples/biochemical_turnover.jl](examples/biochemical_turnover.jl) |

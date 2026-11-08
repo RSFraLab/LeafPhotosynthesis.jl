@@ -1,0 +1,57 @@
+{
+  "timestamp_utc": "2026-11-08T04:35:54.907158+00:00",
+  "source_parent": "d32a739d4e8b03d3332337527538faffd5beba97",
+  "scope": "Optional same-PAR prescribed PSII excitation across leaf physiology, preserving broadband/custom components and environment layouts.",
+  "source_sha256": {
+    "src/LeafPhotosynthesis.jl": "8f6faa4573f6edb3e3b06a431f97a56605b464bf2f2d6f0ee180cfb5a3df35b1",
+    "src/temperature_response.jl": "9e6cad7392ea2f3018652bd36ed88894a6d06a898b5db14e137f48b0d6a25325",
+    "src/rate_limitation.jl": "cb5f99aab3f7502f258db44b7625e1566126096d3676a670de84b2097f7de261",
+    "src/electron_transport.jl": "2ccca753fc3bb12b9a5c5171ec6b744db8183efdace6dcd79c8fe20a0b790768",
+    "src/carbon_assimilation.jl": "b4817666247cdf811d1cb49914d7f188afb68235bc90991b6adbcbdc95b60503",
+    "src/photosynthesis.jl": "55cb9dd92318635452c9158d7a3e6ed18877b52f94f6ef299ed3ffe975948329",
+    "src/leaf_model.jl": "112ad045995fbf1ce12cff907457c5b356a85eee187b012684358dbad428a8a7",
+    "src/stomatal_conductance.jl": "bcfdca71ab25517ef996533340156bba810c26ba4104b0adb5b639f1f78d7901",
+    "src/oxygen_exchange.jl": "9cbaa1ce20db4905caf854661d7ac1e7cf5efd25810e8b5ffc20d09cb8d701ca",
+    "src/gas_diffusion.jl": "186d8b0e814c5d1f4b6ca9788bb9376075fd19b9540bd3986a9cdee1d96a63b6",
+    "src/assimilation_derivatives.jl": "9a60d749a08fa9ba36b1a9a8093feade8cb54b3a08a41d4c8da855bcdf6f30be",
+    "src/equilibrium_solver.jl": "f2b24165f2e6492dbb32822cca4f71893a6bcba897d1763fa348ec7f358a3396",
+    "src/gas_exchange_sensitivities.jl": "a1906d04703642fba4d2f9adcf98d1dc37a17c344bdc7bd6df3942cbd7bc6f65",
+    "src/photorespiratory_compensation.jl": "372e06c3c6def76ca535396f415c1758a319c7ee154b46a1c4ca62c618e0450f",
+    "src/fluorescence.jl": "377a19e696cbe8b0866c856a7ceb5b0b637a0bece6bef15b9d37c2863781ead7",
+    "src/excitation.jl": "35993f8b343383153ff81da23c016d825b34ab7dff54247f445d0de31cb6e155",
+    "test/excitation_fixture.jl": "fd1a8cdcb3f388090465acd4464d5b3f7c05e8911c66ed67fe19f7117225726b",
+    "test/excitation_reference.jl": "1e12fc6ab8a805a94cac1024d8799598adf6b7faa02a491e64d1e174e24a61e2",
+    "test/excitation.jl": "bf0d3d36c498a6aad8b46e2b32099ff4f5910a70c83ec113fe13c312f993ba12",
+    "test/excitation_batches.jl": "9db1e8b17404fb578d5757ce350f89bbfabef1ad570bdca62cae14cc9bad678b",
+    "test/parameters/excitation.toml": "ca656ad2e10587c82785bdfe260d7cb161ac6a99255ed946cd63d68853b696d0",
+    "test/runtests.jl": "c1ef39fc1b2747fae21841290212c1c2e14f5dd5e7e4d08f970ac208a8d429aa",
+    "test/gpu/runtests.jl": "f045c00cc36b31f7721317941e4d23ff0cff5cb62b101079aeb739d13fc1b5e6",
+    "docs/excitation.md": "c63348842206955d6c67552159fa32841d7d627f1c1da96070f4988ef871eefb"
+  },
+  "validation": {
+    "cpu_full_suite": 72269,
+    "new_scalar": 4333,
+    "new_cpu_batch": 28832,
+    "cuda_full_suite": null,
+    "cuda_status": "Pending shared gpu0.lock, queued behind another workload; no new device claim.",
+    "precision": [
+      "Float32",
+      "Float64"
+    ],
+    "julia": "1.12.6",
+    "required_bonan": "passed",
+    "offline_gallery": "13 plots passed; all 29 pre-existing CSV/PNG artifacts byte-identical",
+    "logs": "/tmp/leaf-excitation-20261108/"
+  },
+  "review": {
+    "structure": "review_structure final source/test/docs review clear; mixed-FT finding resolved. Device gate pending.",
+    "physics": "review_scope_audit final source/test/docs review clear; same Q2, solved Cc, PSII-dark and cache provenance explicit. Device gate pending."
+  },
+  "limits": [
+    "Same PAR spectral interval and leaf area for built-in prescribed input; no UV/far-red or coupled PSI model.",
+    "No extra optical dependency, grid, array/device owner or state timestepper.",
+    "Signed turnover restrictions unchanged; clipped models do not acquire fluorescence/O2 turnover.",
+    "Fixed-light gs partial derivative; cached exchange provenance is caller responsibility.",
+    "Metal and new CUDA acceptance not established by this CPU milestone."
+  ]
+}
