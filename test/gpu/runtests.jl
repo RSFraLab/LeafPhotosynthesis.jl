@@ -24,3 +24,8 @@ include("../excitation_batches.jl")
 @testset "Explicit excitation CUDA batches" begin
     check_excitation_batches(CuArray,CUDA.synchronize)
 end
+include("../../examples/setup/cytochrome_stress.jl")
+include("../cytochrome_batches.jl")
+@testset "Cytochrome CUDA batches" begin
+    check_cytochrome_batches(CuArray, CUDA.synchronize)
+end

@@ -47,3 +47,14 @@ output hashes separately from this equation-based validation.
   the locally reviewed version is d81db246d. It is a coupling reference, with separate
   Farquhar/P-model implementations. Its clipped net-assimilation helper is not our
   signed respiratory carbon-flux convention.
+
+## Fluorescence and Cytochrome $b_6f$ photochemistry
+
+- [van der Tol, Berry, Campbell, and Rascher (2014)](https://doi.org/10.1002/2014JG002713):
+  steady-state PSII rate competition and empirical `KN(x)` Cotton and Flexas Drought
+  parameterizations (Eq. 19, Table 1).
+- [Johnson and Berry (2021)](https://doi.org/10.1007/s11120-021-00840-4):
+  mechanistic steady-state Cytochrome $b_6f$ plastoquinol oxidation, linear/cyclic
+  ATP–NADPH coupling, connected-units PSII feedback quenching, and oxidized-$\mathrm{P700^+}$
+  PSI fluorescence (`jenjohnson/johnson-berry-2021-pres`, MIT license, inspected for
+  equation and parameter verification only; no upstream files bundled).

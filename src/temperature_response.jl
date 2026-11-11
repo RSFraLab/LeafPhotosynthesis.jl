@@ -27,7 +27,31 @@ end
 PeakedArrhenius(; arrhenius::Arrhenius{FT}, deactivation_energy::FT,
     entropy::FT) where {FT} = PeakedArrhenius(arrhenius, deactivation_energy, entropy)
 
+"""
+    ConstantResponse(value)
+
+Temperature-independent floating-point parameter value, enabling uniform
+`temperature_response` dispatch alongside `Arrhenius` and `PeakedArrhenius`
+(for example for constant thylakoid proton-to-ATP coupling ratios). Requires a
+finite `AbstractFloat` value and propagates `typeof(value + zero(temperature))`
+so automatic differentiation with respect to temperature preserves homogeneous
+rate types.
+"""
+struct ConstantResponse{FT<:AbstractFloat}
+    value::FT
+    function ConstantResponse(value::FT) where {FT<:AbstractFloat}
+        isfinite(value) || throw(ArgumentError("ConstantResponse value must be finite"))
+        new{FT}(value)
+    end
+end
+ConstantResponse(; value) = ConstantResponse(value)
+
 """`temperature_response(response, temperature)` evaluates a response at temperature [K]."""
+@inline function temperature_response(p::ConstantResponse, temperature)
+    T = typeof(p.value + zero(temperature))
+    return isnan(temperature) ? T(NaN) : T(p.value)
+end
+
 @inline function temperature_response(p::Arrhenius, temperature)
     exponent = p.activation_energy / p.gas_constant *
                (inv(p.temperature_ref) - inv(temperature))

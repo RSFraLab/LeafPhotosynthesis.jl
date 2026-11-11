@@ -1,0 +1,87 @@
+# Parameterization comparing empirical PSII rate competition (van der Tol et al. 2014,
+# doi:10.1002/2014JG002713) against mechanistic Cytochrome b6f + coupled PSII/PSI
+# photosynthesis and fluorescence (Johnson & Berry 2021, doi:10.1007/s11120-021-00840-4).
+# Shared C3 Rubisco kinetics (Vcmax25 = 60) and leaf gas-exchange transport are read
+# from bonan_11_1.toml and core_exchange.toml so Rubisco-saturated assimilation
+# baselines match (An = 13.33 at PAR >= 1200, Cc = 28 Pa). Because SerialLimitation
+# (theta = 0 rectangular hyperbola) bends more gradually than FvCB's non-rectangular
+# hyperbola (Jmax25 = 100.2, theta_J = 0.90), B_6f = 0.65 (Vqmax25 = 195) aligns the
+# electron-to-Rubisco crossover in the same mid-PAR range (~450-550 micromol m^-2 s^-1).
+
+[cytochrome_b6f]
+site_density = 0.65                 # micromol Cyt b6f sites m^-2 leaf (Vqmax25 = 195 micromol e- m^-2 s^-1, matched to Vcmax25 = 60)
+turnover_ref = 300.0                # mol e- (mol sites)^-1 s^-1 at 298.15 K (Johnson & Berry 2021, Table 1)
+turnover_activation = 37000.0       # J mol^-1 (Johnson & Berry 2021, Table 1)
+linear_atp_per_electron = 0.75      # mol ATP (mol e-)^-1 in linear flow (Johnson & Berry 2021, Eq. 24)
+cyclic_atp_per_electron = 1.0       # mol ATP (mol e-)^-1 in PSI cyclic flow (Johnson & Berry 2021, Eq. 24)
+psii_fraction = 0.525               # broadband PSII photon share (> beta_min = 0.52114; Johnson & Berry 2021)
+
+[cytochrome_stoichiometry]
+electrons_per_carboxylation = 4.0
+electrons_per_photorespiratory_co2 = 8.0
+atp_per_carboxylation = 3.0
+atp_per_photorespiratory_co2 = 7.0
+
+# Johnson & Berry (2021), Table 1 first-order excitation decay rates [ns^-1].
+[johnson_berry_psii]
+fluorescence_rate = 0.05
+constitutive_heat_rate = 0.55
+maximum_photochemical_rate = 4.5
+exciton_transfer_rate = 2.0         # connected-units model; 0.0 gives the separate-units puddle limit
+puddle_transfer_rate = 0.0
+sustained_quenching_rate = 0.0
+
+[johnson_berry_psi]
+fluorescence_rate = 0.05
+constitutive_heat_rate = 0.55
+maximum_photochemical_rate = 14.5
+closed_quenching_rate = 14.5        # oxidized P700+ donor-side radiationless decay
+
+# van der Tol et al. (2014), Eq. 19 empirical KN(x) fits on relative PSII rates.
+[empirical_rates]
+psii_fraction = 0.50
+psii_low_light_yield = 0.80         # 4.0 / (4.0 + 0.05 + 0.95)
+fluorescence_rate = 0.05
+constitutive_heat_rate = 0.95
+maximum_photochemical_rate = 4.0
+
+[empirical_cotton]
+maximum_rate = 2.48
+exponent = 2.83
+half_saturation = 0.114
+
+[empirical_drought]
+maximum_rate = 5.01
+exponent = 1.93
+half_saturation = 10.0
+
+[experiment]
+temperature_K = 298.15
+oxygen_Pa = 21176.925
+ambient_co2_Pa = 41.0
+pressure_Pa = 101325.0
+relative_humidity = 0.55
+vpd_Pa = 1500.0
+light_sweep_co2_Pa = 28.0
+par_start = 0.0
+par_step = 20.0
+par_stop = 2000.0
+high_light_par = 1200.0
+moderate_light_par = 250.0
+co2_drawdown_start = 4.5
+co2_drawdown_step = 0.5
+co2_drawdown_stop = 36.0
+capacity_stress_par = 800.0
+capacity_fraction_start = 0.25
+capacity_fraction_step = 0.025
+capacity_fraction_stop = 1.0
+test_light = [0.0, 1.0e-6, 25.0, 250.0, 800.0, 1600.0]
+test_co2_gamma_factors = [0.0, 0.5, 1.0, 6.5]
+
+[validation]
+float32_yield_tolerance = 0.00000095367431640625      # 8 eps(Float32)
+float64_yield_tolerance = 0.0000000000000017763568394002505 # 8 eps(Float64)
+float32_relative_tolerance = 0.00003
+float64_relative_tolerance = 0.0000000000001
+float32_flux_absolute_tolerance = 0.00008
+float64_flux_absolute_tolerance = 0.000000000005

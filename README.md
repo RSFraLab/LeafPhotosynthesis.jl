@@ -4,21 +4,24 @@ A small Julia package for composable leaf photosynthesis. Students and coupled
 models call the same process functions. Parameters and leaf environments use `FT`;
 the implementation is tested on CPU and NVIDIA CUDA in `Float32` and `Float64`.
 
-**Scope:** C3 biochemistry, analytical CO₂ diffusion at prescribed conductance,
+**Scope:** C3 biochemistry (both Farquhar–von Caemmerer–Berry and Johnson & Berry 2021
+Cytochrome $b_6f$ + linear/cyclic ATP–NADPH coupling), analytical CO₂ diffusion at prescribed conductance,
 coupled equilibrium and prognostic stomatal conductance, fixed-temperature gas-exchange
 sensitivities, explicit oxygen-dependent photorespiratory compensation, a core oxygen budget,
-and a replaceable steady-state PSII fluorescence source. `LeafModel` composes
+and replaceable steady-state fluorescence sources (PSII rate competition and coupled
+Cytochrome $b_6f$ PSII/PSI mechanics). `LeafModel` composes
 concrete photosynthesis, stomatal, and oxygen components under abstract interfaces.
 `NoOxygenExchange` skips the oxygen calculation; `NoStomatalDynamics` keeps prescribed
 conductance fixed. There are no runtime dependencies or hidden scientific parameters.
-C4, TPU, coupled PSI/PSII photochemistry, dynamic NPQ, leaf energy balance, Metal execution, and ClimaLand integration
+C4, TPU, prognostic NPQ relaxation memory, leaf energy balance, Metal execution, and ClimaLand integration
 remain future work.
 
-The [fluorescence component](docs/fluorescence.md) shares realized electron flow
-and PSII excitation with photosynthesis.
-[Explicit excitation](docs/excitation.md) accepts photons already allocated by an
-external pigment/antenna model, while preserving the original broadband calculation. Leaf optical escape and canopy transport
-remain outside this package; its empirical quenching example is explicitly illustrative.
+The [PSII fluorescence component](docs/fluorescence.md) and the
+[coupled Cytochrome $b_6f$ PSII/PSI component](docs/cytochrome_fluorescence.md) share realized electron flows
+and photosystem excitations with photosynthesis.
+[Explicit excitation](docs/excitation.md) accepts PSII or dual PSII/PSI photons already allocated by an
+external pigment/antenna model, while preserving broadband calculations. Leaf optical escape and canopy transport
+remain outside this package.
 
 ## Start here
 
@@ -33,6 +36,7 @@ julia --project=. examples/stomatal_response.jl
 julia --project=. examples/biochemical_turnover.jl
 julia --project=. examples/oxygen_response.jl
 julia --project=. examples/fluorescence.jl
+julia --project=. examples/cytochrome_stress.jl
 ```
 
 The example writes light, CO₂, and temperature response tables for both precisions
@@ -96,6 +100,7 @@ carbon = carbon_assimilation(rates, environment.co2, environment.oxygen,
 | How does carbon demand change with CO₂? | [src/assimilation_derivatives.jl](src/assimilation_derivatives.jl) |
 | How do carbon uptake and water loss respond to stomatal opening? | [src/gas_exchange_sensitivities.jl](src/gas_exchange_sensitivities.jl), [equations and limits](docs/equilibrium_and_sensitivities.md) |
 | How are gross and net O₂ exchange computed or disabled? | [src/oxygen_exchange.jl](src/oxygen_exchange.jl) |
+| How do Cytochrome $b_6f$ electron transport and coupled PSII/PSI fluorescence work? | [src/cytochrome_photosynthesis.jl](src/cytochrome_photosynthesis.jl), [src/cytochrome_fluorescence.jl](src/cytochrome_fluorescence.jl), [stress comparison](docs/cytochrome_fluorescence.md) |
 | How do the optional core components fit together? | [docs/core_exchange.md](docs/core_exchange.md), [examples/core_exchange.jl](examples/core_exchange.jl) |
 | Where are the scientific values, units, and sources? | [examples/parameters/bonan_11_1.toml](examples/parameters/bonan_11_1.toml) |
 | How does a student run an exercise? | [examples/bonan_11_1.jl](examples/bonan_11_1.jl) |

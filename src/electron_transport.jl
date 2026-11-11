@@ -50,6 +50,12 @@ end
     return colimit(p.psii_yield * input.photons, jmax, p.limitation)
 end
 
+@inline function electron_transport(p::ElectronTransportParameters, absorbed_par, jmax,
+    input::PrescribedDualExcitation)
+    valid_excitation(input, absorbed_par) || return oftype(absorbed_par, NaN)
+    return colimit(p.psii_yield * input.psii_photons, jmax, p.limitation)
+end
+
 """
     psii_excitation(electron_parameters, total_absorbed_par, excitation)
 
@@ -65,4 +71,26 @@ end
 @inline function psii_excitation(p, absorbed_par, input::PrescribedPSIIExcitation)
     valid_excitation(input, absorbed_par) || return oftype(absorbed_par, NaN)
     return input.photons
+end
+@inline function psii_excitation(p, absorbed_par, input::PrescribedDualExcitation)
+    valid_excitation(input, absorbed_par) || return oftype(absorbed_par, NaN)
+    return input.psii_photons
+end
+
+"""
+    psi_excitation(electron_parameters, total_absorbed_par, excitation)
+
+The PSI photons [μmol photons m⁻² leaf s⁻¹] used by coupled photosystem electron
+supply, before multiplication by PSI photochemical yield. Broadband uses
+`(1 - psii_fraction) * total_absorbed_par`; `PrescribedDualExcitation` supplies
+allocated PSI photons directly. `PrescribedPSIIExcitation` intentionally has no
+PSI method because non-photosynthetic absorption prevents guessing `PAR - Q2`.
+"""
+@inline function psi_excitation(p, absorbed_par, input::BroadbandExcitation)
+    valid_excitation(input, absorbed_par) || return oftype(absorbed_par, NaN)
+    return (one(p.psii_fraction) - p.psii_fraction) * absorbed_par
+end
+@inline function psi_excitation(p, absorbed_par, input::PrescribedDualExcitation)
+    valid_excitation(input, absorbed_par) || return oftype(absorbed_par, NaN)
+    return input.psi_photons
 end

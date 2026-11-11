@@ -18,6 +18,7 @@ or approximate the physiology.
 | [biochemical_turnover.jl](../examples/biochemical_turnover.jl) | Available and realized electrons, including carbon cancellation at compensation |
 | [oxygen_response.jl](../examples/oxygen_response.jl) | Explicit O₂-dependent compensation point and coupled carbon uptake |
 | [fluorescence.jl](../examples/fluorescence.jl) | Shared PSII excitation, replaceable quenching and internal fluorescence |
+| [cytochrome_stress.jl](../examples/cytochrome_stress.jl) | Empirical van der Tol vs. mechanistic Johnson & Berry Cytochrome $b_6f$ fluorescence under light, drought and capacity stress |
 
 TOML parsing is isolated in [read_parameters.jl](../examples/setup/read_parameters.jl).
 Explicit component assembly lives in [bonan_leaf.jl](../examples/setup/bonan_leaf.jl)
@@ -37,6 +38,9 @@ The [biochemical turnover walkthrough](biochemical_turnover.md) includes electro
 and gross carbon flux plots.
 The [fluorescence walkthrough](fluorescence.md) distinguishes internal PSII
 production from leaf optical escape and explains valid dark plot gaps.
+The [Cytochrome $b_6f$ stress walkthrough](cytochrome_fluorescence.md) compares
+empirical PSII quenching fits against coupled PSII/PSI + Cytochrome $b_6f$ feedback
+quenching across irradiance, stomatal CO₂ drawdown, and Rubisco vs. thylakoid stress.
 Static previews use Float64; the interactive gallery lets you choose either precision.
 
 ## Reproduce the plots
@@ -51,6 +55,7 @@ julia --project=. examples/stomatal_response.jl
 julia --project=. examples/biochemical_turnover.jl
 julia --project=. examples/oxygen_response.jl
 julia --project=. examples/fluorescence.jl
+julia --project=. examples/cytochrome_stress.jl
 julia --project=. docs/build_examples.jl
 ```
 
@@ -61,7 +66,7 @@ fails on a nonconverged equilibrium or nonfinite plot value. Numerical formattin
 JSON serialization, and browser presentation stay outside the model and examples.
 Reopen `examples.html` after rebuilding. No npm, web server, or network is needed.
 
-For a quick figure, use **Save PNG** under a plot. To regenerate all thirteen committed
+For a quick figure, use **Save PNG** under a plot. To regenerate all seventeen committed
 Markdown previews with a browser, the optional maintainer workflow is:
 
 ```sh

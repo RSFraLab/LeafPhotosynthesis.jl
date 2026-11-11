@@ -4,6 +4,24 @@
     return a <= b ? (a, da) : (b, db)
 end
 
+@inline function colimit_slope(a, b, da, db, ::SerialLimitation)
+    value = colimit(a, b, SerialLimitation())
+    isnan(value) && return (value, oftype(da + db, NaN))
+    if isinf(a) && isfinite(b)
+        return (value, oftype(da + db, db))
+    elseif isinf(b) && isfinite(a)
+        return (value, oftype(da + db, da))
+    elseif isinf(a) && isinf(b)
+        return (value, oftype(da + db, NaN))
+    end
+    scale = max(a, b)
+    iszero(scale) && return (zero(a + b), zero(da + db))
+    x, y = a / scale, b / scale
+    s = x + y
+    wa, wb = y / s, x / s
+    return (value, da * wa^2 + db * wb^2)
+end
+
 @inline function colimit_slope(a, b, da, db, p::QuadraticLimitation)
     p.curvature == one(p.curvature) && return colimit_slope(a, b, da, db, MinimumLimitation())
     scale = max(a, b)

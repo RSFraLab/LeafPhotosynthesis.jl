@@ -12,7 +12,7 @@
 <body>
   <header>
     <a class="brand" href="../README.md">LeafPhotosynthesis.jl</a>
-    <nav aria-label="Examples"><a href="#one-leaf">One leaf</a><a href="#bonan">Response curves</a><a href="#equilibrium">Equilibrium</a><a href="#stomata">Stomatal dynamics</a><a href="#turnover">Electron use</a><a href="#fluorescence">Fluorescence</a></nav>
+    <nav aria-label="Examples"><a href="#one-leaf">One leaf</a><a href="#bonan">Response curves</a><a href="#equilibrium">Equilibrium</a><a href="#stomata">Stomatal dynamics</a><a href="#turnover">Electron use</a><a href="#fluorescence">Fluorescence</a><a href="#cytochrome-stress">Stress SIF</a></nav>
   </header>
   <main>
     <div class="intro">
@@ -96,6 +96,15 @@
       <p class="note">Ambient CO₂, light, surface humidity and diffusion conductances are prescribed. The A–Ci solve adjusts
       biochemical-site CO₂ and equilibrium stomata at each oxygen level. O₂ transport and anaerobic respiration are not solved.
       <a href="oxygen_response.md">Equations, reference calibration and limits →</a></p>
+    </section>
+
+    <section id="cytochrome-stress">
+      <p class="eyebrow">07 / MECHANISTIC VS. EMPIRICAL STRESS FLUORESCENCE</p><h2>How fluorescence responds when sinks or Cytochrome b₆f limit</h2>
+      <p>Compare empirical PSII quenching fits (van der Tol et al. 2014 Cotton and Drought <code>KN(x)</code>) against the coupled Cytochrome b₆f + PSII/PSI mechanics of Johnson &amp; Berry (2021), using shared Rubisco kinetics (<code>Vcmax25 = 60</code>) and aligned mid-PAR crossover capacities (FvCB <code>Jmax25 = 100.2, θ = 0.90</code> vs. Cytochrome <code>Vqmax25 = 195, SerialLimitation</code>).</p>
+      <pre><code>julia --project=. examples/cytochrome_stress.jl</code></pre>
+      <details class="source"><summary>Read the complete Cytochrome stress-comparison example</summary><pre><code data-source="cytochrome_stress"></code></pre></details>
+      <div id="cytochrome-plots" class="plot-grid"></div>
+      <p class="note">Under high-light stomatal closure, empirical Cotton <code>KN(x)</code> saturates early and predicts a slight fluorescence yield <em>increase</em>, requiring a separately fitted Drought parameter table. Johnson &amp; Berry's single mechanistic parameter set predicts strong feedback quenching under Rubisco/stomatal sink stress, PSI cyclic-flow rebalancing at moderate light, and opposite fluorescence signs for Rubisco vs. Cytochrome b₆f downregulation. Yields remain internal leaf emission probabilities before optical escape. <a href="cytochrome_fluorescence.md">Biophysics, equations and stress regimes →</a></p>
     </section>
 
     <section id="reproduce">

@@ -1,7 +1,7 @@
 /* Presentation only. All physiological calculations run in Julia. */
 "use strict";
 const charts = [];
-const palette = ["#176a53", "#ba641e", "#526bb0"];
+const palette = ["#176a53", "#ba641e", "#526bb0", "#8c3b5a"];
 const format = value => value === null ? "Undefined (dark)" : Number(value).toLocaleString("en-US", {maximumSignificantDigits: 7});
 const element = (tag, text, className) => {
   const node = document.createElement(tag);
@@ -106,7 +106,7 @@ function plot(parent, {id, title, description, rows, x, xLabel, yLabel, series, 
 
 function render() {
   charts.forEach(chart => chart.destroy()); charts.length = 0;
-  ["bonan-plots", "stomatal-plots", "turnover-plots", "oxygen-plots", "fluorescence-plots", "equilibrium-values"].forEach(id => document.getElementById(id).replaceChildren());
+  ["bonan-plots", "stomatal-plots", "turnover-plots", "oxygen-plots", "fluorescence-plots", "cytochrome-plots", "equilibrium-values"].forEach(id => document.getElementById(id).replaceChildren());
   const precision = document.getElementById("precision").value;
   const data = window.leafExamples.data[precision];
   const csv = name => `assets/data/${precision}/${name}.csv`;
@@ -174,6 +174,22 @@ function render() {
     description:"The reference control varies Rubisco O₂ competition while holding Γ* fixed. The scaled calculation changes both consistently.",
     rows:oxygenRows,x:"oxygen",xLabel:"Biochemical O₂ partial pressure (Pa)",yLabel:"Net CO₂ uptake (μmol m⁻² leaf s⁻¹)",file:csv("oxygen_response"),
     series:[{key:"scaled_assimilation",label:"O₂-dependent Γ*"},{key:"prescribed_assimilation",label:"Prescribed Γ* control",dash:[6,4]}]});
+  plot("cytochrome-plots", {id:"cytochrome-light",title:"Light response · Biphasic Johnson–Berry vs. empirical KN",
+    description:"Johnson–Berry ΦF2 rises as PQ reduces, peaks at the Aj → Ac transition, and falls as feedback NPQ builds; Cotton KN(x) saturates and turns upward at high light.",
+    rows:data.cytochrome_stress.cytochrome_light,x:"absorbed_par",xLabel:"Leaf-absorbed PAR (μmol photons m⁻² leaf s⁻¹)",yLabel:"Internal fluorescence yield",file:csv("cytochrome_light"),
+    series:[{key:"jb_psii_yield",label:"Johnson–Berry PSII ΦF2"},{key:"jb_total_yield",label:"Johnson–Berry total ΦF (PSII + PSI)",dash:[6,4]},{key:"vdt_cotton_yield",label:"Empirical Cotton ΦF",dash:[2,4]},{key:"vdt_drought_yield",label:"Empirical Drought ΦF",dash:[8,3,2,3]}]});
+  plot("cytochrome-plots", {id:"cytochrome-drought-high",title:"High-light stomatal CO₂ drawdown (PAR = 1200)",
+    description:"Lowering chloroplast Cc mimics severe drought closure. Saturated Cotton KN(x) rises slightly (wrong sign); Johnson–Berry surges NPQ and drops ΦF2 by 67% with unchanged parameters.",
+    rows:data.cytochrome_stress.cytochrome_drought,x:"biochemical_co2",xLabel:"Biochemical-site CO₂ Cc (Pa)",yLabel:"Internal fluorescence yield",file:csv("cytochrome_drought"),
+    series:[{key:"high_jb_psii_yield",label:"Johnson–Berry PSII ΦF2"},{key:"high_jb_total_yield",label:"Johnson–Berry total ΦF",dash:[6,4]},{key:"high_vdt_cotton_yield",label:"Empirical Cotton ΦF",dash:[2,4]},{key:"high_vdt_drought_yield",label:"Empirical Drought ΦF",dash:[8,3,2,3]}]});
+  plot("cytochrome-plots", {id:"cytochrome-drought-moderate",title:"Moderate-light CO₂ drawdown (PAR = 250)",
+    description:"Above the Ac/Aj crossover, FvCB + empirical KN(x) is completely flat vs. Cc, whereas Johnson–Berry responds smoothly via photorespiratory PSI cyclic electron flow η.",
+    rows:data.cytochrome_stress.cytochrome_drought,x:"biochemical_co2",xLabel:"Biochemical-site CO₂ Cc (Pa)",yLabel:"Internal fluorescence yield",file:csv("cytochrome_drought"),
+    series:[{key:"mod_jb_psii_yield",label:"Johnson–Berry PSII ΦF2"},{key:"mod_jb_total_yield",label:"Johnson–Berry total ΦF",dash:[6,4]},{key:"mod_vdt_cotton_yield",label:"Empirical Cotton ΦF",dash:[2,4]},{key:"mod_vdt_drought_yield",label:"Empirical Drought ΦF",dash:[8,3,2,3]}]});
+  plot("cytochrome-plots", {id:"cytochrome-capacity",title:"Equilibrium sink vs. thylakoid stress (PAR = 800)",
+    description:"At coupled Medlyn stomatal equilibrium, Johnson–Berry separates Rubisco sink loss (ΦF2 plunges 79%) from Cyt b₆f loss (ΦF2 rises 89%); empirical KN(x) conflates both.",
+    rows:data.cytochrome_stress.cytochrome_capacity,x:"capacity_fraction",xLabel:"Retained biochemical capacity fraction",yLabel:"Internal fluorescence yield",file:csv("cytochrome_capacity"),
+    series:[{key:"jb_rubisco_psii_yield",label:"Johnson–Berry ΦF2 · Vcmax loss"},{key:"jb_b6f_psii_yield",label:"Johnson–Berry ΦF2 · Cyt b₆f loss",dash:[6,4]},{key:"vdt_rubisco_yield",label:"Empirical Cotton ΦF · Vcmax loss",dash:[2,4]},{key:"vdt_jmax_yield",label:"Empirical Cotton ΦF · Jmax loss",dash:[8,3,2,3]}]});
   const metrics = [
     ["Equilibrium conductance", "conductance", "mol H₂O m⁻² leaf s⁻¹"],
     ["Net CO₂ uptake", "net_assimilation", "μmol CO₂ m⁻² leaf s⁻¹"],

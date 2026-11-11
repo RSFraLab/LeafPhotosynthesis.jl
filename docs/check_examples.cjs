@@ -10,7 +10,7 @@ const assert = require('assert');
     page.on('pageerror', e=>errors.push(e.message));
     page.on('request', r=>{if(/^https?:/.test(r.url()))requests.push(r.url());});
     await page.goto('file://'+path.join(__dirname,'examples.html'));
-    await page.waitForFunction(()=>document.querySelectorAll('canvas').length===13);
+    await page.waitForFunction(()=>document.querySelectorAll('canvas').length===17);
     for(const precision of ['Float64','Float32']) {
       await page.selectOption('#precision',precision);
       for(const index of ['0','1','2']) {
@@ -44,6 +44,28 @@ const assert = require('assert');
               chart.getDatasetMeta(k).data.every((p,i)=>s.data[i].y===null?p.skip:Number.isFinite(p.x)&&Number.isFinite(p.y)));
           });
       },precision));
+      assert(await page.evaluate(precision=>{
+        const cs=window.leafExamples.data[precision].cytochrome_stress;
+        const light=cs.cytochrome_light, drought=cs.cytochrome_drought, cap=cs.cytochrome_capacity;
+        const specs=[
+          ['cytochrome-light',light,'absorbed_par',['jb_psii_yield','jb_total_yield','vdt_cotton_yield','vdt_drought_yield']],
+          ['cytochrome-drought-high',drought,'biochemical_co2',['high_jb_psii_yield','high_jb_total_yield','high_vdt_cotton_yield','high_vdt_drought_yield']],
+          ['cytochrome-drought-moderate',drought,'biochemical_co2',['mod_jb_psii_yield','mod_jb_total_yield','mod_vdt_cotton_yield','mod_vdt_drought_yield']],
+          ['cytochrome-capacity',cap,'capacity_fraction',['jb_rubisco_psii_yield','jb_b6f_psii_yield','vdt_rubisco_yield','vdt_jmax_yield']]
+        ];
+        const droughtSignCheck = drought[0].high_jb_psii_yield < drought[drought.length-1].high_jb_psii_yield &&
+          drought[0].high_vdt_cotton_yield > drought[drought.length-1].high_vdt_cotton_yield;
+        const capacityForkCheck = cap[0].jb_rubisco_psii_yield < cap[cap.length-1].jb_rubisco_psii_yield &&
+          cap[0].jb_b6f_psii_yield > cap[cap.length-1].jb_b6f_psii_yield;
+        return light[0].dark && light[0].jb_total_photons===0 && light[0].jb_psii_yield===null &&
+          droughtSignCheck && capacityForkCheck &&
+          specs.every(([id,rows,xKey,keys])=>{
+            const chart=Chart.getChart(id);
+            return chart.data.datasets.length===4 && chart.data.datasets.every((s,k)=>s.data.length===rows.length &&
+              s.data.every((p,i)=>p.x===rows[i][xKey]&&p.y===rows[i][keys[k]]) &&
+              chart.getDatasetMeta(k).data.every((p,i)=>s.data[i].y===null?p.skip:Number.isFinite(p.x)&&Number.isFinite(p.y)));
+          });
+      },precision));
       const fluorescenceCard=page.locator('article').filter({has:page.locator('#fluorescence-yield')});
       await fluorescenceCard.locator('details summary').click();
       await fluorescenceCard.locator('tbody tr').first().waitFor();
@@ -64,6 +86,6 @@ const assert = require('assert');
     await page.waitForTimeout(300);
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     assert.deepStrictEqual(errors,[]);assert.deepStrictEqual(requests,[]);
-    console.log('PASS: thirteen plots, FP32/64, oxygen temperatures, exact fluorescence data, dark gaps/zero source, rendered points, tables, series toggles, PNG download, mobile and offline');
+    console.log('PASS: seventeen plots, FP32/64, oxygen temperatures, exact fluorescence and Cytochrome stress data, dark gaps/zero source, rendered points, tables, series toggles, PNG download, mobile and offline');
   } finally { await browser.close(); }
 })().catch(e=>{console.error(e);process.exitCode=1;});
