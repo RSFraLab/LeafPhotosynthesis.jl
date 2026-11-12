@@ -106,7 +106,7 @@ function plot(parent, {id, title, description, rows, x, xLabel, yLabel, series, 
 
 function render() {
   charts.forEach(chart => chart.destroy()); charts.length = 0;
-  ["bonan-plots", "stomatal-plots", "turnover-plots", "oxygen-plots", "fluorescence-plots", "cytochrome-plots", "equilibrium-values"].forEach(id => document.getElementById(id).replaceChildren());
+  ["bonan-plots", "stomatal-plots", "turnover-plots", "oxygen-plots", "fluorescence-plots", "cytochrome-plots", "jb-benchmarks-plots", "equilibrium-values"].forEach(id => document.getElementById(id).replaceChildren());
   const precision = document.getElementById("precision").value;
   const data = window.leafExamples.data[precision];
   const csv = name => `assets/data/${precision}/${name}.csv`;
@@ -190,6 +190,23 @@ function render() {
     description:"At coupled Medlyn stomatal equilibrium, Johnson–Berry separates Rubisco sink loss (ΦF2 plunges 79%) from Cyt b₆f loss (ΦF2 rises 89%); empirical KN(x) conflates both.",
     rows:data.cytochrome_stress.cytochrome_capacity,x:"capacity_fraction",xLabel:"Retained biochemical capacity fraction",yLabel:"Internal fluorescence yield",file:csv("cytochrome_capacity"),
     series:[{key:"jb_rubisco_psii_yield",label:"Johnson–Berry ΦF2 · Vcmax loss"},{key:"jb_b6f_psii_yield",label:"Johnson–Berry ΦF2 · Cyt b₆f loss",dash:[6,4]},{key:"vdt_rubisco_yield",label:"Empirical Cotton ΦF · Vcmax loss",dash:[2,4]},{key:"vdt_jmax_yield",label:"Empirical Cotton ΦF · Jmax loss",dash:[8,3,2,3]}]});
+  const jb = data.johnson_berry;
+  plot("jb-benchmarks-plots", {id:"jb-connectivity",title:"Case 9 · PSII exciton sharing (static antennae)",
+    description:"At fixed cross-sections, puddle units (KU2 = 0) keep KN = 0 and spike ΦF2; exciton sharing (KU2 > 0) forces low-light KN > 0 that damps the rise.",
+    rows:jb.jb_connectivity,x:"incident_par",xLabel:"Incident PAR (μmol photons m⁻² leaf s⁻¹)",yLabel:"Internal PSII fluorescence yield ΦF2",file:csv("jb_connectivity"),
+    series:[{key:"ku2_psii_yield",label:"Connected · KU2 = 2 ns⁻¹"},{key:"ku10_psii_yield",label:"High connectivity · KU2 = 10 ns⁻¹",dash:[6,4]},{key:"puddle_psii_yield",label:"Puddle limit · KU2 = 0",dash:[2,4]}]});
+  plot("jb-benchmarks-plots", {id:"jb-state-transitions",title:"Case 10 · Closed-form LHCII state transitions (qT)",
+    description:"Instead of dissipating shared excitons via low-light KN > 0, StateTransitionRule migrates 17–22% of PSII antenna to PSI, keeping KN = 0 below saturation.",
+    rows:jb.jb_state_transitions,x:"incident_par",xLabel:"Incident PAR (μmol photons m⁻² leaf s⁻¹)",yLabel:"Internal PSII fluorescence yield ΦF2",file:csv("jb_state_transitions"),
+    series:[{key:"qt_ku2_yield",label:"State transition qT · KU2 = 2"},{key:"static_ku2_yield",label:"Static antennae · KU2 = 2",dash:[6,4]},{key:"qt_ku10_yield",label:"State transition qT · KU2 = 10",dash:[2,4]},{key:"static_ku10_yield",label:"Static antennae · KU2 = 10",dash:[8,3,2,3]}]});
+  plot("jb-benchmarks-plots", {id:"jb-capacity",title:"Case 12 · Coordinated Cyt b₆f + Rubisco capacity scaling",
+    description:"Higher capacity lowers ΦF2 at low light (more oxidized PQ) yet raises ΦF2 at high light (less feedback NPQ), inverting the SIF–capacity slope.",
+    rows:jb.jb_capacity,x:"incident_par",xLabel:"Incident PAR (μmol photons m⁻² leaf s⁻¹)",yLabel:"Internal PSII fluorescence yield ΦF2",file:csv("jb_capacity"),
+    series:[{key:"cap_10x_yield",label:"1.0× baseline (Vcmax = 100, Vqmax = 350)"},{key:"cap_05x_yield",label:"0.5× capacity",dash:[6,4]},{key:"cap_15x_yield",label:"1.5× capacity",dash:[2,4]},{key:"cap_25x_yield",label:"2.5× capacity",dash:[8,3,2,3]}]});
+  plot("jb-benchmarks-plots", {id:"jb-pam",title:"Apparent PAM fluorometry under PSI leakage (εF1/εF2 = 2)",
+    description:"Long-pass (>700 nm) PSI background (~39% of Fo) systematically depresses both apparent 1 − Fs/Fm′ and apparent closed lake fraction 1 − qL.",
+    rows:jb.jb_pam,x:"incident_par",xLabel:"Incident PAR (μmol photons m⁻² leaf s⁻¹)",yLabel:"Quantum yield or closed fraction",file:csv("jb_pam"),
+    series:[{key:"true_psii_photochemical_yield",label:"True PSII ΦP2 (εF1 = 0)"},{key:"pam_apparent_photochemical_yield",label:"Apparent PAM 1 − Fs/Fm′ (εF1/εF2 = 2)",dash:[6,4]},{key:"ideal_closed_lake_1_minus_ql",label:"Ideal lake 1 − qL (εF1 = 0)",dash:[2,4]},{key:"pam_closed_lake_1_minus_ql",label:"Apparent lake 1 − qL (εF1/εF2 = 2)",dash:[8,3,2,3]}]});
   const metrics = [
     ["Equilibrium conductance", "conductance", "mol H₂O m⁻² leaf s⁻¹"],
     ["Net CO₂ uptake", "net_assimilation", "μmol CO₂ m⁻² leaf s⁻¹"],

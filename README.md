@@ -37,6 +37,7 @@ julia --project=. examples/biochemical_turnover.jl
 julia --project=. examples/oxygen_response.jl
 julia --project=. examples/fluorescence.jl
 julia --project=. examples/cytochrome_stress.jl
+julia --project=. examples/johnson_berry_2021.jl
 ```
 
 The example writes light, CO₂, and temperature response tables for both precisions
@@ -50,9 +51,9 @@ Both use illustrative settings and are not reproductions of Bonan 12.1.
 The [turnover example](docs/biochemical_turnover.md) separates available electron
 supply from realized flow, including at the CO₂ compensation point.
 
-**Plots and walkthroughs:** open [docs/examples.html](docs/examples.html) from your
-local checkout for the offline Chart.js gallery, including FP32/FP64 selection,
-data downloads, and the exact runnable source. GitHub-readable static figures and
+**Plots and walkthroughs:** browse the [live interactive gallery on GitHub Pages](https://rsfralab.github.io/LeafPhotosynthesis.jl/examples.html)
+or open [docs/examples.html](docs/examples.html) from your local checkout for the offline
+Chart.js gallery, including FP32/FP64 selection, data downloads, and the exact runnable source. GitHub-readable static figures and
 regeneration instructions are in [docs/README.md](docs/README.md).
 TOML parsing and parameter assembly live in `examples/setup/`, leaving the main
 scripts focused on executing the biophysics.
@@ -101,6 +102,7 @@ carbon = carbon_assimilation(rates, environment.co2, environment.oxygen,
 | How do carbon uptake and water loss respond to stomatal opening? | [src/gas_exchange_sensitivities.jl](src/gas_exchange_sensitivities.jl), [equations and limits](docs/equilibrium_and_sensitivities.md) |
 | How are gross and net O₂ exchange computed or disabled? | [src/oxygen_exchange.jl](src/oxygen_exchange.jl) |
 | How do Cytochrome $b_6f$ electron transport and coupled PSII/PSI fluorescence work? | [src/cytochrome_photosynthesis.jl](src/cytochrome_photosynthesis.jl), [src/cytochrome_fluorescence.jl](src/cytochrome_fluorescence.jl), [stress comparison](docs/cytochrome_fluorescence.md) |
+| How do closed-form LHCII state transitions (`qT`) and apparent PAM fluorometry work? | [src/cytochrome_state_transitions.jl](src/cytochrome_state_transitions.jl), [src/pam_fluorescence.jl](src/pam_fluorescence.jl), [examples/johnson_berry_2021.jl](examples/johnson_berry_2021.jl) |
 | How do the optional core components fit together? | [docs/core_exchange.md](docs/core_exchange.md), [examples/core_exchange.jl](examples/core_exchange.jl) |
 | Where are the scientific values, units, and sources? | [examples/parameters/bonan_11_1.toml](examples/parameters/bonan_11_1.toml) |
 | How does a student run an exercise? | [examples/bonan_11_1.jl](examples/bonan_11_1.jl) |

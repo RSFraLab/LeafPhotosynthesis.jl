@@ -123,5 +123,54 @@ function check_cytochrome_batches(to_device, synchronize)
             @test isapprox(a.dco2_dgs, b.dco2_dgs; rtol, atol)
             @test isapprox(a.dnet_assimilation_dgs, b.dnet_assimilation_dgs; rtol, atol)
         end
+
+        # 4. State-transition excitation + coupled fluorescence + PAM observation operator on device.
+        st_envs = vcat(environments, [
+            LeafEnvironment(zero(FT), FT(500), FT(28), O2), # invalid temperature -> NaN propagation
+            LeafEnvironment(T, -one(FT), FT(28), O2),       # negative PAR -> NaN propagation
+        ])
+        dev_st_envs = to_device(st_envs)
+        rule = StateTransitionRule{FT}()
+        obs = PAMFluorescenceObserver(one(FT), FT(2))
+        a2_d = FT(0.85) * dark_balanced_psii_partition(case.jb_connected, photo, T, FT(28), O2)
+        a1_d = FT(0.85) - a2_d
+
+        cpu_beta = state_transition_partition.(Ref(rule), Ref(case.jb_connected), Ref(leaf), st_envs)
+        gpu_beta = Array(state_transition_partition.(Ref(rule), Ref(case.jb_connected), Ref(leaf), dev_st_envs))
+        cpu_st_exc = state_transition_excitation.(Ref(rule), Ref(case.jb_connected), Ref(leaf), st_envs)
+        gpu_st_exc = Array(state_transition_excitation.(Ref(rule), Ref(case.jb_connected), Ref(leaf), dev_st_envs))
+        dev_st_exc = state_transition_excitation.(Ref(rule), Ref(case.jb_connected), Ref(leaf), dev_st_envs)
+        cpu_st_fl = fluorescence.(Ref(case.jb_connected), photosystem_flux_inputs.(Ref(photo), st_envs, cpu_st_exc))
+        dev_st_fl = fluorescence.(Ref(case.jb_connected), photosystem_flux_inputs.(Ref(photo), dev_st_envs, dev_st_exc))
+        gpu_st_fl = Array(dev_st_fl)
+
+        a2_vec = [isfinite(b) ? FT(0.85) * b : FT(NaN) for b in cpu_beta]
+        a1_vec = [isfinite(b) ? FT(0.85) * (one(FT) - b) : FT(NaN) for b in cpu_beta]
+        cpu_pam = pam_fluorescence.(Ref(obs), Ref(case.jb_connected), cpu_st_fl, a2_vec, a1_vec, a2_d, a1_d)
+        gpu_pam = Array(pam_fluorescence.(Ref(obs), Ref(case.jb_connected), dev_st_fl,
+            to_device(a2_vec), to_device(a1_vec), a2_d, a1_d))
+        synchronize()
+
+        @test eltype(gpu_pam) === PAMFluorescenceResult{FT}
+        for (ab, bb) in zip(cpu_beta, gpu_beta)
+            @test isnan(ab) ? isnan(bb) : isapprox(ab, bb; rtol, atol)
+        end
+        for (ae, be, env) in zip(cpu_st_exc, gpu_st_exc, st_envs)
+            @test isnan(ae.psii_photons) ? isnan(be.psii_photons) : isapprox(ae.psii_photons, be.psii_photons; rtol, atol)
+            if isfinite(be.psii_photons)
+                @test be.psii_photons + be.psi_photons === env.absorbed_par
+            end
+        end
+        for (af, bf) in zip(cpu_st_fl, gpu_st_fl)
+            @test af.status === bf.status
+        end
+        for (ap, bp) in zip(cpu_pam, gpu_pam)
+            @test ap.status === bp.status
+            for field in fieldnames(PAMFluorescenceResult)
+                field === :status && continue
+                av, bv = getproperty(ap, field), getproperty(bp, field)
+                @test isnan(av) ? isnan(bv) : isapprox(av, bv; rtol, atol)
+            end
+        end
     end
 end

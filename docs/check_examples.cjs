@@ -10,7 +10,7 @@ const assert = require('assert');
     page.on('pageerror', e=>errors.push(e.message));
     page.on('request', r=>{if(/^https?:/.test(r.url()))requests.push(r.url());});
     await page.goto('file://'+path.join(__dirname,'examples.html'));
-    await page.waitForFunction(()=>document.querySelectorAll('canvas').length===17);
+    await page.waitForFunction(()=>document.querySelectorAll('canvas').length===21);
     for(const precision of ['Float64','Float32']) {
       await page.selectOption('#precision',precision);
       for(const index of ['0','1','2']) {
@@ -66,6 +66,30 @@ const assert = require('assert');
               chart.getDatasetMeta(k).data.every((p,i)=>s.data[i].y===null?p.skip:Number.isFinite(p.x)&&Number.isFinite(p.y)));
           });
       },precision));
+      assert(await page.evaluate(precision=>{
+        const jb=window.leafExamples.data[precision].johnson_berry;
+        const c9=jb.jb_connectivity, c10=jb.jb_state_transitions, c12=jb.jb_capacity, pam=jb.jb_pam;
+        const specs=[
+          ['jb-connectivity',c9,'incident_par',['ku2_psii_yield','ku10_psii_yield','puddle_psii_yield']],
+          ['jb-state-transitions',c10,'incident_par',['qt_ku2_yield','static_ku2_yield','qt_ku10_yield','static_ku10_yield']],
+          ['jb-capacity',c12,'incident_par',['cap_10x_yield','cap_05x_yield','cap_15x_yield','cap_25x_yield']],
+          ['jb-pam',pam,'incident_par',['true_psii_photochemical_yield','pam_apparent_photochemical_yield','ideal_closed_lake_1_minus_ql','pam_closed_lake_1_minus_ql']]
+        ];
+        // Verify Case 12 low-light vs high-light ΦF2 capacity inversion and PAM PSI-leakage invariance of qP:
+        const lowIdx=10, highIdx=100;
+        const capInversion = c12[lowIdx].cap_05x_yield > c12[lowIdx].cap_25x_yield &&
+          c12[highIdx].cap_05x_yield < c12[highIdx].cap_25x_yield;
+        const pamLeakCheck = pam[lowIdx].pam_apparent_photochemical_yield < pam[lowIdx].true_psii_photochemical_yield &&
+          pam[lowIdx].pam_closed_lake_1_minus_ql < pam[lowIdx].ideal_closed_lake_1_minus_ql &&
+          Math.abs(pam[lowIdx].pam_closed_puddle_1_minus_qp - pam[lowIdx].ideal_closed_puddle_1_minus_qp) < 1e-5;
+        return c9[0].dark && c9[0].ku2_psii_yield===null && capInversion && pamLeakCheck &&
+          specs.every(([id,rows,xKey,keys])=>{
+            const chart=Chart.getChart(id);
+            return chart.data.datasets.length===keys.length && chart.data.datasets.every((s,k)=>s.data.length===rows.length &&
+              s.data.every((p,i)=>p.x===rows[i][xKey]&&p.y===rows[i][keys[k]]) &&
+              chart.getDatasetMeta(k).data.every((p,i)=>s.data[i].y===null?p.skip:Number.isFinite(p.x)&&Number.isFinite(p.y)));
+          });
+      },precision));
       const fluorescenceCard=page.locator('article').filter({has:page.locator('#fluorescence-yield')});
       await fluorescenceCard.locator('details summary').click();
       await fluorescenceCard.locator('tbody tr').first().waitFor();
@@ -86,6 +110,6 @@ const assert = require('assert');
     await page.waitForTimeout(300);
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     assert.deepStrictEqual(errors,[]);assert.deepStrictEqual(requests,[]);
-    console.log('PASS: seventeen plots, FP32/64, oxygen temperatures, exact fluorescence and Cytochrome stress data, dark gaps/zero source, rendered points, tables, series toggles, PNG download, mobile and offline');
+    console.log('PASS: twenty-one plots, FP32/64, oxygen temperatures, exact fluorescence, Cytochrome stress, and JB2021 benchmark data, dark gaps/zero source, rendered points, tables, series toggles, PNG download, mobile and offline');
   } finally { await browser.close(); }
 })().catch(e=>{console.error(e);process.exitCode=1;});

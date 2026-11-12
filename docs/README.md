@@ -1,8 +1,10 @@
 # Worked examples
 
-Open [examples.html](examples.html) **from your local checkout** for the interactive
-Chart.js gallery. GitHub displays HTML source rather than executing it. The gallery
-works offline: the plotting library and both FP32/FP64 datasets are included.
+Open the [live GitHub Pages gallery](https://rsfralab.github.io/LeafPhotosynthesis.jl/examples.html)
+or open [examples.html](examples.html) **from your local checkout** for the interactive
+Chart.js gallery. Viewing `examples.html` inside the GitHub repository tree displays HTML
+source rather than executing it. The gallery works completely offline: the plotting
+library and both FP32/FP64 datasets are bundled locally.
 
 The gallery includes labeled response curves, keyboard-accessible series controls,
 hover values, complete data tables, CSV downloads, PNG export, and the actual source
@@ -19,6 +21,7 @@ or approximate the physiology.
 | [oxygen_response.jl](../examples/oxygen_response.jl) | Explicit O₂-dependent compensation point and coupled carbon uptake |
 | [fluorescence.jl](../examples/fluorescence.jl) | Shared PSII excitation, replaceable quenching and internal fluorescence |
 | [cytochrome_stress.jl](../examples/cytochrome_stress.jl) | Empirical van der Tol vs. mechanistic Johnson & Berry Cytochrome $b_6f$ fluorescence under light, drought and capacity stress |
+| [johnson_berry_2021.jl](../examples/johnson_berry_2021.jl) | Johnson & Berry (2021) PSII connectivity (Case 9), closed-form state transitions `qT` (Case 10), capacity scaling (Case 12), and PAM PSI leakage |
 
 TOML parsing is isolated in [read_parameters.jl](../examples/setup/read_parameters.jl).
 Explicit component assembly lives in [bonan_leaf.jl](../examples/setup/bonan_leaf.jl)
@@ -56,6 +59,7 @@ julia --project=. examples/biochemical_turnover.jl
 julia --project=. examples/oxygen_response.jl
 julia --project=. examples/fluorescence.jl
 julia --project=. examples/cytochrome_stress.jl
+julia --project=. examples/johnson_berry_2021.jl
 julia --project=. docs/build_examples.jl
 ```
 
@@ -66,7 +70,7 @@ fails on a nonconverged equilibrium or nonfinite plot value. Numerical formattin
 JSON serialization, and browser presentation stay outside the model and examples.
 Reopen `examples.html` after rebuilding. No npm, web server, or network is needed.
 
-For a quick figure, use **Save PNG** under a plot. To regenerate all seventeen committed
+For a quick figure, use **Save PNG** under a plot. To regenerate all twenty-one committed
 Markdown previews with a browser, the optional maintainer workflow is:
 
 ```sh

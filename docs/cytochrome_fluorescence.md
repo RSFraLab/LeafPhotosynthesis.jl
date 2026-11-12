@@ -146,7 +146,61 @@ mid-irradiance range (`PAR ≈ 450–550 μmol m⁻² s⁻¹`):
 
 ---
 
-## 3. Scope limits
+## 3. State transitions, capacity scaling, and apparent PAM fluorometry
+
+The benchmark script [johnson_berry_2021.jl](../examples/johnson_berry_2021.jl)
+([setup/johnson_berry_2021.jl](../examples/setup/johnson_berry_2021.jl),
+[johnson_berry_2021.toml](../examples/parameters/johnson_berry_2021.toml)) reproduces
+four additional mechanisms from Johnson & Berry (2021, Table 2, Fig. 8 Cases 9, 10, 12,
+and Eqs. 38–42):
+
+1. **Closed-form pointwise state transitions (`StateTransitionRule`, `state_transition_excitation`):**
+   Setting dynamic quenching $K_N = 0$ under Cytochrome $b_6f$ limitation reduces the
+   connected-units PSII photochemical yield to
+   $\Phi_{P2}^{(0)}(q_2) = q_2 K_{P2}(K_0 + K_{U2}) / [K_0(K_{P2} + K_0 + K_{U2}) + q_2 K_{P2} K_{U2}]$
+   with $K_0 = K_{F2} + K_{D2} + K_{N,\mathrm{sus}}$. Substituting
+   $q_2 = V_{q\max} / (V_{q\max} + \Phi_{P1,\max}(1 - \beta) Q_{\mathrm{abs}})$ into
+   $J_{P700,j} = \eta \beta Q_{\mathrm{abs}} \Phi_{P2}^{(0)}(q_2)$ cancels $Q_{\mathrm{abs}} q_2 > 0$
+   and yields a scale-normalized closed-form quadratic for $\alpha_1 = 1 - \beta$. At and
+   above the Rubisco saturation crossover ($J_{P700,j} \ge J_{P700,c}$, where
+   $q_{2,\mathrm{sat}} = \max(V_{q\max} - J_{P700,c}, 0)/V_{q\max}$), $\beta$ freezes at
+   $\beta_{\mathrm{sat}}$—evaluating locally at each `LeafEnvironment` with **zero iteration
+   and zero array scans**, and splitting $Q_{\mathrm{abs}}$ via Sterbenz's Lemma so
+   $Q_2 + Q_1 \equiv Q_{\mathrm{abs}}$ identically across all IEEE-754 binades. When
+   $K_{U2} = 0$ (puddle limit), $\beta_{\mathrm{opt}}$ is independent of $Q_{\mathrm{abs}}$ (`0%`
+   excursion); for $K_{U2} = 2$ and $10\;\mathrm{ns^{-1}}$, LHCII migration reduces $\beta$
+   by `17.1%` and `21.8%` across the light-limited regime (`Case 10`)—avoiding the
+   low-light $K_N > 0$ required when connected antennae have static cross-sections
+   (`Case 9`), boosting light-limited assimilation, and producing an intermediate
+   biphasic $\Phi_{F2}$ peak between the static connected curves and the $K_{U2} = 0$
+   spike.
+2. **Coordinated photosynthetic capacity inversion (`Case 12`, Fig. 8o):**
+   Scaling Cytochrome $b_6f$ ($B_{6f}$) and Rubisco ($V_{c\max}$, $R_d$) coordinately
+   (`0.5×` to `2.5×`) flips the sign of $\partial \Phi_{F2} / \partial \mathrm{capacity}$
+   between low light (where higher capacity keeps PQ oxidized and lowers $\Phi_{F2}$) and
+   high light (where higher sink capacity relieves feedback $K_N$ and raises $\Phi_{F2}$).
+3. **Apparent PAM fluorometry and PSI detector leakage (`PAMFluorescenceObserver`, `pam_fluorescence`):**
+   Long-pass (`>700 nm`) leaf-chamber PAM fluorometers weight PSI emission more heavily
+   than PSII ($\varepsilon_{F1}/\varepsilon_{F2} \approx 2.0$, where PSI contributes
+   `~39%` of dark $F_o$ and `~7%` of $F_m$). Using overflow- and cancellation-free
+   difference identities, `pam_fluorescence` maps internal yields to apparent Genty
+   $1 - F_s/F_m'$, Hendrickson yields, apparent $\mathrm{NPQ}$, puddle $q_P$, and lake
+   $q_L$. When $K_{X1} = K_{P1}$ and cross-sections are static, PSI contributes an
+   identical background to $F_m'$, $F_o'$, and $F_s$, leaving $q_P = (F_m' - F_s)/(F_m' - F_o')$
+   **exact-invariant** to $\varepsilon_{F1}$ while systematically depressing apparent
+   $1 - F_s/F_m'$, $1 - q_L$, and $\mathrm{NPQ}_{\mathrm{app}}$.
+
+![Case 9 PSII exciton connectivity comparison across KU2 = 0, 2, and 10 ns^-1](assets/figures/jb-connectivity.png)
+
+![Case 10 static vs closed-form state-transition fluorescence curves](assets/figures/jb-state-transitions.png)
+
+![Case 12 coordinated Cyt b6f and Rubisco capacity scaling showing low-light vs high-light fluorescence inversion](assets/figures/jb-capacity.png)
+
+![Apparent PAM fluorometry under PSI detector leakage vs true internal PSII photochemical yield and closed fraction](assets/figures/jb-pam.png)
+
+---
+
+## 4. Scope limits
 
 - Internal photon fluxes (`psii_photon_flux`, `psi_photon_flux`, `total_photon_flux`)
   represent emission **before** within-leaf chlorophyll reabsorption, escape

@@ -147,6 +147,7 @@ end
 
 include("../examples/setup/cytochrome_stress.jl")
 include("cytochrome.jl")
+include("cytochrome_additions.jl")
 include("cytochrome_batches.jl")
 @testset "Cytochrome CPU batches" begin
     check_cytochrome_batches(identity, () -> nothing)

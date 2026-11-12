@@ -12,7 +12,7 @@
 <body>
   <header>
     <a class="brand" href="../README.md">LeafPhotosynthesis.jl</a>
-    <nav aria-label="Examples"><a href="#one-leaf">One leaf</a><a href="#bonan">Response curves</a><a href="#equilibrium">Equilibrium</a><a href="#stomata">Stomatal dynamics</a><a href="#turnover">Electron use</a><a href="#fluorescence">Fluorescence</a><a href="#cytochrome-stress">Stress SIF</a></nav>
+    <nav aria-label="Examples"><a href="#one-leaf">One leaf</a><a href="#bonan">Response curves</a><a href="#equilibrium">Equilibrium</a><a href="#stomata">Stomatal dynamics</a><a href="#turnover">Electron use</a><a href="#fluorescence">Fluorescence</a><a href="#cytochrome-stress">Stress SIF</a><a href="#jb-benchmarks">JB2021</a></nav>
   </header>
   <main>
     <div class="intro">
@@ -105,6 +105,15 @@
       <details class="source"><summary>Read the complete Cytochrome stress-comparison example</summary><pre><code data-source="cytochrome_stress"></code></pre></details>
       <div id="cytochrome-plots" class="plot-grid"></div>
       <p class="note">Under high-light stomatal closure, empirical Cotton <code>KN(x)</code> saturates early and predicts a slight fluorescence yield <em>increase</em>, requiring a separately fitted Drought parameter table. Johnson &amp; Berry's single mechanistic parameter set predicts strong feedback quenching under Rubisco/stomatal sink stress, PSI cyclic-flow rebalancing at moderate light, and opposite fluorescence signs for Rubisco vs. Cytochrome b₆f downregulation. Yields remain internal leaf emission probabilities before optical escape. <a href="cytochrome_fluorescence.md">Biophysics, equations and stress regimes →</a></p>
+    </section>
+
+    <section id="jb-benchmarks">
+      <p class="eyebrow">08 / JOHNSON &amp; BERRY (2021) BENCHMARKS</p><h2>Connectivity, state transitions, capacity inversion, and PAM leakage</h2>
+      <p>Reproduce four signature mechanisms from Johnson &amp; Berry (2021, <em>Photosynthesis Research</em> 148:101–136, Table 2 &amp; Fig. 8): PSII exciton sharing (<code>KU2</code>, Case 9), closed-form pointwise LHCII state transitions (<code>StateTransitionRule</code>, Case 10), coordinated Cytochrome b₆f + Rubisco capacity scaling (Case 12), and apparent leaf-chamber PAM fluorometry under PSI detector leakage (<code>PAMFluorescenceObserver</code>, Eqs. 38–42).</p>
+      <pre><code>julia --project=. examples/johnson_berry_2021.jl</code></pre>
+      <details class="source"><summary>Read the complete Johnson &amp; Berry (2021) benchmark example</summary><pre><code data-source="johnson_berry_2021"></code></pre></details>
+      <div id="jb-benchmarks-plots" class="plot-grid"></div>
+      <p class="note">With static antennae (Case 9), exciton sharing (<code>KU2 &gt; 0</code>) boosts PSII efficiency above PSI's capacity and forces low-light <code>KN &gt; 0</code>, damping the huge puddle (<code>KU2 = 0</code>) fluorescence spike. Closed-form state transitions (Case 10) instead migrate 17–22% of PSII cross-section to PSI, keeping <code>KN = 0</code> up to Rubisco saturation and restoring a moderate biphasic <code>ΦF2</code> peak while boosting light-limited assimilation. Coordinated capacity scaling (Case 12) shifts that peak in PAR and flips the sign of <code>∂ΦF2/∂capacity</code> between low and high light. In long-pass (&gt;700 nm) PAM detectors (<code>εF1/εF2 = 2</code>), PSI contributes ~39% of dark <code>Fo</code>, depressing apparent <code>1 − Fs/Fm′</code> and lake <code>1 − qL</code> while leaving puddle <code>qP</code> invariant when <code>KX1 = KP1</code>. <a href="cytochrome_fluorescence.md#3-state-transitions-capacity-scaling-and-apparent-pam-fluorometry">Closed-form derivations and PAM equations →</a></p>
     </section>
 
     <section id="reproduce">

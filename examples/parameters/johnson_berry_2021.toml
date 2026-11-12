@@ -1,0 +1,64 @@
+# Forward-simulation benchmark parameters from Johnson & Berry (2021),
+# "The role of Cytochrome b6f in the control of steady-state photosynthesis:
+# a conceptual and quantitative model", Photosynthesis Research 148:101-136,
+# doi:10.1007/s11120-021-00840-4 (Tables 1-2, Fig. 8 Cases 9, 10, 12, and Eqs. 38-42),
+# cross-checked against Zenodo archive doi:10.5281/zenodo.4759246 (configure_fun.m).
+# Partial pressures use 1 bar = 100,000 Pa (1 microbar = 0.1 Pa, 1 mbar = 100 Pa).
+
+[biochemistry]
+vcmax_ref = 100.0                               # micromol CO2 m^-2 leaf s^-1 (Table 2)
+site_density = 1.1666666666666667               # micromol Cyt b6f sites m^-2 leaf (Vqmax = 350 micromol e- m^-2 s^-1 at kq = 300)
+turnover_ref = 300.0                            # mol e- (mol Cyt b6f sites)^-1 s^-1 (Table 1)
+respiration_fraction = 0.01                     # Rd / Vcmax (Rds = 0.01, Table 2 / configure_fun.m)
+kc_Pa = 26.0                                    # 260 microbar (Table 1)
+ko_Pa = 17900.0                                 # 179 mbar (Table 1)
+rubisco_kc_turnover = 3.6                       # mol CO2 (mol sites)^-1 s^-1 (Table 1)
+rubisco_ko_kc_ratio = 0.27                      # ko / kc = 0.27 -> ko = 0.972 (von Caemmerer 2009; configure_fun.m:94)
+reference_pressure_Pa = 100000.0                # 1 bar = 10^5 Pa
+photorespiratory_co2_per_oxygenation = 0.5      # 0.5 mol CO2 released per mol O2 fixed
+linear_atp_per_electron = 0.75                  # mol ATP (mol e-)^-1 in linear flow (Eq. 24)
+cyclic_atp_per_electron = 1.0                   # mol ATP (mol e-)^-1 in PSI cyclic flow (Eq. 24)
+broadband_psii_fraction = 0.525                 # broadband reference (> beta_min = 0.52114 across all CO2)
+
+[stoichiometry]
+electrons_per_carboxylation = 4.0
+electrons_per_photorespiratory_co2 = 8.0
+atp_per_carboxylation = 3.0
+atp_per_photorespiratory_co2 = 7.0
+
+# Table 1 & Table 2 first-order excitation decay and exciton-sharing rates [ns^-1].
+[psii_rates]
+fluorescence_rate = 0.05
+constitutive_heat_rate = 0.55
+maximum_photochemical_rate = 4.5
+puddle_transfer_rate = 0.0                      # separate-units (puddle) limit
+moderate_transfer_rate = 2.0                    # connected-units baseline (Cases 9, 10, 12)
+high_transfer_rate = 10.0                       # high exciton-sharing limit (Cases 9, 10)
+sustained_quenching_rate = 0.0
+
+[psi_rates]
+fluorescence_rate = 0.05
+constitutive_heat_rate = 0.55
+maximum_photochemical_rate = 14.5
+closed_quenching_rate = 14.5
+
+# PAM fluorometer transfer weights (Eqs. 38-42, p. 117): at epsilon_F1 / epsilon_F2 = 2.0,
+# PSI contributes ~39% of dark-adapted Fo and ~7% of Fm in long-pass (>700 nm) detectors.
+[pam_observer]
+psii_sensitivity = 1.0
+ideal_psi_sensitivity = 0.0
+fluorometer_psi_sensitivity = 2.0
+
+[experiment]
+leaf_absorptance = 0.85                         # Table 2 leaf PAR absorptance
+temperature_K = 298.15                          # 25 C (Table 2)
+co2_Pa = 20.0                                   # 200 microbar chloroplast CO2 (Table 2, Fig. 8)
+oxygen_Pa = 20900.0                             # 209 mbar O2 (Table 2)
+incident_par_start = 0.0
+incident_par_step = 20.0
+incident_par_stop = 2400.0
+capacity_scales = [0.5, 1.0, 1.5, 2.5]          # Case 12 coordinated Cyt b6f + Rubisco scaling (Fig. 8m-p)
+
+[validation]
+float32_yield_tolerance = 0.00000095367431640625
+float64_yield_tolerance = 0.0000000000000017763568394002505

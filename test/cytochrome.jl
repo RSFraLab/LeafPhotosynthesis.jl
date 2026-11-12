@@ -22,6 +22,7 @@ Base.:/(a::CytoTestDual{T}, b::CytoTestDual{T}) where {T} = CytoTestDual(a.v / b
 Base.inv(a::CytoTestDual) = CytoTestDual(inv(a.v), -a.d / (a.v * a.v))
 Base.abs(a::CytoTestDual) = a.v >= zero(a.v) ? a : -a
 Base.exp(a::CytoTestDual) = (ev = exp(a.v); CytoTestDual(ev, ev * a.d))
+Base.sqrt(a::CytoTestDual) = (sv = sqrt(a.v); CytoTestDual(sv, a.d / (2 * sv)))
 Base.log1p(a::CytoTestDual) = CytoTestDual(log1p(a.v), a.d / (one(a.v) + a.v))
 Base.:<(a::CytoTestDual, b::CytoTestDual) = a.v < b.v
 Base.:<=(a::CytoTestDual, b::CytoTestDual) = a.v <= b.v

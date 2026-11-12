@@ -28,7 +28,11 @@ export AbstractFluorescence, NoFluorescence, AbstractQuenching, ConstantQuenchin
     fluorescence, fluorescence_valid, quenching_rate, maximum_photochemical_yield,
     psi_maximum_photochemical_yield, psii_maximum_photochemical_yield,
     minimum_psii_partition, psii_flux_inputs, photosystem_flux_inputs,
-    fluorescence_low_light_yield, validate_fluorescence_coupling
+    fluorescence_low_light_yield, validate_fluorescence_coupling,
+    StateTransitionRule, dark_balanced_psii_partition,
+    state_transition_partition, state_transition_excitation,
+    PAMFluorescenceObserver, PAMFluorescenceResult,
+    pam_fluorescence_valid, dark_pam_levels, pam_fluorescence
 
 export AbstractStomatalTarget, AbstractStomatalModel, BallBerry, Medlyn,
     SteadyStateStomata, PrognosticStomata, NoStomatalDynamics, StomatalState, StomatalDrivers,
@@ -63,5 +67,7 @@ include("oxygen_exchange.jl")
 include("cytochrome_photosynthesis.jl")
 include("cytochrome_fluorescence.jl")
 include("leaf_model.jl")
+include("cytochrome_state_transitions.jl")
+include("pam_fluorescence.jl")
 
 end

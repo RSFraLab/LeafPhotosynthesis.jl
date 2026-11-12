@@ -15,7 +15,7 @@ const { pathToFileURL } = require('node:url');
     await page.waitForFunction(() => document.getElementById('status').textContent.includes('converged'));
     const directory = join(__dirname, 'assets', 'figures');
     await mkdir(directory, {recursive: true});
-    const figures = ['light', 'co2', 'temperature', 'conductance', 'gas-exchange', 'electron-use', 'carbon-turnover', 'oxygen-gamma', 'oxygen-carbon', 'fluorescence-carbon', 'fluorescence-photochemistry', 'fluorescence-yield', 'fluorescence-photons', 'cytochrome-light', 'cytochrome-drought-high', 'cytochrome-drought-moderate', 'cytochrome-capacity'];
+    const figures = ['light', 'co2', 'temperature', 'conductance', 'gas-exchange', 'electron-use', 'carbon-turnover', 'oxygen-gamma', 'oxygen-carbon', 'fluorescence-carbon', 'fluorescence-photochemistry', 'fluorescence-yield', 'fluorescence-photons', 'cytochrome-light', 'cytochrome-drought-high', 'cytochrome-drought-moderate', 'cytochrome-capacity', 'jb-connectivity', 'jb-state-transitions', 'jb-capacity', 'jb-pam'];
     for (const id of figures) {
       const image = await page.evaluate(id => chartImage(Chart.getChart(id)), id);
       await writeFile(join(directory, `${id}.png`), Buffer.from(image.split(',')[1], 'base64'));
