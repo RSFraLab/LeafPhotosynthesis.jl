@@ -188,7 +188,10 @@ and Eqs. 38–42):
    $q_L$. When $K_{X1} = K_{P1}$ and cross-sections are static, PSI contributes an
    identical background to $F_m'$, $F_o'$, and $F_s$, leaving $q_P = (F_m' - F_s)/(F_m' - F_o')$
    **exact-invariant** to $\varepsilon_{F1}$ while systematically depressing apparent
-   $1 - F_s/F_m'$, $1 - q_L$, and $\mathrm{NPQ}_{\mathrm{app}}$.
+   $1 - F_s/F_m'$, $1 - q_L$, and $\mathrm{NPQ}_{\mathrm{app}}$. See the
+   [Flexas et al. (2002) water-stress benchmark](flexas_2002_water_stress.md) for a direct
+   application of `PAMFluorescenceObserver` ($\varepsilon_{F1}/\varepsilon_{F2} = 2.0$)
+   to observed grapevine $F_s / F_o$ drought curves.
 
 ![Case 9 PSII exciton connectivity comparison across KU2 = 0, 2, and 10 ns^-1](assets/figures/jb-connectivity.png)
 

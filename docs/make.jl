@@ -3,6 +3,20 @@ using LeafPhotosynthesis
 
 include(joinpath(@__DIR__, "api_catalog.jl"))
 
+function documenter_inline_math(txt::AbstractString)
+    return replace(
+        txt,
+        r"```[\s\S]*?```|`[^`\n]+`|\$\$[\s\S]+?\$\$|\$(?!\s)([^\$]+?)(?<!\s)\$" =>
+            function (m)
+                if startswith(m, '$') && !startswith(m, "\$\$")
+                    inner = SubString(m, nextind(m, firstindex(m)), prevind(m, lastindex(m)))
+                    return "``" * replace(inner, '\n' => ' ') * "``"
+                end
+                return m
+            end,
+    )
+end
+
 function stage_walkthrough(src_path::String, dst_path::String)
     txt = read(src_path, String)
     # Rewrite repo-relative source/test links and README links for staged Documenter pages.
@@ -14,18 +28,7 @@ function stage_walkthrough(src_path::String, dst_path::String)
     txt = replace(txt, "](api/README.md)" => "](api/index.md)")
     txt = replace(txt, "](README.md#" => "](index.md#")
     txt = replace(txt, "](README.md)" => "](index.md)")
-    # Convert `$...$` inline math outside fenced code blocks to Documenter ` ``...`` `.
-    lines = split(txt, '\n'; keepempty = true)
-    in_fence = false
-    for idx in eachindex(lines)
-        l = lines[idx]
-        if startswith(lstrip(l), "```")
-            in_fence = !in_fence
-        elseif !in_fence
-            lines[idx] = replace(l, r"(?<!\$)\$(?!\$)([^\$\n]+?)(?<!\$)\$(?!\$)" => s"``\1``")
-        end
-    end
-    write(dst_path, join(lines, '\n'))
+    write(dst_path, documenter_inline_math(txt))
 end
 
 function build_documenter_site()
@@ -48,6 +51,7 @@ function build_documenter_site()
             "excitation.md",
             "fluorescence.md",
             "cytochrome_fluorescence.md",
+            "flexas_2002_water_stress.md",
             "equilibrium_and_sensitivities.md",
             "references.md",
         ]
@@ -86,10 +90,7 @@ function build_documenter_site()
             pbuf = IOBuffer()
             println(pbuf, "# $(page.title)")
             println(pbuf)
-            summary_doc = replace(
-                strip(page.summary),
-                r"(?<!\$)\$(?!\$)([^\$\n]+?)(?<!\$)\$(?!\$)" => s"``\1``",
-            )
+            summary_doc = documenter_inline_math(strip(page.summary))
             println(pbuf, summary_doc)
             println(pbuf)
             println(pbuf, "```@contents")
@@ -130,6 +131,7 @@ function build_documenter_site()
             doctest = true,
             checkdocs = :exports,
             format = Documenter.HTML(
+                mathengine = Documenter.KaTeX(),
                 prettyurls = get(ENV, "CI", nothing) == "true",
                 edit_link = nothing,
                 collapselevel = 1,
@@ -151,6 +153,7 @@ function build_documenter_site()
                     "Photosystem excitation" => "excitation.md",
                     "PSII fluorescence" => "fluorescence.md",
                     "Cytochrome b6f stress" => "cytochrome_fluorescence.md",
+                    "Flexas (2002) water-stress SIF" => "flexas_2002_water_stress.md",
                 ],
                 "API Reference" => api_pages_nav,
             ],

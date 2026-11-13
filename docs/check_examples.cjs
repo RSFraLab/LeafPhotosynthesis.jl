@@ -10,7 +10,7 @@ const assert = require('assert');
     page.on('pageerror', e=>errors.push(e.message));
     page.on('request', r=>{if(/^https?:/.test(r.url()))requests.push(r.url());});
     await page.goto('file://'+path.join(__dirname,'examples.html'));
-    await page.waitForFunction(()=>document.querySelectorAll('canvas').length===21);
+    await page.waitForFunction(()=>document.querySelectorAll('canvas').length===25);
     for(const precision of ['Float64','Float32']) {
       await page.selectOption('#precision',precision);
       for(const index of ['0','1','2']) {
@@ -90,6 +90,25 @@ const assert = require('assert');
               chart.getDatasetMeta(k).data.every((p,i)=>s.data[i].y===null?p.skip:Number.isFinite(p.x)&&Number.isFinite(p.y)));
           });
       },precision));
+      assert(await page.evaluate(precision=>{
+        const fx=window.leafExamples.data[precision].flexas_2002;
+        const fig2=fx.flexas_mechanistic_fig2, emp=fx.flexas_empirical_fig2, inset=fx.flexas_inset_conductance, ctrl=fx.flexas_controls;
+        const cFig2=Chart.getChart('flexas-mechanistic-fig2');
+        const cEmp=Chart.getChart('flexas-empirical-fig2');
+        const cIns=Chart.getChart('flexas-inset-conductance');
+        const cCtrl=Chart.getChart('flexas-controls');
+        const peak150=Math.max(...fig2.map(r=>r.g150_fs_over_fo));
+        const peak10=Math.max(...fig2.map(r=>r.g10_fs_over_fo));
+        const empPeakDiff=Math.abs(Math.max(...emp.slice(1).map(r=>r.cotton_g150))-Math.max(...emp.slice(1).map(r=>r.cotton_g10)));
+        return cFig2.data.datasets.length===6 && cEmp.data.datasets.length===4 &&
+          cIns.data.datasets.length===6 && cIns.data.datasets[5].data.length===6 &&
+          cCtrl.data.datasets.length===4 &&
+          fig2[0].g150_fs_over_fo===1 && peak150>peak10 && fig2[fig2.length-1].g10_fs_over_fo<1 &&
+          empPeakDiff<0.02 && emp[emp.length-1].cotton_g10>emp[emp.length-1].cotton_g150 &&
+          inset[0].pam2000_combined<inset[inset.length-1].pam2000_combined &&
+          inset[0].empirical_cotton>inset[inset.length-1].empirical_cotton &&
+          ctrl[ctrl.length-1].high_co2_reversion_pam>1.3 && ctrl[ctrl.length-1].dtt_unquenched>2.3;
+      },precision));
       const fluorescenceCard=page.locator('article').filter({has:page.locator('#fluorescence-yield')});
       await fluorescenceCard.locator('details summary').click();
       await fluorescenceCard.locator('tbody tr').first().waitFor();
@@ -110,6 +129,6 @@ const assert = require('assert');
     await page.waitForTimeout(300);
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     assert.deepStrictEqual(errors,[]);assert.deepStrictEqual(requests,[]);
-    console.log('PASS: twenty-one plots, FP32/64, oxygen temperatures, exact fluorescence, Cytochrome stress, and JB2021 benchmark data, dark gaps/zero source, rendered points, tables, series toggles, PNG download, mobile and offline');
+    console.log('PASS: twenty-five plots, FP32/64, oxygen temperatures, exact fluorescence, Cytochrome stress, JB2021, and Flexas 2002 water-stress data, dark gaps/zero source, rendered points, tables, series toggles, PNG download, mobile and offline');
   } finally { await browser.close(); }
 })().catch(e=>{console.error(e);process.exitCode=1;});

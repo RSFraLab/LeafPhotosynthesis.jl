@@ -54,7 +54,7 @@ Arrhenius(value_ref, activation_energy, temperature_ref, gas_constant)
 ```
 
 Construct an Arrhenius temperature response
-$k_{\mathrm{ref}} \exp\!\big[(E_a / R)(T_{\mathrm{ref}}^{-1} - T^{-1})\big]$
+$k_{\mathrm{ref}} \exp\big[(E_a / R)(T_{\mathrm{ref}}^{-1} - T^{-1})\big]$
 normalized at `temperature_ref` (`T_ref` [K]).
 
 `activation_energy` (`E_a`) has units of J mol⁻¹ and `gas_constant` (`R`) has units of

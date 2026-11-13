@@ -1,6 +1,6 @@
 # Chlorophyll Fluorescence, State Transitions & PAM
 
-[API Overview](README.md) · Walkthroughs: [PSII fluorescence](../fluorescence.md) · [Cytochrome b6f stress fluorescence](../cytochrome_fluorescence.md) · [Interactive Gallery](../examples.html)
+[API Overview](README.md) · Walkthroughs: [PSII fluorescence](../fluorescence.md) · [Cytochrome b6f stress fluorescence](../cytochrome_fluorescence.md) · [Flexas (2002) water-stress SIF](../flexas_2002_water_stress.md) · [Interactive Gallery](../examples.html)
 
 Internal photosystem fluorescence yields and emitted photon fluxes are computed
 from the same photosystem excitations and realized electron flows used by carbon

@@ -58,3 +58,8 @@ output hashes separately from this equation-based validation.
   ATP–NADPH coupling, connected-units PSII feedback quenching, and oxidized-$\mathrm{P700^+}$
   PSI fluorescence (`jenjohnson/johnson-berry-2021-pres`, MIT license, inspected for
   equation and parameter verification only; no upstream files bundled).
+- [Flexas et al. (2002)](https://doi.org/10.1034/j.1399-3054.2002.1140209.x) and
+  Escalona, Flexas & Medrano (1999, *Aust. J. Plant Physiol.* 26:421–433):
+  steady-state normalized chlorophyll fluorescence ($F_s / F_o$) light responses,
+  stomatal vs. non-stomatal drought progression, high-$\mathrm{CO_2}$ / low-$\mathrm{O_2}$
+  reversion, and DTT xanthophyll inhibition in *Vitis vinifera* L. cv. Tempranillo.

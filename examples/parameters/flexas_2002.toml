@@ -1,0 +1,130 @@
+# Water-stress steady-state chlorophyll fluorescence (Fs / Fo) benchmark from:
+#   Flexas J, Escalona JM, Evain S, Gulías J, Moya I, Osmond CB, Medrano H (2002),
+#   "Steady-state chlorophyll fluorescence (Fs) measurements as a tool to follow
+#   variations of net CO2 assimilation and stomatal conductance during water-stress
+#   in C3 plants", Physiologia Plantarum 114:231-240,
+#   doi:10.1034/j.1399-3054.2002.1140209.x (Figs. 2, 3C, and 5; Vitis vinifera L. cv. Tempranillo).
+#
+# Coupled with:
+# - Non-stomatal drought downregulation onset in Vitis vinifera below g_sw < 80-100 mmol m^-2 s^-1:
+#   Escalona JM, Flexas J, Medrano H (1999), Aust. J. Plant Physiol. 26:421-433;
+#   Flexas et al. (2002), Fig. 3A & p. 239.
+# - Empirical PSII rate competition KN(x) formulations:
+#   van der Tol C, Berry JA, Campbell PKE, Rascher U (2014), JGR Biogeosciences 119:2312-2327,
+#   doi:10.1002/2014JG002713 (Eq. 19 Cotton and Drought fits).
+# - Mechanistic Cytochrome b6f + coupled PSII/PSI fluorescence, state transitions (qT),
+#   and long-pass (>700 nm) Walz PAM-2000 detector transfer sensitivity:
+#   Johnson JE, Berry JA (2021), Photosynthesis Research 148:101-136,
+#   doi:10.1007/s11120-021-00840-4 (Tables 1-2, Eqs. 38-42).
+
+[grapevine_biochemistry]
+vcmax_ref = 96.0                                # micromol CO2 m^-2 leaf s^-1 at 298.15 K (Vitis vinifera cv. Tempranillo; Escalona et al. 1999)
+jmax_ref = 175.0                                # micromol e- m^-2 leaf s^-1 at 298.15 K for matched FvCB light-saturation comparison
+fvcb_curvature = 0.90                           # dimensionless non-rectangular hyperbola curvature theta_J
+site_density = 0.58                             # micromol Cyt b6f sites m^-2 leaf (Vqmax = 174 micromol e- m^-2 s^-1 at kq = 300 s^-1)
+turnover_ref = 300.0                            # mol e- (mol Cyt b6f sites)^-1 s^-1 at 298.15 K (Johnson & Berry 2021, Table 1)
+respiration_ref = 0.80                          # micromol CO2 m^-2 leaf s^-1 dark mitochondrial respiration at 298.15 K (Flexas et al. 2002, Fig. 1B)
+kc_Pa = 26.0                                    # Rubisco Michaelis constant for CO2 [Pa] at 298.15 K (Johnson & Berry 2021, Table 1)
+ko_Pa = 17900.0                                 # Rubisco Michaelis constant for O2 [Pa] at 298.15 K (Johnson & Berry 2021, Table 1)
+gamma_star_ref_Pa = 3.70                        # Photorespiratory CO2 compensation point [Pa] at 298.15 K and 21 kPa O2
+reference_oxygen_Pa = 21000.0                   # Reference O2 partial pressure [Pa] for OxygenScaledCompensationPoint
+linear_atp_per_electron = 0.75                  # mol ATP (mol e-)^-1 in linear electron flow (Johnson & Berry 2021, Eq. 24)
+cyclic_atp_per_electron = 1.0                   # mol ATP (mol e-)^-1 in PSI cyclic electron flow (Johnson & Berry 2021, Eq. 24)
+broadband_psii_fraction = 0.525                 # Broadband PSII photon share (> beta_min = 0.52114; Johnson & Berry 2021)
+
+[stoichiometry]
+electrons_per_carboxylation = 4.0
+electrons_per_photorespiratory_co2 = 8.0
+fvcb_oxygenation_cost = 2.0                     # FvCB denominator C_c + 2 * Gamma_* (i.e., 8 e- / 4 e- per photorespiratory CO2)
+atp_per_carboxylation = 3.0
+atp_per_photorespiratory_co2 = 7.0
+
+# Smooth Hill representation of documented non-stomatal biochemical downregulation in
+# Vitis vinifera when prolonged drought reduces stomatal conductance below ~80 mmol m^-2 s^-1
+# (Escalona et al. 1999; Flexas et al. 2002, Fig. 3A & p. 239):
+#   f(g) = floor + (1 - floor) * g^exponent / (half_conductance^exponent + g^exponent)
+[nonstomatal_drought]
+half_conductance_mmol = 56.0                    # mmol H2O m^-2 leaf s^-1 midpoint of non-stomatal transition
+hill_exponent = 4.0                             # dimensionless onset steepness below 80-100 mmol m^-2 s^-1
+vcmax_severe_floor = 0.60                       # retained Vcmax fraction under severe drought (~38-40% reduction, matching Fig. 3A high-CO2 Amax)
+vqmax_severe_floor = 0.85                       # retained Cyt b6f fraction (potted-vine ETR capacity largely preserved; Fig. 1D)
+
+[diffusion]
+boundary_co2 = 2.0                              # mol CO2 m^-2 leaf s^-1 ventilated LI-6400 chamber boundary-layer conductance
+mesophyll_co2 = 0.20                            # mol CO2 m^-2 leaf s^-1 Tempranillo grapevine mesophyll conductance
+diffusivity_ratio = 1.6                         # g_sw / g_sc molecular diffusivity ratio in air
+mole_to_micromole = 1000000.0                   # micromol mol^-1 unit conversion
+
+# Untouched Johnson & Berry (2021) Table 1 first-order excitation decay rates [ns^-1].
+[johnson_berry_psii]
+fluorescence_rate = 0.05
+constitutive_heat_rate = 0.55
+maximum_photochemical_rate = 4.5
+exciton_transfer_rate = 2.0                     # connected-units exciton sharing rate KU2 [ns^-1]
+sustained_quenching_rate = 0.0
+
+[johnson_berry_psi]
+fluorescence_rate = 0.05
+constitutive_heat_rate = 0.55
+maximum_photochemical_rate = 14.5
+closed_quenching_rate = 14.5
+
+# Walz PAM-2000 (>700 nm long-pass filter) relative PSI/PSII detector weights
+# (Johnson & Berry 2021, Eqs. 38-42, p. 117): gives dark-adapted apparent Fv/Fm = 0.821,
+# matching Flexas et al. (2002, p. 234) measured Fv/Fm = 0.80-0.83 with zero tuning.
+[pam_observer]
+psii_sensitivity = 1.0
+ideal_psi_sensitivity = 0.0
+pam2000_psi_sensitivity = 2.0
+
+# van der Tol et al. (2014), Eq. 19 empirical KN(x) fits on relative PSII rates.
+[empirical_rates]
+psii_fraction = 0.50
+psii_low_light_yield = 0.80                     # 4.0 / (4.0 + 0.05 + 0.95)
+fluorescence_rate = 0.05
+constitutive_heat_rate = 0.95
+maximum_photochemical_rate = 4.0
+
+[empirical_cotton]
+maximum_rate = 2.48
+exponent = 2.83
+half_saturation = 0.114
+
+[empirical_drought]
+maximum_rate = 5.01
+exponent = 1.93
+half_saturation = 10.0
+
+[experiment]
+leaf_absorptance = 0.85                         # broadband PAR absorptance
+temperature_K = 298.15                          # 25 C LI-6400 leaf temperature (Flexas et al. 2002, p. 232)
+ambient_co2_Pa = 37.0                           # ambient air CO2 partial pressure [Pa] (~365 ppm at 101.325 kPa)
+ambient_oxygen_Pa = 21000.0                     # ambient air O2 partial pressure [Pa] (21 kPa)
+high_co2_Pa = 152.0                             # Fig. 3C reversion CO2 partial pressure [Pa] (1500 micromol mol^-1 air)
+low_oxygen_Pa = 200.0                           # Fig. 3C O2-depleted N2 balance [Pa] (~0.2% residual O2)
+pressure_Pa = 101325.0                          # standard atmospheric pressure [Pa]
+relative_humidity = 0.50                        # 50% chamber relative humidity (Flexas et al. 2002, p. 232)
+vpd_Pa = 1584.0                                 # leaf-to-air VPD [Pa] at 25 C and 50% RH
+mmol_to_mol = 0.001                             # mol mmol^-1 stomatal conductance conversion
+fig2_conductances_mmol = [150.0, 80.0, 62.0, 55.0, 39.0, 10.0]
+ppfd_start = 0.0
+ppfd_step = 25.0
+ppfd_stop = 2100.0
+controls_ppfd_stop = 1500.0
+controls_conductance_mmol = 39.0                # severe water-stress treatment with sub-Fo high-light Fs/Fo < 1.0
+inset_ppfd = 750.0                              # vertical reference line in Flexas et al. (2002) Fig. 2 (750 micromol m^-2 s^-1)
+inset_g_start_mmol = 10.0
+inset_g_step_mmol = 5.0
+inset_g_stop_mmol = 160.0
+
+# Digitized observations from Flexas et al. (2002) Figure 2 Inset (Fs/Fo vs. g at PPFD = 750)
+# and Figure 2 main-panel peaks for validation and plotting.
+[digitized_flexas_2002]
+inset_conductances_mmol = [10.0, 39.0, 55.0, 62.0, 80.0, 150.0]
+inset_fs_over_fo = [0.92, 0.98, 1.08, 1.22, 1.35, 1.44]
+peak_ppfd = [100.0, 200.0, 300.0, 550.0, 750.0, 750.0]
+peak_fs_over_fo = [1.12, 1.15, 1.19, 1.26, 1.35, 1.44]
+
+[validation]
+float32_yield_tolerance = 0.00000095367431640625
+float64_yield_tolerance = 0.0000000000000017763568394002505

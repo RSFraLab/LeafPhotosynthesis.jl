@@ -155,6 +155,7 @@ const API_PAGES = [
         walkthroughs = [
             ("PSII fluorescence", "../fluorescence.md"),
             ("Cytochrome b6f stress fluorescence", "../cytochrome_fluorescence.md"),
+            ("Flexas (2002) water-stress SIF", "../flexas_2002_water_stress.md"),
         ],
         summary = """
         Internal photosystem fluorescence yields and emitted photon fluxes are computed

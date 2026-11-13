@@ -1,0 +1,50 @@
+<link rel="stylesheet" href="{{ '/assets/vendor/katex/katex.min.css' | relative_url }}">
+<script defer src="{{ '/assets/vendor/katex/katex.min.js' | relative_url }}"></script>
+<script defer src="{{ '/assets/vendor/katex/mathtex-script-type.min.js' | relative_url }}"></script>
+<script defer src="{{ '/assets/vendor/katex/auto-render.min.js' | relative_url }}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  if (typeof window.katex === "undefined") return;
+
+  // Render ```math fenced blocks emitted by kramdown as <pre><code class="language-math">.
+  document.querySelectorAll("pre > code.language-math, code.language-math").forEach(function (code) {
+    var container = code.parentElement && code.parentElement.tagName === "PRE" ? code.parentElement : code;
+    var display = document.createElement("div");
+    display.className = "katex-display-block";
+    window.katex.render(code.textContent.trim(), display, { displayMode: true, throwOnError: false });
+    container.replaceWith(display);
+  });
+
+  // Repair any accidental kramdown <em> tags inside inline/display math spans in phase,
+  // skipping <code>...</code> spans and never slipping across English italics between math spans.
+  document.querySelectorAll("p, li, td, th, dd").forEach(function (el) {
+    if (el.querySelector("em") && el.textContent.indexOf("$") !== -1) {
+      el.innerHTML = el.innerHTML.replace(
+        /<code\b[^>]*>[\s\S]*?<\/code>|\$\$([\s\S]+?)\$\$|\$([^\$]+?)\$/g,
+        function (match, displayInner, inlineInner) {
+          if (displayInner !== undefined && displayInner.indexOf("<em>") !== -1) {
+            return "$$" + displayInner.replace(/<\/?em>/g, "_") + "$$";
+          }
+          if (inlineInner !== undefined && inlineInner.indexOf("<em>") !== -1) {
+            return "$" + inlineInner.replace(/<\/?em>/g, "_") + "$";
+          }
+          return match;
+        }
+      );
+    }
+  });
+
+  if (typeof window.renderMathInElement === "function") {
+    window.renderMathInElement(document.body, {
+      delimiters: [
+        { left: "$$", right: "$$", display: true },
+        { left: "\\[", right: "\\]", display: true },
+        { left: "\\(", right: "\\)", display: false },
+        { left: "$", right: "$", display: false }
+      ],
+      ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+      throwOnError: false
+    });
+  }
+});
+</script>

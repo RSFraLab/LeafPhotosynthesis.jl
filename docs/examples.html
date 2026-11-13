@@ -12,7 +12,7 @@
 <body>
   <header>
     <a class="brand" href="../README.md">LeafPhotosynthesis.jl</a>
-    <nav aria-label="Examples"><a href="#one-leaf">One leaf</a><a href="#bonan">Response curves</a><a href="#equilibrium">Equilibrium</a><a href="#stomata">Stomatal dynamics</a><a href="#turnover">Electron use</a><a href="#fluorescence">Fluorescence</a><a href="#cytochrome-stress">Stress SIF</a><a href="#jb-benchmarks">JB2021</a></nav>
+    <nav aria-label="Examples"><a href="#one-leaf">One leaf</a><a href="#bonan">Response curves</a><a href="#equilibrium">Equilibrium</a><a href="#stomata">Stomatal dynamics</a><a href="#turnover">Electron use</a><a href="#fluorescence">Fluorescence</a><a href="#cytochrome-stress">Stress SIF</a><a href="#jb-benchmarks">JB2021</a><a href="#flexas-2002">Flexas 2002</a></nav>
   </header>
   <main>
     <div class="intro">
@@ -114,6 +114,15 @@
       <details class="source"><summary>Read the complete Johnson &amp; Berry (2021) benchmark example</summary><pre><code data-source="johnson_berry_2021"></code></pre></details>
       <div id="jb-benchmarks-plots" class="plot-grid"></div>
       <p class="note">With static antennae (Case 9), exciton sharing (<code>KU2 &gt; 0</code>) boosts PSII efficiency above PSI's capacity and forces low-light <code>KN &gt; 0</code>, damping the huge puddle (<code>KU2 = 0</code>) fluorescence spike. Closed-form state transitions (Case 10) instead migrate 17–22% of PSII cross-section to PSI, keeping <code>KN = 0</code> up to Rubisco saturation and restoring a moderate biphasic <code>ΦF2</code> peak while boosting light-limited assimilation. Coordinated capacity scaling (Case 12) shifts that peak in PAR and flips the sign of <code>∂ΦF2/∂capacity</code> between low and high light. In long-pass (&gt;700 nm) PAM detectors (<code>εF1/εF2 = 2</code>), PSI contributes ~39% of dark <code>Fo</code>, depressing apparent <code>1 − Fs/Fm′</code> and lake <code>1 − qL</code> while leaving puddle <code>qP</code> invariant when <code>KX1 = KP1</code>. <a href="cytochrome_fluorescence.md#3-state-transitions-capacity-scaling-and-apparent-pam-fluorometry">Closed-form derivations and PAM equations →</a></p>
+    </section>
+
+    <section id="flexas-2002">
+      <p class="eyebrow">09 / FLEXAS ET AL. (2002) WATER-STRESS BENCHMARK</p><h2>Steady-state Fs / Fo across drought and SIF yield formulations</h2>
+      <p>Test how every chlorophyll fluorescence formulation in <code>LeafPhotosynthesis.jl</code> reproduces—or structurally fails to reproduce—the grapevine water-stress experiment of Flexas et al. (2002, <em>Physiologia Plantarum</em> 114:231–240, Figs. 2, 3C &amp; 5): six drought stomatal conductances (<code>g = 150, 80, 62, 55, 39, 10 mmol H₂O m⁻² s⁻¹</code>), the <code>PPFD = 750</code> <code>Fs / Fo</code> vs. <code>g</code> inset, high-CO₂ / O₂-depleted reversion, and DTT xanthophyll inhibition.</p>
+      <pre><code>julia --project=. examples/flexas_2002.jl</code></pre>
+      <details class="source"><summary>Read the complete Flexas et al. (2002) water-stress benchmark</summary><pre><code data-source="flexas_2002"></code></pre></details>
+      <div id="flexas-plots" class="plot-grid"></div>
+      <p class="note">Single-variable empirical <code>KN(x)</code> fits (van der Tol et al. 2014 Cotton and Drought) obey an invariant peak-height constraint (<code>max Fs/Fo ≈ 1.45–1.46</code> across all <code>g</code>), and Cotton <code>KN(x)</code> inverts the drought sign at high light. Coupling <code>CytochromeFluorescence</code> with Walz PAM-2000 long-pass PSI sensitivity (<code>PAMFluorescenceObserver</code>, <code>εF1/εF2 = 2</code>, giving dark <code>Fv/Fm = 0.821</code> vs. measured <code>0.80–0.83</code>) reproduces the progressive decline in peak <code>Fs / Fo</code>, leftward shift in peak irradiance, high-light sub-<code>Fo</code> quenching (<code>Fs / Fo &lt; 1</code>), curvilinear <code>Fs / Fo</code> vs. <code>g</code> inset, and Fig. 3C high-CO₂ reversion. <a href="flexas_2002_water_stress.md">Mathematical proof, diagnostics and model comparison →</a></p>
     </section>
 
     <section id="reproduce">

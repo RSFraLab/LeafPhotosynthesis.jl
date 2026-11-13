@@ -23,6 +23,7 @@ or approximate the physiology.
 | [fluorescence.jl](../examples/fluorescence.jl) | Shared PSII excitation, replaceable quenching and internal fluorescence |
 | [cytochrome_stress.jl](../examples/cytochrome_stress.jl) | Empirical van der Tol vs. mechanistic Johnson & Berry Cytochrome $b_6f$ fluorescence under light, drought and capacity stress |
 | [johnson_berry_2021.jl](../examples/johnson_berry_2021.jl) | Johnson & Berry (2021) PSII connectivity (Case 9), closed-form state transitions `qT` (Case 10), capacity scaling (Case 12), and PAM PSI leakage |
+| [flexas_2002.jl](../examples/flexas_2002.jl) | Flexas et al. (2002) grapevine water-stress $F_s / F_o$ light curves, conductance inset, high-CO₂ reversion, and SIF model comparison |
 
 TOML parsing is isolated in [read_parameters.jl](../examples/setup/read_parameters.jl).
 Explicit component assembly lives in [bonan_leaf.jl](../examples/setup/bonan_leaf.jl)
@@ -45,6 +46,9 @@ production from leaf optical escape and explains valid dark plot gaps.
 The [Cytochrome $b_6f$ stress walkthrough](cytochrome_fluorescence.md) compares
 empirical PSII quenching fits against coupled PSII/PSI + Cytochrome $b_6f$ feedback
 quenching across irradiance, stomatal CO₂ drawdown, and Rubisco vs. thylakoid stress.
+The [Flexas et al. (2002) water-stress benchmark](flexas_2002_water_stress.md) tests all
+fluorescence yield formulations against observed grapevine $F_s / F_o$ light responses,
+stomatal conductance, and high-CO₂ reversion.
 Static previews use Float64; the interactive gallery lets you choose either precision.
 
 ## Reproduce the plots
@@ -61,6 +65,7 @@ julia --project=. examples/oxygen_response.jl
 julia --project=. examples/fluorescence.jl
 julia --project=. examples/cytochrome_stress.jl
 julia --project=. examples/johnson_berry_2021.jl
+julia --project=. examples/flexas_2002.jl
 julia --project=. docs/build_examples.jl
 julia --project=. docs/build_api_docs.jl
 ```
@@ -74,7 +79,7 @@ fails on a nonconverged equilibrium or nonfinite plot value. Numerical formattin
 JSON serialization, and browser presentation stay outside the model and examples.
 Reopen `examples.html` after rebuilding. No npm, web server, or network is needed.
 
-For a quick figure, use **Save PNG** under a plot. To regenerate all twenty-one committed
+For a quick figure, use **Save PNG** under a plot. To regenerate all twenty-five committed
 Markdown previews with a browser, the optional maintainer workflow is:
 
 ```sh

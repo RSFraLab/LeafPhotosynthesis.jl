@@ -1,7 +1,7 @@
 /* Presentation only. All physiological calculations run in Julia. */
 "use strict";
 const charts = [];
-const palette = ["#176a53", "#ba641e", "#526bb0", "#8c3b5a"];
+const palette = ["#176a53", "#ba641e", "#526bb0", "#8c3b5a", "#2c8c99", "#6b4c9a"];
 const format = value => value === null ? "Undefined (dark)" : Number(value).toLocaleString("en-US", {maximumSignificantDigits: 7});
 const element = (tag, text, className) => {
   const node = document.createElement(tag);
@@ -40,12 +40,17 @@ function plot(parent, {id, title, description, rows, x, xLabel, yLabel, series, 
   }};
   const chart = new Chart(canvas, {
     type: "line",
-    data: {datasets: series.map((s, index) => ({
-      label: s.label, data: rows.map(row => ({x: row[x], y: row[s.key]})),
-      borderColor: palette[index], backgroundColor: palette[index],
-      borderDash: s.dash || [], borderWidth: index === 0 ? 2.5 : 1.8,
-      pointRadius: 0, pointHitRadius: 8, tension: 0,
-    }))},
+    data: {datasets: series.map((s, index) => {
+      const color = s.color || palette[index % palette.length];
+      const sourceRows = s.pointsOnly ? rows.filter(row => row[s.key] !== null) : rows;
+      return {
+        label: s.label, data: sourceRows.map(row => ({x: row[x], y: row[s.key]})),
+        borderColor: color, backgroundColor: color,
+        borderDash: s.dash || [], borderWidth: index === 0 ? 2.5 : 1.8,
+        showLine: !s.pointsOnly,
+        pointRadius: s.pointsOnly ? 4.5 : 0, pointHitRadius: 8, tension: 0,
+      };
+    })},
     plugins: [background],
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
@@ -67,10 +72,10 @@ function plot(parent, {id, title, description, rows, x, xLabel, yLabel, series, 
   const controls = element("div", undefined, "series-controls");
   series.forEach((s, i) => {
     const label = element("label");
-    label.style.color = palette[i];
+    label.style.color = s.color || palette[i % palette.length];
     const checkbox = element("input"); checkbox.type = "checkbox"; checkbox.checked = true;
     checkbox.addEventListener("change", () => {chart.setDatasetVisibility(i, checkbox.checked); chart.update();});
-    label.append(checkbox, document.createTextNode(` ${s.label}${s.dash ? " (dashed)" : ""}`));
+    label.append(checkbox, document.createTextNode(` ${s.label}${s.pointsOnly ? " (points)" : s.dash ? " (dashed)" : ""}`));
     controls.append(label);
   });
   card.append(controls);
@@ -106,7 +111,7 @@ function plot(parent, {id, title, description, rows, x, xLabel, yLabel, series, 
 
 function render() {
   charts.forEach(chart => chart.destroy()); charts.length = 0;
-  ["bonan-plots", "stomatal-plots", "turnover-plots", "oxygen-plots", "fluorescence-plots", "cytochrome-plots", "jb-benchmarks-plots", "equilibrium-values"].forEach(id => document.getElementById(id).replaceChildren());
+  ["bonan-plots", "stomatal-plots", "turnover-plots", "oxygen-plots", "fluorescence-plots", "cytochrome-plots", "jb-benchmarks-plots", "flexas-plots", "equilibrium-values"].forEach(id => document.getElementById(id).replaceChildren());
   const precision = document.getElementById("precision").value;
   const data = window.leafExamples.data[precision];
   const csv = name => `assets/data/${precision}/${name}.csv`;
@@ -207,6 +212,23 @@ function render() {
     description:"Long-pass (>700 nm) PSI background (~39% of Fo) systematically depresses both apparent 1 − Fs/Fm′ and apparent closed lake fraction 1 − qL.",
     rows:jb.jb_pam,x:"incident_par",xLabel:"Incident PAR (μmol photons m⁻² leaf s⁻¹)",yLabel:"Quantum yield or closed fraction",file:csv("jb_pam"),
     series:[{key:"true_psii_photochemical_yield",label:"True PSII ΦP2 (εF1 = 0)"},{key:"pam_apparent_photochemical_yield",label:"Apparent PAM 1 − Fs/Fm′ (εF1/εF2 = 2)",dash:[6,4]},{key:"ideal_closed_lake_1_minus_ql",label:"Ideal lake 1 − qL (εF1 = 0)",dash:[2,4]},{key:"pam_closed_lake_1_minus_ql",label:"Apparent lake 1 − qL (εF1/εF2 = 2)",dash:[8,3,2,3]}]});
+  const fx = data.flexas_2002;
+  plot("flexas-plots", {id:"flexas-mechanistic-fig2",title:"Fig. 2 · Cytochrome b₆f + PAM-2000 across 6 drought conductances",
+    description:"Progressive stomatal + non-stomatal drought lowers maximum Fs/Fo, shifts the light peak leftward, and quenches high-light Fs below Fo (< 1.0).",
+    rows:fx.flexas_mechanistic_fig2,x:"incident_par",xLabel:"Incident PPFD (μmol photons m⁻² leaf s⁻¹)",yLabel:"Normalized steady-state Fs / Fo",file:csv("flexas_mechanistic_fig2"),
+    series:[{key:"g150_fs_over_fo",label:"g = 150 mmol m⁻² s⁻¹"},{key:"g80_fs_over_fo",label:"g = 80",dash:[8,4]},{key:"g62_fs_over_fo",label:"g = 62",dash:[5,3]},{key:"g55_fs_over_fo",label:"g = 55",dash:[2,3]},{key:"g39_fs_over_fo",label:"g = 39",dash:[8,3,2,3]},{key:"g10_fs_over_fo",label:"g = 10 (severe)",dash:[3,2]}]});
+  plot("flexas-plots", {id:"flexas-empirical-fig2",title:"Empirical rate-competition failure · Cotton vs. Drought KN(x)",
+    description:"Single-variable KN(x) locks peak Fs/Fo near 1.45–1.46 for every conductance; Cotton KN(x) predicts higher Fs/Fo under drought (wrong sign).",
+    rows:fx.flexas_empirical_fig2,x:"incident_par",xLabel:"Incident PPFD (μmol photons m⁻² leaf s⁻¹)",yLabel:"Normalized PSII Fs / Fo",file:csv("flexas_empirical_fig2"),
+    series:[{key:"cotton_g150",label:"Cotton KN · g = 150"},{key:"cotton_g10",label:"Cotton KN · g = 10",dash:[6,4]},{key:"drought_g150",label:"Drought KN · g = 150",dash:[2,4]},{key:"drought_g10",label:"Drought KN · g = 10",dash:[8,3,2,3]}]});
+  plot("flexas-plots", {id:"flexas-inset-conductance",title:"Fig. 2 Inset (PPFD = 750) · Fs / Fo vs. stomatal conductance",
+    description:"Mechanistic Cytochrome + PAM-2000 matches the curvilinear Flexas (2002) inset; pure PSII over-amplifies and Cotton KN(x) has negative slope.",
+    rows:fx.flexas_inset_conductance,x:"conductance_mmol",xLabel:"Stomatal conductance g (mmol H₂O m⁻² s⁻¹)",yLabel:"Fs / Fo at PPFD = 750",file:csv("flexas_inset_conductance"),
+    series:[{key:"pam2000_combined",label:"Cytochrome + PAM-2000 (combined)"},{key:"pam2000_stomatal_only",label:"Cytochrome + PAM-2000 (stomatal only)",dash:[6,4]},{key:"pure_psii_combined",label:"Pure PSII ΦF2 / ΦF2,o (εF1 = 0)",dash:[2,4]},{key:"empirical_cotton",label:"Empirical Cotton KN",dash:[8,3,2,3]},{key:"empirical_drought",label:"Empirical Drought KN",dash:[4,3]},{key:"observed_flexas",label:"Flexas et al. (2002) Fig. 2 Inset",color:"#222222",pointsOnly:true}]});
+  plot("flexas-plots", {id:"flexas-controls",title:"Mechanistic controls · High-CO₂ reversion (Fig. 3C), qT, & DTT (Fig. 5)",
+    description:"At g = 39 mmol m⁻² s⁻¹, 1500 ppm CO₂ in N₂ restores Fs/Fo above 1.4, qT raises the connected peak, and blocking qE (KN = 0, DTT) surges past 2.3.",
+    rows:fx.flexas_controls,x:"incident_par",xLabel:"Incident PPFD (μmol photons m⁻² leaf s⁻¹)",yLabel:"Normalized steady-state Fs / Fo",file:csv("flexas_controls"),
+    series:[{key:"severe_ambient_pam",label:"Severe drought · Ambient air"},{key:"high_co2_reversion_pam",label:"Fig. 3C · 1500 ppm CO₂, low O₂",dash:[6,4]},{key:"severe_qt_pam",label:"State transition qT · Ambient air",dash:[2,4]},{key:"dtt_unquenched",label:"Fig. 5 · DTT unquenched (KN = 0)",dash:[8,3,2,3]}]});
   const metrics = [
     ["Equilibrium conductance", "conductance", "mol H₂O m⁻² leaf s⁻¹"],
     ["Net CO₂ uptake", "net_assimilation", "μmol CO₂ m⁻² leaf s⁻¹"],
