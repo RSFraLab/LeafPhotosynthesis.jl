@@ -15,9 +15,16 @@ include("../examples/flexas_2002.jl")
             emp = tables["flexas_empirical_fig2"]
             inset = tables["flexas_inset_conductance"]
             ctrl = tables["flexas_controls"]
+            full_grid = tables["flexas_full_grid"]
+            dig_fig2 = tables["flexas_digitized_fig2"]
+            cond_sum = tables["flexas_conductance_summary"]
+            form_sum = tables["flexas_formulation_summary"]
 
-            for tbl in (fig2, emp, inset, ctrl), row in tbl
+            for tbl in (fig2, emp, inset, ctrl, full_grid, dig_fig2, cond_sum), row in tbl
                 @test all(v -> v isa FT || v isa Bool || v === nothing, values(row))
+            end
+            for row in form_sum
+                @test all(v -> v isa FT || v isa String, values(row))
             end
 
             # 1. Dark basal normalization Fs(0) / Fo == 1 for PAM-2000 and dark gaps for actinic-only yields.
@@ -78,6 +85,24 @@ include("../examples/flexas_2002.jl")
             @test ctrl[end].severe_ambient_pam < one(FT)
             @test ctrl[end].high_co2_reversion_pam > FT(1.30)
             @test ctrl[end].dtt_unquenched > FT(2.30)
+
+            # 6. Subpixel-digitized full Figure 2 dataset (55 total = 6 dark origins + 49 lit points)
+            #    and zero-fitting forward RMSE scoreboard across all 6 SIF formulations.
+            @test length(dig_fig2) == 55
+            @test count(r -> !r.dark, dig_fig2) == 49
+            @test length(cond_sum) == 6
+            @test issorted([r.conductance_mmol for r in cond_sum])
+            by_name = Dict(r.formulation => r for r in form_sum)
+            @test by_name["pam2000_combined"].lit_fig2_rmse < FT(0.065)
+            @test by_name["pam2000_combined"].inset_rmse < FT(0.045)
+            @test by_name["pam2000_combined"].lit_fig2_rmse < by_name["pam2000_stomatal_only"].lit_fig2_rmse
+            @test by_name["pam2000_combined"].lit_fig2_rmse < by_name["drought_combined"].lit_fig2_rmse
+            @test by_name["pam2000_combined"].lit_fig2_rmse < by_name["cotton_combined"].lit_fig2_rmse
+            @test by_name["pam2000_combined"].lit_fig2_rmse < by_name["pure_psii_combined"].lit_fig2_rmse
+            @test by_name["pam2000_combined"].lit_fig2_rmse < by_name["qt_pam2000_combined"].lit_fig2_rmse
+            @test abs(by_name["cotton_combined"].peak_suppression) < FT(0.02)
+            @test abs(by_name["drought_combined"].peak_suppression) < FT(0.02)
+            @test by_name["pam2000_combined"].peak_suppression > FT(0.20)
         end
     end
 end

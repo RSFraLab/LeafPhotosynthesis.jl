@@ -176,6 +176,7 @@ function setup_flexas_2002(::Type{FT}; g_sw_mmol::Union{Nothing,FT} = nothing, e
     alpha1_dark = absorptance * (one(FT) - beta_dark)
     dark_pam = dark_pam_levels(pam_pam2000, fl_cyto, alpha2_dark, alpha1_dark)
     dark_psii = dark_pam_levels(pam_ideal, fl_cyto, alpha2_dark, alpha1_dark)
+    empirical_fv_fm = FT(emp_rates["psii_low_light_yield"])
 
     return (;
         cyto_photo,
@@ -185,6 +186,10 @@ function setup_flexas_2002(::Type{FT}; g_sw_mmol::Union{Nothing,FT} = nothing, e
         cotton_fl,
         drought_fl,
         empirical_fo_yield,
+        empirical_fv_fm,
+        f_vc,
+        f_vq,
+        g_sw,
         diffusion,
         pam_ideal,
         pam_pam2000,
@@ -209,7 +214,18 @@ function evaluate_flexas_point(
     T = x["temperature_K"]
     absorptance = x["leaf_absorptance"]
     q_abs = absorptance * incident_par
+    genv = GasExchangeEnvironment(
+        T, q_abs, co2_Pa, oxygen_Pa, x["pressure_Pa"], x["relative_humidity"], x["vpd_Pa"],
+    )
     if iszero(q_abs)
+        ge_dark = gas_exchange(
+            case.cyto_photo,
+            genv,
+            case.stomatal_state,
+            case.diffusion,
+            exact_dual_excitation(case.beta_dark, zero(FT)),
+        )
+        isfinite(ge_dark.biochemical_co2) || error("Nonfinite dark Cytochrome Cc at PPFD = $incident_par")
         return (;
             incident_par,
             absorbed_par = q_abs,
@@ -219,15 +235,16 @@ function evaluate_flexas_point(
             cotton_fs_over_fo = nothing,
             drought_fs_over_fo = nothing,
             unquenched_fs_over_fo = nothing,
-            net_assimilation = -biochemical_rates(case.cyto_photo.temperature, T, oxygen_Pa).respiration,
+            net_assimilation = ge_dark.carbon.net_assimilation,
+            biochemical_co2 = ge_dark.biochemical_co2,
+            psii_open_fraction = one(FT),
+            psii_photochemical_yield = nothing,
+            pam_apparent_photochemical_yield = nothing,
+            psii_quenching_rate = zero(FT),
             pam2000_npq = zero(FT),
             dark = true,
         )
     end
-
-    genv = GasExchangeEnvironment(
-        T, q_abs, co2_Pa, oxygen_Pa, x["pressure_Pa"], x["relative_humidity"], x["vpd_Pa"],
-    )
 
     static_exc = exact_dual_excitation(case.beta_dark, q_abs)
     ge_cyto = gas_exchange(case.cyto_photo, genv, case.stomatal_state, case.diffusion, static_exc)
@@ -286,7 +303,25 @@ function evaluate_flexas_point(
         drought_fs_over_fo = FT(r_drt.fluorescence_yield / case.empirical_fo_yield),
         unquenched_fs_over_fo = FT(r_unq.fluorescence_yield / case.empirical_fo_yield),
         net_assimilation = ge_cyto.carbon.net_assimilation,
+        biochemical_co2 = ge_cyto.biochemical_co2,
+        psii_open_fraction = r_cyto.psii_open_fraction,
+        psii_photochemical_yield = r_cyto.psii_photochemical_yield,
+        pam_apparent_photochemical_yield = p_pam.apparent_photochemical_yield,
+        psii_quenching_rate = r_cyto.psii_quenching_rate,
         pam2000_npq = p_pam.apparent_npq,
         dark = false,
     )
+end
+
+function flexas_rmse(::Type{FT}, predicted, observed) where {FT<:AbstractFloat}
+    n = length(observed)
+    sq_sum = sum((FT(p) - FT(o))^2 for (p, o) in zip(predicted, observed))
+    return FT(sqrt(sq_sum / FT(n)))
+end
+
+function flexas_lit_peak(::Type{FT}, rows, field::Symbol) where {FT<:AbstractFloat}
+    lit_rows = [r for r in rows if !r.dark]
+    vals = [FT(getproperty(r, field)) for r in lit_rows]
+    peak_val, idx = findmax(vals)
+    return (; peak = peak_val, ppfd = lit_rows[idx].incident_par)
 end

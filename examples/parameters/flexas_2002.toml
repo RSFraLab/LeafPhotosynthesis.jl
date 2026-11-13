@@ -110,6 +110,7 @@ fig2_conductances_mmol = [150.0, 80.0, 62.0, 55.0, 39.0, 10.0]
 ppfd_start = 0.0
 ppfd_step = 25.0
 ppfd_stop = 2100.0
+paper_domain_ppfd_stop = 1400.0                 # main Figure 2 curve domain left of the embedded Inset panel
 controls_ppfd_stop = 1500.0
 controls_conductance_mmol = 39.0                # severe water-stress treatment with sub-Fo high-light Fs/Fo < 1.0
 inset_ppfd = 750.0                              # vertical reference line in Flexas et al. (2002) Fig. 2 (750 micromol m^-2 s^-1)
@@ -117,13 +118,28 @@ inset_g_start_mmol = 10.0
 inset_g_step_mmol = 5.0
 inset_g_stop_mmol = 160.0
 
-# Digitized observations from Flexas et al. (2002) Figure 2 Inset (Fs/Fo vs. g at PPFD = 750)
-# and Figure 2 main-panel peaks for validation and plotting.
+# Subpixel-digitized observational benchmark from Flexas et al. (2002, Physiol. Plant. 114:234)
+# native embedded Figure 2 bitmap (661 x 455 px): linear tick-centroid calibration across
+# main axes (PPFD = 0..2400, max tick residual 0.54 micromol m^-2 s^-1; Fs/Fo = 0.80..1.50,
+# max tick residual 0.0006) and Figure 2 Inset axes (g = 0..150, Fs/Fo = 0.8..1.5).
+# Strictly observational evaluation data: zero model parameters above are fitted to these points.
 [digitized_flexas_2002]
 inset_conductances_mmol = [10.0, 39.0, 55.0, 62.0, 80.0, 150.0]
-inset_fs_over_fo = [0.92, 0.98, 1.08, 1.22, 1.35, 1.44]
-peak_ppfd = [100.0, 200.0, 300.0, 550.0, 750.0, 750.0]
-peak_fs_over_fo = [1.12, 1.15, 1.19, 1.26, 1.35, 1.44]
+inset_fs_over_fo = [0.900, 1.029, 1.149, 1.229, 1.369, 1.449]
+peak_ppfd = [107.7, 330.8, 321.7, 516.5, 735.1, 728.8]
+peak_fs_over_fo = [1.160, 1.219, 1.269, 1.268, 1.372, 1.448]
+g150_ppfd = [0.0, 7.5, 32.7, 48.4, 123.0, 516.1, 728.8, 878.4]
+g150_fs_over_fo = [1.000, 1.058, 1.105, 1.153, 1.240, 1.430, 1.448, 1.410]
+g80_ppfd = [0.0, 56.3, 107.2, 207.9, 321.8, 433.7, 559.5, 735.1, 1226.0]
+g80_fs_over_fo = [1.000, 1.048, 1.111, 1.176, 1.238, 1.277, 1.309, 1.372, 1.277]
+g62_ppfd = [0.0, 8.5, 53.1, 104.5, 208.8, 302.5, 395.5, 516.5, 770.9, 1246.4]
+g62_fs_over_fo = [1.000, 1.013, 1.121, 1.140, 1.169, 1.200, 1.263, 1.268, 1.226, 1.188]
+g55_ppfd = [0.0, 7.8, 40.9, 107.7, 195.2, 321.7, 431.4, 571.7, 817.8, 1247.9]
+g55_fs_over_fo = [1.000, 1.032, 1.117, 1.160, 1.210, 1.269, 1.239, 1.210, 1.130, 1.030]
+g39_ppfd = [0.0, 52.7, 102.1, 203.7, 330.8, 440.6, 560.0, 813.4, 1283.6]
+g39_fs_over_fo = [1.000, 1.069, 1.095, 1.132, 1.219, 1.219, 1.100, 1.010, 0.960]
+g10_ppfd = [0.0, 52.7, 107.7, 209.4, 314.4, 443.9, 552.7, 830.5, 1222.3]
+g10_fs_over_fo = [1.000, 1.069, 1.160, 1.150, 1.060, 1.040, 0.961, 0.910, 0.940]
 
 [validation]
 float32_yield_tolerance = 0.00000095367431640625

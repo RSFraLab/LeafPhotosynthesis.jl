@@ -22,7 +22,7 @@ function chartImage(chart) {
   return image;
 }
 
-function plot(parent, {id, title, description, rows, x, xLabel, yLabel, series, file, wide = false}) {
+function plot(parent, {id, title, description, rows, x, xLabel, yLabel, series, extraDatasets = [], extraToggleLabel, xMax, file, wide = false}) {
   const card = element("article", undefined, `plot-card${wide ? " wide" : ""}`);
   card.append(element("h3", title), element("p", description));
   const wrap = element("div", undefined, "canvas-wrap");
@@ -38,30 +38,32 @@ function plot(parent, {id, title, description, rows, x, xLabel, yLabel, series, 
     ctx.save(); ctx.globalCompositeOperation = "destination-over";
     ctx.fillStyle = "white"; ctx.fillRect(0, 0, chart.width, chart.height); ctx.restore();
   }};
+  const baseDatasets = series.map((s, index) => {
+    const color = s.color || palette[index % palette.length];
+    const sourceRows = s.pointsOnly ? rows.filter(row => row[s.key] !== null) : rows;
+    return {
+      label: s.label, data: sourceRows.map(row => ({x: row[x], y: row[s.key]})),
+      borderColor: color, backgroundColor: color,
+      borderDash: s.dash || [], borderWidth: index === 0 ? 2.5 : 1.8,
+      showLine: !s.pointsOnly,
+      pointRadius: s.pointsOnly ? 4.5 : 0, pointHitRadius: 8, tension: 0,
+    };
+  });
   const chart = new Chart(canvas, {
     type: "line",
-    data: {datasets: series.map((s, index) => {
-      const color = s.color || palette[index % palette.length];
-      const sourceRows = s.pointsOnly ? rows.filter(row => row[s.key] !== null) : rows;
-      return {
-        label: s.label, data: sourceRows.map(row => ({x: row[x], y: row[s.key]})),
-        borderColor: color, backgroundColor: color,
-        borderDash: s.dash || [], borderWidth: index === 0 ? 2.5 : 1.8,
-        showLine: !s.pointsOnly,
-        pointRadius: s.pointsOnly ? 4.5 : 0, pointHitRadius: 8, tension: 0,
-      };
-    })},
+    data: {datasets: [...baseDatasets, ...extraDatasets]},
     plugins: [background],
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
-      interaction: {mode: "index", intersect: false},
+      interaction: {mode: extraDatasets.length ? "nearest" : "index", intersect: false},
       plugins: {title: {display: false, text: title},
-        legend: {display: false, position: "bottom", labels: {boxWidth: 22, font: {size: 10}}}, tooltip: {callbacks: {
+        legend: {display: false, position: "bottom", labels: {boxWidth: 22, font: {size: 10},
+          filter: (item, data) => !data.datasets[item.datasetIndex].skipLegend}}, tooltip: {callbacks: {
         title: items => `${xLabel}: ${format(items[0].parsed.x)}`,
-        label: item => `${item.dataset.label}: ${format(item.parsed.y)}`,
+        label: item => `${item.dataset.tooltipLabel || item.dataset.label}: ${format(item.parsed.y)}`,
       }}},
       scales: {
-        x: {type: "linear", title: {display: true, text: xLabel}, grid: {display: false}, ticks: {maxTicksLimit: 6}},
+        x: {type: "linear", ...(xMax !== undefined ? {max: xMax} : {}), title: {display: true, text: xLabel}, grid: {display: false}, ticks: {maxTicksLimit: 6}},
         y: {title: {display: true, text: yLabel}, grid: {color: "#e6ece7"}, ticks: {maxTicksLimit: 6}},
       },
     },
@@ -74,10 +76,33 @@ function plot(parent, {id, title, description, rows, x, xLabel, yLabel, series, 
     const label = element("label");
     label.style.color = s.color || palette[i % palette.length];
     const checkbox = element("input"); checkbox.type = "checkbox"; checkbox.checked = true;
-    checkbox.addEventListener("change", () => {chart.setDatasetVisibility(i, checkbox.checked); chart.update();});
+    checkbox.addEventListener("change", () => {
+      chart.setDatasetVisibility(i, checkbox.checked);
+      if (extraDatasets[i] && extraDatasets[i].pairWithSeries) {
+        const master = controls.querySelector("input[data-extra-master]");
+        chart.setDatasetVisibility(series.length + i, checkbox.checked && (!master || master.checked));
+      }
+      chart.update();
+    });
     label.append(checkbox, document.createTextNode(` ${s.label}${s.pointsOnly ? " (points)" : s.dash ? " (dashed)" : ""}`));
     controls.append(label);
   });
+  if (extraDatasets.length && extraToggleLabel) {
+    const label = element("label");
+    label.style.color = "#222222";
+    const checkbox = element("input"); checkbox.type = "checkbox"; checkbox.checked = true;
+    checkbox.dataset.extraMaster = "true";
+    checkbox.addEventListener("change", () => {
+      const seriesChecks = controls.querySelectorAll("input:not([data-extra-master])");
+      extraDatasets.forEach((ds, j) => {
+        const seriesOn = ds.pairWithSeries && seriesChecks[j] ? seriesChecks[j].checked : true;
+        chart.setDatasetVisibility(series.length + j, checkbox.checked && seriesOn);
+      });
+      chart.update();
+    });
+    label.append(checkbox, document.createTextNode(` ${extraToggleLabel}`));
+    controls.append(label);
+  }
   card.append(controls);
   const actions = element("div", undefined, "actions");
   const csv = element("a", "Download CSV"); csv.href = file; csv.download = "";
@@ -213,9 +238,25 @@ function render() {
     rows:jb.jb_pam,x:"incident_par",xLabel:"Incident PAR (μmol photons m⁻² leaf s⁻¹)",yLabel:"Quantum yield or closed fraction",file:csv("jb_pam"),
     series:[{key:"true_psii_photochemical_yield",label:"True PSII ΦP2 (εF1 = 0)"},{key:"pam_apparent_photochemical_yield",label:"Apparent PAM 1 − Fs/Fm′ (εF1/εF2 = 2)",dash:[6,4]},{key:"ideal_closed_lake_1_minus_ql",label:"Ideal lake 1 − qL (εF1 = 0)",dash:[2,4]},{key:"pam_closed_lake_1_minus_ql",label:"Apparent lake 1 − qL (εF1/εF2 = 2)",dash:[8,3,2,3]}]});
   const fx = data.flexas_2002;
-  plot("flexas-plots", {id:"flexas-mechanistic-fig2",title:"Fig. 2 · Cytochrome b₆f + PAM-2000 across 6 drought conductances",
-    description:"Progressive stomatal + non-stomatal drought lowers maximum Fs/Fo, shifts the light peak leftward, and quenches high-light Fs below Fo (< 1.0).",
-    rows:fx.flexas_mechanistic_fig2,x:"incident_par",xLabel:"Incident PPFD (μmol photons m⁻² leaf s⁻¹)",yLabel:"Normalized steady-state Fs / Fo",file:csv("flexas_mechanistic_fig2"),
+  const fxGLevels = [150, 80, 62, 55, 39, 10];
+  const fxDigitizedDatasets = fxGLevels.map((gVal, idx) => {
+    const color = palette[idx % palette.length];
+    const pts = fx.flexas_digitized_fig2.filter(r => Math.round(r.conductance_mmol) === gVal);
+    return {
+      label: idx === 0 ? "Flexas (2002) Fig. 2 (dots)" : `_obs_${gVal}`,
+      tooltipLabel: `Flexas (2002) obs. · g = ${gVal}`,
+      skipLegend: idx > 0,
+      pairWithSeries: true,
+      data: pts.map(r => ({x: r.incident_par, y: r.observed_fs_over_fo})),
+      borderColor: color, backgroundColor: color,
+      pointBackgroundColor: color, pointBorderColor: "#ffffff", pointBorderWidth: 0.9,
+      showLine: false, pointRadius: 3.3, pointHoverRadius: 5.2, pointHitRadius: 8, tension: 0,
+    };
+  });
+  plot("flexas-plots", {id:"flexas-mechanistic-fig2",title:"Fig. 2 · Cytochrome b₆f + PAM-2000 vs. digitized Flexas (2002)",
+    description:"Progressive stomatal + non-stomatal drought lowers maximum Fs/Fo, shifts the light peak leftward, and quenches high-light Fs below Fo (< 1.0); color-matched dots show all 55 digitized Fig. 2 points.",
+    rows:fx.flexas_mechanistic_fig2.filter(r => r.incident_par <= 1500),x:"incident_par",xMax:1500,xLabel:"Incident PPFD (μmol photons m⁻² leaf s⁻¹)",yLabel:"Normalized steady-state Fs / Fo",file:csv("flexas_mechanistic_fig2"),
+    extraDatasets:fxDigitizedDatasets,extraToggleLabel:"Flexas (2002) digitized Fig. 2 (dots)",
     series:[{key:"g150_fs_over_fo",label:"g = 150 mmol m⁻² s⁻¹"},{key:"g80_fs_over_fo",label:"g = 80",dash:[8,4]},{key:"g62_fs_over_fo",label:"g = 62",dash:[5,3]},{key:"g55_fs_over_fo",label:"g = 55",dash:[2,3]},{key:"g39_fs_over_fo",label:"g = 39",dash:[8,3,2,3]},{key:"g10_fs_over_fo",label:"g = 10 (severe)",dash:[3,2]}]});
   plot("flexas-plots", {id:"flexas-empirical-fig2",title:"Empirical rate-competition failure · Cotton vs. Drought KN(x)",
     description:"Single-variable KN(x) locks peak Fs/Fo near 1.45–1.46 for every conductance; Cotton KN(x) predicts higher Fs/Fo under drought (wrong sign).",

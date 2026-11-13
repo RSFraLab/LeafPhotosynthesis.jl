@@ -1,9 +1,11 @@
 # Water-stress steady-state fluorescence ($F_s / F_o$): Flexas et al. (2002) benchmark
 
-[Run the benchmark](../examples/flexas_2002.jl) or explore all four panels in the
+[Open the dedicated interactive Figure 2 & SIF formulation explorer](flexas_2002.html),
+[run the Julia benchmark](../examples/flexas_2002.jl), or view the summary panels in the
 [interactive offline gallery](examples.html#flexas-2002). Model assembly lives in
 [setup/flexas_2002.jl](../examples/setup/flexas_2002.jl), and every grapevine parameter,
-unit, and digitized observation is isolated in
+unit, and subpixel-digitized Figure 2 observation (`55` main-panel points across all six
+curves plus `6` Figure 2 Inset points) is isolated in
 [flexas_2002.toml](../examples/parameters/flexas_2002.toml).
 
 Flexas et al. (2002, *Physiologia Plantarum* 114:231–240,
@@ -17,16 +19,16 @@ Normalizing steady-state fluorescence $F_s$ by dark-adapted basal fluorescence $
 eliminates leaf-to-leaf variation in chlorophyll content and sensor geometry, exposing
 three diagnostic features in Figure 2:
 
-1. **Peak suppression:** maximum $F_s / F_o$ declines monotonically from `~1.44` in
-   well-watered vines ($g_{sw} = 150$) to `~1.12` under severe drought ($g_{sw} = 10$).
+1. **Peak suppression:** maximum $F_s / F_o$ declines from `1.448` in
+   well-watered vines ($g_{sw} = 150$) to `1.160` under severe drought ($g_{sw} = 10$).
 2. **Leftward irradiance shift:** the photosynthetic photon flux density (`PPFD`) at
-   which $F_s / F_o$ peaks shifts from `~750–1000 μmol photons m⁻² s⁻¹` down to
-   `~100–200 μmol photons m⁻² s⁻¹`.
+   which $F_s / F_o$ peaks shifts from `~730–1000 μmol photons m⁻² s⁻¹` down to
+   `~108–200 μmol photons m⁻² s⁻¹`.
 3. **Sub-$F_o$ high-light quenching & curvilinear conductance inset:** under severe
    drought ($g_{sw} \le 39$), non-photochemical quenching pulls high-irradiance $F_s$
    below dark $F_o$ ($F_s / F_o < 1.0$), producing a positive curvilinear $F_s / F_o$
-   vs. $g_{sw}$ relationship at $\mathrm{PPFD} = 750\;\mu\mathrm{mol\;m^{-2}\;s^{-1}}$
-   (Figure 2 Inset).
+   vs. $g_{sw}$ relationship (`0.900 → 1.449`) at
+   $\mathrm{PPFD} = 750\;\mu\mathrm{mol\;m^{-2}\;s^{-1}}$ (Figure 2 Inset).
 
 Evaluating every steady-state fluorescence formulation in `LeafPhotosynthesis.jl`
 against these experiments separates structural mathematical constraints from parameter
@@ -63,14 +65,14 @@ maps `PPFD` through the exact same scalar curve $f(x)$:
   $x^* \approx 0.23$, $\mathrm{PPFD} \approx 450\;\mu\mathrm{mol\;m^{-2}\;s^{-1}}$ for
   $g_{sw} = 150$) for the Flexas Drought parameter set ($K_{N0} = 5.01$, $a = 1.93$,
   $b = 10.0$). Single-variable $K_N(x)$ models therefore cannot reproduce the progressive
-  `1.44 → 1.12` peak suppression in Figure 2.
+  `1.448 → 1.160` peak suppression in Figure 2.
 - **High-light sign inversion in Cotton $K_N(x)$:** because Cotton $b = 0.114$ saturates
   $K_N(x)$ near $K_{N0} = 2.48$ by $x \approx 0.80$, further increases in $x$ increase
   the numerator $1 - \Phi_{P0}(1 - x)$ faster than the denominator, turning
   $\Phi_F / \Phi_{F,o}$ **upward** at high light and predicting **higher** $F_s / F_o$
-  under severe drought than under well-watered conditions (`1.22` at $g_{sw} = 10$ vs.
-  `1.18` at $g_{sw} = 150$ at $\mathrm{PPFD} = 750$, and `1.35` vs. `1.31` at
-  $\mathrm{PPFD} = 2100$—opposite in sign to the Figure 2 Inset). Switching to the
+  under severe drought than under well-watered conditions (`1.22` stomatal-only / `1.28`
+  combined at $g_{sw} = 10$ vs. `1.18` at $g_{sw} = 150$ at $\mathrm{PPFD} = 750$, and
+  `1.35` vs. `1.31` at $\mathrm{PPFD} = 2100$—opposite in sign to the Figure 2 Inset). Switching to the
   empirical Drought fit ($K_{N0} = 5.01, b = 10.0$, which van der Tol et al. 2014 fitted
   directly to Flexas et al. 2002) restores sub-$F_o$ quenching at high irradiance (`0.90`
   at $\mathrm{PPFD} = 2100$), yet still leaves peak height fixed near `1.45` across all
@@ -149,8 +151,9 @@ consuming electrons:
 ```
 
 - **Mild-to-moderate drought ($g_{sw} \ge 62\;\mathrm{mmol\;m^{-2}\;s^{-1}}$):** pure
-  stomatal $\mathrm{CO_2}$ drawdown quantitatively tracks both Figure 2 and the Figure 2
-  Inset (`1.41 → 1.37 → 1.30` vs. observed `1.44 → 1.35 → 1.22`).
+  stomatal $\mathrm{CO_2}$ drawdown quantitatively tracks both Figure 2 (`RMSE = 0.049–0.061`)
+  and the Figure 2 Inset (`1.41 → 1.39 → 1.35` stomatal-only and `1.41 → 1.36 → 1.23`
+  combined vs. observed `1.449 → 1.369 → 1.229`).
 - **Severe drought ($g_{sw} < 60\;\mathrm{mmol\;m^{-2}\;s^{-1}}$):** pure stomatal
   closure hits the photorespiratory sink floor ($J_{P700,c} \ge 76.7\;\mu\mathrm{mol\;e^-\;m^{-2}\;s^{-1}}$
   at $C_c = \Gamma_*$ for $V_{c\max} = 96$, and $\approx 79.3\;\mu\mathrm{mol\;e^-\;m^{-2}\;s^{-1}}$
@@ -192,7 +195,7 @@ The fourth benchmark panel tests three experimental perturbations at severe wate
    increasing PSI emission (weighted `2×` by the `>700 nm` PAM-2000 detector), raising
    the low-light apparent $F_s / F_o$ peak to `1.76` before decaying under high-light
    feedback $K_N$ (`1.18` at $\mathrm{PPFD} = 1500$). Because Flexas et al. (2002)
-   observed a damped peak (`~1.15`) rather than an unquenched `1.76` spike at
+   observed a damped peak (`1.219`) rather than an unquenched `1.76` spike at
    $g_{sw} = 39$, water-stressed grapevine leaves operate much closer to static antenna
    partitioning than full $K_N = 0$ state-transition rebalancing.
 3. **DTT xanthophyll-cycle inhibition (Flexas et al. 2002, Fig. 5):** evaluating
@@ -206,19 +209,25 @@ The fourth benchmark panel tests three experimental perturbations at severe wate
 
 ## 5. Summary across SIF / fluorescence yield formulations
 
-| Formulation in `LeafPhotosynthesis.jl` | Dark $F_v / F_m$ | Peak $F_s / F_o$ suppression vs. $g_{sw}$ | Leftward peak `PPFD` shift | High-light $F_s / F_o < 1$ under severe drought | Fig. 2 Inset sign ($\partial(F_s/F_o)/\partial g_{sw}$ at `PPFD = 750`) |
+| Formulation in `LeafPhotosynthesis.jl` | Dark $F_v / F_m$ | Lit Fig. 2 `RMSE` ($n = 49$) | Inset `RMSE` ($n = 6$) | Peak $F_s / F_o$ vs. $g_{sw}$ | High-light $F_s / F_o < 1$ under severe drought |
 | --- | --- | --- | --- | --- | --- |
-| `ConstantQuenching(0)` (DTT / $K_N = 0$) | `0.800` | None (climbs to `4.47`) | None (no peak) | No | Negative (matches DTT-infiltrated leaves only, Fig. 5) |
-| `SaturationQuenching` — Cotton $K_N(x)$ | `0.800` | **No** (invariant `1.45–1.46`) | Yes (`425 → 300`) | No (`1.31–1.35` at `2100`) | **Negative** (`1.22 → 1.18`, inverted drought sign) |
-| `SaturationQuenching` — Drought $K_N(x)$ | `0.800` | **No** (invariant `1.45`) | Yes (`450 → 300`) | Yes (`0.90` at `2100`) | Positive (`1.06 → 1.21`, empirical fit to Flexas) |
-| `CytochromeFluorescence` (pure PSII, $\varepsilon_{F1}=0$) | `0.882` | **Yes** | **Yes** | Yes (`0.71` at `750`) | Positive (`0.71 → 1.66`), over-amplifies well-watered $F_s/F_o$ |
-| `CytochromeFluorescence` + `PAMFluorescenceObserver` ($\varepsilon_{F1}/\varepsilon_{F2}=2.0$, stomatal only) | **`0.821`** | Partial (`1.44 → 1.32`, floor at $\Gamma_*$) | Partial (floor `~375`) | Floor `~1.00` | Positive above $g_{sw} \ge 60$, flat below photorespiratory floor (`1.08`) |
-| `CytochromeFluorescence` + `PAMFluorescenceObserver` ($\varepsilon_{F1}/\varepsilon_{F2}=2.0$, stomatal + Escalona/Flexas non-stomatal) | **`0.821`** | **Yes (`1.44 → 1.22`)** | **Yes (`1050 → 200`)** | **Yes (`0.73–0.88` at `2100`)** | **Positive curvilinear (`0.82 → 1.41`, matches Inset)** |
+| `ConstantQuenching(0)` (DTT / $K_N = 0$) | `0.800` | — (DTT control) | — | None (climbs to `4.47`) | No (matches DTT-infiltrated leaves only, Fig. 5) |
+| `SaturationQuenching` — Cotton $K_N(x)$ | `0.800` | `0.152` | `0.224` | **No** (invariant `1.45–1.46`) | No (`1.35` at `1400`, inverted drought sign) |
+| `SaturationQuenching` — Drought $K_N(x)$ | `0.800` | `0.118` | `0.157` | **No** (invariant `1.45`) | Yes (`0.90` at `1400`, empirical fit to Flexas) |
+| `CytochromeFluorescence` (pure PSII, $\varepsilon_{F1}=0$) | `0.882` | `0.180` | `0.168` | Yes (`1.72 → 1.36`), over-amplified | Yes (`0.60` at `1400`) |
+| `CytochromeFluorescence` + `StateTransitionRule` (`qT`) + PAM-2000 | `0.821` | `0.402` | `0.493` | Overshoots (`2.30 → 1.55`) | Yes (`0.91` at `1400`) |
+| `CytochromeFluorescence` + `PAMFluorescenceObserver` ($\varepsilon_{F1}/\varepsilon_{F2}=2.0$, stomatal only) | **`0.821`** | `0.097` | `0.144` | Partial (`1.44 → 1.29`, floor at $\Gamma_*$) | Floor near `0.95` (`1.08` at `750`) |
+| `CytochromeFluorescence` + `PAMFluorescenceObserver` ($\varepsilon_{F1}/\varepsilon_{F2}=2.0$, stomatal + Escalona/Flexas non-stomatal) | **`0.821`** | **`0.062`** | **`0.038`** | **Yes (`1.44 → 1.22` vs. obs. `1.45 → 1.16`)** | **Yes (`0.75` at `1400`, `0.82` at `750`)** |
 
 ## 6. Scope limits
 
 - All simulations are steady-state point evaluations; slow dark-to-light induction and
   photoinhibitory recovery timescales (`qI` relaxation) are not modeled.
+- In `CytochromeFluorescence`, regulated thermal dissipation $K_N$ is solved algebraically
+  to close the PSII exciton budget without an upper xanthophyll/PsbS saturation ceiling
+  $K_{N,\max}$; at extreme drought and high light ($g_{sw} = 10$,
+  $\mathrm{PPFD} > 800\;\mu\mathrm{mol\;m^{-2}\;s^{-1}}$), unbounded $K_N$ slightly
+  over-quenches $F_s / F_o$ (`0.75–0.77` vs. observed `0.91–0.94`).
 - Pre-escape photosystem yields and PAM detector ratios ($\varepsilon_{F1}/\varepsilon_{F2}$)
   describe leaf-level fluorometry; canopy-leaving solar-induced chlorophyll fluorescence
   (SIF) additionally requires spectral PSII/PSI emission shapes, within-leaf chlorophyll

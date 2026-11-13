@@ -54,8 +54,9 @@ The [turnover example](docs/biochemical_turnover.md) separates available electro
 supply from realized flow, including at the CO₂ compensation point.
 
 **Plots and walkthroughs:** browse the [live interactive gallery on GitHub Pages](https://rsfralab.github.io/LeafPhotosynthesis.jl/examples.html)
-or open [docs/examples.html](docs/examples.html) from your local checkout for the offline
-Chart.js gallery, including FP32/FP64 selection, data downloads, and the exact runnable source. GitHub-readable static figures and
+([local docs/examples.html](docs/examples.html)) and the dedicated
+[interactive Flexas et al. (2002) Figure 2 & SIF model explorer](https://rsfralab.github.io/LeafPhotosynthesis.jl/flexas_2002.html)
+([local docs/flexas_2002.html](docs/flexas_2002.html)) for offline Chart.js visualizations, FP32/FP64 selection, digitized Figure 2 overlays, data downloads, and the exact runnable source. GitHub-readable static figures and
 regeneration instructions are in [docs/README.md](docs/README.md).
 TOML parsing and parameter assembly live in `examples/setup/`, leaving the main
 scripts focused on executing the biophysics.
@@ -106,7 +107,7 @@ carbon = carbon_assimilation(rates, environment.co2, environment.oxygen,
 | How are gross and net O₂ exchange computed or disabled? | [src/oxygen_exchange.jl](src/oxygen_exchange.jl) |
 | How do Cytochrome $b_6f$ electron transport and coupled PSII/PSI fluorescence work? | [src/cytochrome_photosynthesis.jl](src/cytochrome_photosynthesis.jl), [src/cytochrome_fluorescence.jl](src/cytochrome_fluorescence.jl), [stress comparison](docs/cytochrome_fluorescence.md) |
 | How do closed-form LHCII state transitions (`qT`) and apparent PAM fluorometry work? | [src/cytochrome_state_transitions.jl](src/cytochrome_state_transitions.jl), [src/pam_fluorescence.jl](src/pam_fluorescence.jl), [examples/johnson_berry_2021.jl](examples/johnson_berry_2021.jl) |
-| How do empirical vs. mechanistic SIF models perform on Flexas et al. (2002) water stress? | [docs/flexas_2002_water_stress.md](docs/flexas_2002_water_stress.md), [examples/flexas_2002.jl](examples/flexas_2002.jl) |
+| How do empirical vs. mechanistic SIF models perform on Flexas et al. (2002) water stress? | [interactive explorer](docs/flexas_2002.html), [walkthrough](docs/flexas_2002_water_stress.md), [examples/flexas_2002.jl](examples/flexas_2002.jl) |
 | How do the optional core components fit together? | [docs/core_exchange.md](docs/core_exchange.md), [examples/core_exchange.jl](examples/core_exchange.jl) |
 | Where are the scientific values, units, and sources? | [examples/parameters/bonan_11_1.toml](examples/parameters/bonan_11_1.toml) |
 | How does a student run an exercise? | [examples/bonan_11_1.jl](examples/bonan_11_1.jl) |

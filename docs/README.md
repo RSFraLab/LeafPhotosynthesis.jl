@@ -1,11 +1,11 @@
 # Worked examples
 
 Open the [live GitHub Pages gallery](https://rsfralab.github.io/LeafPhotosynthesis.jl/examples.html)
-or open [examples.html](examples.html) **from your local checkout** for the interactive
-Chart.js gallery, and browse the [structured API Reference](api/README.md) for all
-exported types, status codes, and functions grouped by biophysical process. Viewing `examples.html` inside the GitHub repository tree displays HTML
-source rather than executing it. The gallery works completely offline: the plotting
-library and both FP32/FP64 datasets are bundled locally.
+(or [examples.html](examples.html) from your local checkout), explore the dedicated
+[interactive Flexas et al. (2002) Figure 2 & SIF formulation benchmark](https://rsfralab.github.io/LeafPhotosynthesis.jl/flexas_2002.html)
+([local flexas_2002.html](flexas_2002.html)), and browse the [structured API Reference](api/README.md) for all
+exported types, status codes, and functions grouped by biophysical process. Viewing `.html` files inside the GitHub repository tree displays HTML
+source rather than executing it. Both interactive pages work completely offline: Chart.js, KaTeX, and both FP32/FP64 datasets are bundled locally.
 
 The gallery includes labeled response curves, keyboard-accessible series controls,
 hover values, complete data tables, CSV downloads, PNG export, and the actual source

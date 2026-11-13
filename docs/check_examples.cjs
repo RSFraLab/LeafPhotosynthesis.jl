@@ -92,7 +92,7 @@ const assert = require('assert');
       },precision));
       assert(await page.evaluate(precision=>{
         const fx=window.leafExamples.data[precision].flexas_2002;
-        const fig2=fx.flexas_mechanistic_fig2, emp=fx.flexas_empirical_fig2, inset=fx.flexas_inset_conductance, ctrl=fx.flexas_controls;
+        const fig2=fx.flexas_mechanistic_fig2, emp=fx.flexas_empirical_fig2, inset=fx.flexas_inset_conductance, ctrl=fx.flexas_controls, dig=fx.flexas_digitized_fig2;
         const cFig2=Chart.getChart('flexas-mechanistic-fig2');
         const cEmp=Chart.getChart('flexas-empirical-fig2');
         const cIns=Chart.getChart('flexas-inset-conductance');
@@ -100,7 +100,9 @@ const assert = require('assert');
         const peak150=Math.max(...fig2.map(r=>r.g150_fs_over_fo));
         const peak10=Math.max(...fig2.map(r=>r.g10_fs_over_fo));
         const empPeakDiff=Math.abs(Math.max(...emp.slice(1).map(r=>r.cotton_g150))-Math.max(...emp.slice(1).map(r=>r.cotton_g10)));
-        return cFig2.data.datasets.length===6 && cEmp.data.datasets.length===4 &&
+        const obsPointCount=cFig2.data.datasets.slice(6).reduce((acc,ds)=>acc+ds.data.length,0);
+        return cFig2.data.datasets.length===12 && obsPointCount===dig.length && dig.length===55 &&
+          cEmp.data.datasets.length===4 &&
           cIns.data.datasets.length===6 && cIns.data.datasets[5].data.length===6 &&
           cCtrl.data.datasets.length===4 &&
           fig2[0].g150_fs_over_fo===1 && peak150>peak10 && fig2[fig2.length-1].g10_fs_over_fo<1 &&
@@ -128,7 +130,53 @@ const assert = require('assert');
     await page.setViewportSize({width:390,height:844});
     await page.waitForTimeout(300);
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+
+    // Verify standalone Flexas et al. (2002) interactive explorer (docs/flexas_2002.html)
+    const fxPage=await browser.newPage({viewport:{width:1280,height:960}});
+    fxPage.on('pageerror', e=>errors.push(e.message));
+    fxPage.on('request', r=>{if(/^https?:/.test(r.url()))requests.push(r.url());});
+    await fxPage.goto('file://'+path.join(__dirname,'flexas_2002.html'));
+    await fxPage.waitForFunction(()=>document.querySelectorAll('canvas').length===7 && document.getElementById('status').textContent.includes('Julia output'));
+    assert(await fxPage.evaluate(()=>document.querySelectorAll('.katex').length>=6 && document.querySelectorAll('.katex-error').length===0));
+    for(const precision of ['Float64','Float32']) {
+      await fxPage.selectOption('#precision',precision);
+      for(const form of ['pam2000_combined','pam2000_stomatal_only','pure_psii_combined','qt_pam2000_combined','cotton_combined','drought_combined']) {
+        await fxPage.locator(`button[data-formulation="${form}"]`).click();
+        assert(await fxPage.evaluate(form=>{
+          const c=Chart.getChart('hero-canvas');
+          const obsCount=c.data.datasets.slice(6).reduce((a,ds)=>a+ds.data.length,0);
+          return c.data.datasets.length===12 && obsCount===55 &&
+            document.querySelector(`button[data-formulation="${form}"]`).getAttribute('aria-pressed')==='true';
+        },form));
+      }
+      await fxPage.locator('button[data-formulation="pam2000_combined"]').click();
+      for(const g of ['150','80','62','55','39','10']) {
+        await fxPage.locator(`button[data-g="${g}"]`).click();
+        assert(await fxPage.evaluate(g=>{
+          const m=Chart.getChart('spotlight-models-canvas');
+          const intern=Chart.getChart('spotlight-internal-canvas');
+          return m.data.datasets.length===7 && intern.data.datasets.length===3 &&
+            document.querySelector(`button[data-g="${g}"]`).getAttribute('aria-pressed')==='true';
+        },g));
+      }
+    }
+    await fxPage.locator('#internal-mode-quenching').click();
+    assert(await fxPage.evaluate(()=>Boolean(Chart.getChart('spotlight-internal-canvas').scales.y1)));
+    await fxPage.locator('#domain-extended').click();
+    assert(await fxPage.evaluate(()=>Chart.getChart('hero-canvas').scales.x.max===2100));
+    await fxPage.locator('#domain-paper').click();
+    assert(await fxPage.evaluate(()=>Chart.getChart('hero-canvas').scales.x.max===1400));
+    await fxPage.locator('#hero-table-details summary').click();
+    await fxPage.locator('#hero-table-mount tbody tr').first().waitFor();
+    assert.strictEqual(await fxPage.locator('#hero-table-mount tbody tr').count(),55);
+    const fxDownload=fxPage.waitForEvent('download');
+    await fxPage.locator('#hero-actions').getByRole('button',{name:'Save PNG'}).click();
+    assert((await fxDownload).suggestedFilename().includes('flexas-fig2-pam2000_combined-Float32'));
+    await fxPage.setViewportSize({width:390,height:844});
+    await fxPage.waitForTimeout(300);
+    assert(await fxPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+
     assert.deepStrictEqual(errors,[]);assert.deepStrictEqual(requests,[]);
-    console.log('PASS: twenty-five plots, FP32/64, oxygen temperatures, exact fluorescence, Cytochrome stress, JB2021, and Flexas 2002 water-stress data, dark gaps/zero source, rendered points, tables, series toggles, PNG download, mobile and offline');
+    console.log('PASS: examples.html (25 plots + 55 digitized Fig. 2 points) & flexas_2002.html (7 interactive canvases, 6 SIF formulations, 6 spotlight conductances, offline KaTeX, FP32/64, PNG export, mobile & offline)');
   } finally { await browser.close(); }
 })().catch(e=>{console.error(e);process.exitCode=1;});
