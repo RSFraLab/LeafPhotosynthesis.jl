@@ -152,3 +152,5 @@ include("cytochrome_batches.jl")
 @testset "Cytochrome CPU batches" begin
     check_cytochrome_batches(identity, () -> nothing)
 end
+
+include("qa_and_ad.jl")

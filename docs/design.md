@@ -86,8 +86,10 @@ Device selection and array layouts belong to adapters/callers. CUDA and Metal su
 are acceptance targets, not claims established by using parametric types. Require
 real backend tests, including reordered dark/lit populations and cross-device numerical
 comparisons. FP32 and FP64 are CPU/CUDA targets; Apple GPU work should target FP32.
-Automatic differentiation is a target; model kinks at clipping/limitation transitions
-must be explicit and tests must distinguish smooth regions from those kinks.
+Continuous scalar fields and environments accept `ForwardDiff.Dual` tangents alongside
+`Float32` and `Float64`, while rejecting mixed binary float precisions and discrete
+integer or rational types; model kinks at clipping and limitation transitions are
+explicit and tested against 256-bit `BigFloat` reference derivatives.
 
 ## Teaching contract
 

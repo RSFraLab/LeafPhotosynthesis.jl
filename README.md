@@ -29,6 +29,7 @@ From this directory:
 
 ```sh
 julia --project=. test/runtests.jl
+julia --project=. -e 'using Pkg; Pkg.test()'
 julia --project=. examples/one_leaf.jl
 julia --project=. examples/bonan_11_1.jl
 julia --project=. examples/core_exchange.jl
@@ -108,7 +109,7 @@ carbon = carbon_assimilation(rates, environment.co2, environment.oxygen,
 | How does a student run an exercise? | [examples/bonan_11_1.jl](examples/bonan_11_1.jl) |
 | Where are the plotted walkthroughs and simple examples? | [docs/README.md](docs/README.md), [interactive gallery](docs/examples.html) |
 | Where is TOML reading kept out of the examples? | [examples/setup/read_parameters.jl](examples/setup/read_parameters.jl) |
-| What is tested, and against what? | [test/runtests.jl](test/runtests.jl), [reference oracle](test/reference_bonan.jl) |
+| What is tested, and against what? | [test/runtests.jl](test/runtests.jl), [test/qa_and_ad.jl](test/qa_and_ad.jl), [reference oracle](test/reference_bonan.jl) |
 | What belongs here, and how will coupling work? | [docs/design.md](docs/design.md) |
 | Which Bonan exercises fit this package? | [docs/bonan_exercises.md](docs/bonan_exercises.md) |
 | What did we decide and find in earlier reviews? | [docs/session_notes.md](docs/session_notes.md) |

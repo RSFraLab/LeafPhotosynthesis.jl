@@ -1,3 +1,12 @@
+"""
+    LeafPhotosynthesis
+
+Provide composable, zero-dependency scalar models for C3 leaf photosynthesis
+(Farquhar–von Caemmerer–Berry and Johnson & Berry 2021 Cytochrome b₆f + PSI/PSII
+coupling), analytical and equilibrium stomatal CO₂/H₂O gas exchange, oxygen
+budgets, LHCII state transitions (`qT`), and steady-state chlorophyll and PAM
+fluorescence across `Float32`, `Float64`, GPU kernels, and automatic differentiation.
+"""
 module LeafPhotosynthesis
 
 export AbstractPhotosynthesis, C3Photosynthesis, CytochromePhotosynthesis,
@@ -69,5 +78,54 @@ include("cytochrome_fluorescence.jl")
 include("leaf_model.jl")
 include("cytochrome_state_transitions.jl")
 include("pam_fluorescence.jl")
+
+const _ScalarBroadcastable = Union{
+    LeafModel,
+    AbstractPhotosynthesis,
+    AbstractStomatalModel,
+    AbstractStomatalTarget,
+    AbstractOxygenExchange,
+    AbstractLeafDiffusion,
+    AbstractEquilibriumMethod,
+    EquilibriumSolver,
+    AbstractFluorescence,
+    AbstractQuenching,
+    AbstractExcitation,
+    AbstractCompensationPoint,
+    Arrhenius,
+    PeakedArrhenius,
+    ConstantResponse,
+    C3TemperatureResponse,
+    C3Rates,
+    CytochromeCapacity,
+    CytochromeTemperatureResponse,
+    CytochromeRates,
+    ElectronTransportParameters,
+    CytochromeElectronParameters,
+    C3Stoichiometry,
+    CytochromeStoichiometry,
+    MinimumLimitation,
+    SerialLimitation,
+    QuadraticLimitation,
+    SignedAssimilation,
+    NonnegativeAssimilation,
+    LeafEnvironment,
+    GasExchangeEnvironment,
+    StomatalState,
+    StomatalDrivers,
+    OxygenFluxInputs,
+    PSIIFluxInputs,
+    CoupledPhotosystemInputs,
+    PSIIRateParameters,
+    PSIRateParameters,
+    StateTransitionRule,
+    PAMFluorescenceObserver,
+    RateCompetitionResult,
+    CytochromeFluorescenceResult,
+    PAMFluorescenceResult,
+    EquilibriumSolution,
+}
+
+Base.broadcastable(x::_ScalarBroadcastable) = Ref(x)
 
 end

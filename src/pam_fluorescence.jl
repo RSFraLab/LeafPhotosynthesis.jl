@@ -1,27 +1,35 @@
 """
     PAMFluorescenceObserver(; psii_sensitivity, psi_sensitivity)
+    PAMFluorescenceObserver(psii_sensitivity, psi_sensitivity)
 
-Pulse-amplitude modulated (PAM) fluorometer observation weights `(ε_F2, ε_F1)`
-mapping internal PSII and PSI fluorescence yields to apparent detector levels
-`F / S` (Johnson & Berry 2021, Eqs. 38–42):
-- `psii_sensitivity` (`ε_F2 > 0`): detector weight for PSII fluorescence
-- `psi_sensitivity` (`ε_F1 ≥ 0`): detector weight for PSI fluorescence (`0` for an
-  ideal PSII-only detector; `ε_F1 / ε_F2 ≈ 1.6–2.5` for standard long-pass >700 nm
-  leaf-chamber fluorometers where PSI contributes ~39% of `F_o` and ~7% of `F_m`)
+Specify pulse-amplitude modulated (PAM) fluorometer detector weights
+`(psii_sensitivity, psi_sensitivity)` (`ε_F2 > 0`, `ε_F1 ≥ 0`) mapping internal
+PSII and PSI fluorescence yields to apparent detector levels `F / S`
+(Johnson & Berry 2021, Eqs. 38–42).
 """
-struct PAMFluorescenceObserver{FT<:AbstractFloat}
+struct PAMFluorescenceObserver{FT<:Real}
     psii_sensitivity::FT
     psi_sensitivity::FT
     function PAMFluorescenceObserver(
         psii_sensitivity::FT,
         psi_sensitivity::FT,
-    ) where {FT<:AbstractFloat}
-        isfinite(psii_sensitivity) && isfinite(psi_sensitivity) &&
-            psii_sensitivity > zero(FT) && psi_sensitivity >= zero(FT) ||
+    ) where {FT<:Real}
+        require_continuous_scalar(
+            FT, PAMFluorescenceObserver, (psii_sensitivity, psi_sensitivity),
+        )
+        e2p = primal_scalar(psii_sensitivity)
+        e1p = primal_scalar(psi_sensitivity)
+        isfinite(e2p) && isfinite(e1p) &&
+            e2p > zero(e2p) && e1p >= zero(e1p) ||
             throw(ArgumentError("PAMFluorescenceObserver requires finite psii_sensitivity > 0 and psi_sensitivity ≥ 0"))
-        new{FT}(psii_sensitivity, psi_sensitivity)
+        return new{FT}(psii_sensitivity, psi_sensitivity)
     end
 end
+
+PAMFluorescenceObserver(psii_sensitivity::Real, psi_sensitivity::Real) =
+    PAMFluorescenceObserver(
+        promote_compatible(PAMFluorescenceObserver, psii_sensitivity, psi_sensitivity)...,
+    )
 
 PAMFluorescenceObserver(; psii_sensitivity, psi_sensitivity) =
     PAMFluorescenceObserver(psii_sensitivity, psi_sensitivity)
@@ -29,20 +37,15 @@ PAMFluorescenceObserver(; psii_sensitivity, psi_sensitivity) =
 """
     PAMFluorescenceResult{FT}
 
-Apparent PAM fluorometer levels (`F / S`, Johnson & Berry 2021, Eqs. 38–42) and
-derived pulse-ratio indices:
-- `status`: `FluorescenceStatus` (`FluorescenceLit` when populated; non-lit states
-  carry `NaN` fields without throwing on GPU)
-- `fs`, `fm_dark`, `fo_dark`, `fm_prime`, `fo_prime`: detector-weighted steady-state,
-  dark-reference, and light-adapted fluorescence levels (`F / S`)
-- `apparent_photochemical_yield`: Genty et al. (1989) `1 - F_s / F_m'`
-- `apparent_regulated_heat_yield`: Hendrickson et al. (2004) `F_s * (1/F_m' - 1/F_m)`
-- `apparent_residual_yield`: Hendrickson et al. (2004) `F_s / F_m`
-- `apparent_npq`: Bilger & Björkman (1990) `F_m / F_m' - 1`
-- `qp`: Schreiber et al. (1986) puddle-model open fraction `(F_m' - F_s) / (F_m' - F_o')`
-- `ql`: Kramer et al. (2004) lake-model open fraction `q_P * (F_o' / F_s)`
+Store apparent PAM fluorometer levels (`fs`, `fm_dark`, `fo_dark`, `fm_prime`,
+`fo_prime` in `F / S` units; Johnson & Berry 2021, Eqs. 38–42) and derived
+pulse-ratio indices (`apparent_photochemical_yield`, `apparent_regulated_heat_yield`,
+`apparent_residual_yield`, `apparent_npq`, `qp`, `ql`).
+
+Check [`pam_fluorescence_valid`](@ref) before consuming fields; non-lit states
+carry `NaN` fields without throwing on GPU devices.
 """
-struct PAMFluorescenceResult{FT}
+struct PAMFluorescenceResult{FT<:Real}
     status::FluorescenceStatus
     fs::FT
     fm_dark::FT
@@ -55,8 +58,107 @@ struct PAMFluorescenceResult{FT}
     apparent_npq::FT
     qp::FT
     ql::FT
+    function PAMFluorescenceResult{FT}(
+        status::FluorescenceStatus,
+        fs,
+        fm_dark,
+        fo_dark,
+        fm_prime,
+        fo_prime,
+        apparent_photochemical_yield,
+        apparent_regulated_heat_yield,
+        apparent_residual_yield,
+        apparent_npq,
+        qp,
+        ql,
+    ) where {FT<:Real}
+        require_continuous_scalar(
+            FT,
+            PAMFluorescenceResult{FT},
+            (
+                status,
+                fs,
+                fm_dark,
+                fo_dark,
+                fm_prime,
+                fo_prime,
+                apparent_photochemical_yield,
+                apparent_regulated_heat_yield,
+                apparent_residual_yield,
+                apparent_npq,
+                qp,
+                ql,
+            ),
+        )
+        return new{FT}(
+            status,
+            fs,
+            fm_dark,
+            fo_dark,
+            fm_prime,
+            fo_prime,
+            apparent_photochemical_yield,
+            apparent_regulated_heat_yield,
+            apparent_residual_yield,
+            apparent_npq,
+            qp,
+            ql,
+        )
+    end
+    function PAMFluorescenceResult(
+        status::FluorescenceStatus,
+        fs::FT,
+        fm_dark::FT,
+        fo_dark::FT,
+        fm_prime::FT,
+        fo_prime::FT,
+        apparent_photochemical_yield::FT,
+        apparent_regulated_heat_yield::FT,
+        apparent_residual_yield::FT,
+        apparent_npq::FT,
+        qp::FT,
+        ql::FT,
+    ) where {FT<:Real}
+        require_continuous_scalar(
+            FT,
+            PAMFluorescenceResult,
+            (
+                status,
+                fs,
+                fm_dark,
+                fo_dark,
+                fm_prime,
+                fo_prime,
+                apparent_photochemical_yield,
+                apparent_regulated_heat_yield,
+                apparent_residual_yield,
+                apparent_npq,
+                qp,
+                ql,
+            ),
+        )
+        return new{FT}(
+            status,
+            fs,
+            fm_dark,
+            fo_dark,
+            fm_prime,
+            fo_prime,
+            apparent_photochemical_yield,
+            apparent_regulated_heat_yield,
+            apparent_residual_yield,
+            apparent_npq,
+            qp,
+            ql,
+        )
+    end
 end
 
+"""
+    pam_fluorescence_valid(result::PAMFluorescenceResult) -> Bool
+
+Return `true` if `result.status` is [`FluorescenceLit`](@ref).
+"""
 @inline pam_fluorescence_valid(r::PAMFluorescenceResult) = r.status == FluorescenceLit
 
 @inline function unavailable_pam_fluorescence(::Type{FT}, status::FluorescenceStatus) where {FT}
@@ -73,42 +175,49 @@ end
         fluorescence_model::CytochromeFluorescence,
         alpha_psii_dark, alpha_psi_dark)
 
-Dark-adapted (`K_N = 0`) PAM reference levels `(; fo, fm, fv_fm)` (`F_o / S`,
-`F_m / S`, and `(F_m - F_o) / F_m`; Johnson & Berry 2021, Eqs. 39, 41). Nonthrowing
-on GPU; returns `NaN` fields for invalid cross-sections.
+Compute dark-adapted (`K_N = 0`) PAM reference levels `(; fo, fm, fv_fm)`
+(`F_o / S`, `F_m / S`, and `(F_m - F_o) / F_m`; Johnson & Berry 2021, Eqs. 39, 41),
+returning `NaN` fields on invalid cross-sections without throwing.
 """
 @inline function dark_pam_levels(
-    observer::PAMFluorescenceObserver{FT},
-    fl::CytochromeFluorescence{FT},
-    alpha_psii_dark::FT,
-    alpha_psi_dark::FT,
-) where {FT<:AbstractFloat}
-    nan = FT(NaN)
-    isfinite(alpha_psii_dark) && isfinite(alpha_psi_dark) &&
-        alpha_psii_dark > zero(FT) && alpha_psi_dark >= zero(FT) ||
+    observer::PAMFluorescenceObserver{FTO},
+    fl::CytochromeFluorescence{FTF},
+    alpha_psii_dark::FT2,
+    alpha_psi_dark::FT1,
+) where {FTO<:Real,FTF<:Real,FT2<:Real,FT1<:Real}
+    _, _, a2_d, a1_d = promote_compatible(
+        dark_pam_levels, zero(FTO), zero(FTF), alpha_psii_dark, alpha_psi_dark,
+    )
+    S = typeof(a2_d)
+    nan = S(NaN)
+    a2d_p, a1d_p = primal_scalar(a2_d), primal_scalar(a1_d)
+    isfinite(a2d_p) && isfinite(a1d_p) &&
+        a2d_p > zero(a2d_p) && a1d_p >= zero(a1d_p) ||
         return (; fo = nan, fm = nan, fv_fm = nan)
 
     psii = fl.psii
     psi = fl.psi
-    eps2 = observer.psii_sensitivity
-    eps1 = observer.psi_sensitivity
+    eps2 = S(observer.psii_sensitivity)
+    eps1 = S(observer.psi_sensitivity)
 
     s2_closed = psii.fluorescence_rate + psii.constitutive_heat_rate + psii.sustained_quenching_rate
     s2_open = s2_closed + psii.maximum_photochemical_rate
     s1_open = psi.fluorescence_rate + psi.constitutive_heat_rate + psi.maximum_photochemical_rate
     s1_closed = psi.fluorescence_rate + psi.constitutive_heat_rate + psi.closed_quenching_rate
 
-    phi_f2_fm = psii.fluorescence_rate / s2_closed
-    phi_f2_fo = psii.fluorescence_rate / s2_open
-    phi_f1_closed = psi.fluorescence_rate / s1_closed
-    phi_f1_open = psi.fluorescence_rate / s1_open
+    phi_f2_fm = S(psii.fluorescence_rate / s2_closed)
+    phi_f2_fo = S(psii.fluorescence_rate / s2_open)
+    phi_f1_closed = S(psi.fluorescence_rate / s1_closed)
+    phi_f1_open = S(psi.fluorescence_rate / s1_open)
 
-    fm = (alpha_psii_dark * phi_f2_fm) * eps2 + (alpha_psi_dark * phi_f1_closed) * eps1
-    fo = (alpha_psii_dark * phi_f2_fo) * eps2 + (alpha_psi_dark * phi_f1_open) * eps1
-    psi_diff = phi_f1_closed * ((psi.maximum_photochemical_rate - psi.closed_quenching_rate) / s1_open)
-    fv = (alpha_psii_dark * (phi_f2_fm * (psii.maximum_photochemical_rate / s2_open))) * eps2 +
-         (alpha_psi_dark * psi_diff) * eps1
-    fv_fm = fv / fm
+    fm = S((a2_d * phi_f2_fm) * eps2 + (a1_d * phi_f1_closed) * eps1)
+    fo = S((a2_d * phi_f2_fo) * eps2 + (a1_d * phi_f1_open) * eps1)
+    psi_diff = S(phi_f1_closed * ((psi.maximum_photochemical_rate - psi.closed_quenching_rate) / s1_open))
+    fv = S(
+        (a2_d * (phi_f2_fm * S(psii.maximum_photochemical_rate / s2_open))) * eps2 +
+        (a1_d * psi_diff) * eps1,
+    )
+    fv_fm = S(fv / fm)
     all(isfinite, (fo, fm, fv_fm)) || return (; fo = nan, fm = nan, fv_fm = nan)
     return (; fo, fm, fv_fm)
 end
@@ -120,78 +229,74 @@ end
         alpha_psii, alpha_psi[, alpha_psii_dark, alpha_psi_dark])
 
 Evaluate apparent PAM fluorometer observables (Johnson & Berry 2021, Eqs. 38–42)
-from coupled internal fluorescence `result`, light-adapted absorption cross-sections
-`(alpha_psii, alpha_psi)`, and dark-reference cross-sections
-`(alpha_psii_dark, alpha_psi_dark)` (defaulting to `(alpha_psii, alpha_psi)` when
-pigment cross-sections are static).
-
-Ratio-based indices (`apparent_photochemical_yield`, `apparent_regulated_heat_yield`,
-`apparent_residual_yield`, `apparent_npq`, `qp`, `ql`) are invariant to any common
-positive scaling of `(alpha_psii, alpha_psi, alpha_psii_dark, alpha_psi_dark)` (such
-as constant leaf PAR absorptance). Normalized rate ratios and factored differences
-avoid both `rate²` overflow and `Float32` PSI-offset cancellation in `F_m' - F_o'`,
-`F_m' - F_s`, and `F_m - F_m'`.
+from coupled internal fluorescence `result`, light-adapted absorption
+cross-sections `(alpha_psii, alpha_psi)`, and dark-reference cross-sections
+`(alpha_psii_dark, alpha_psi_dark)` (defaulting to `(alpha_psii, alpha_psi)`).
 """
 @inline function pam_fluorescence(
-    observer::PAMFluorescenceObserver{FT},
-    fl::CytochromeFluorescence{FT},
-    result::CytochromeFluorescenceResult{FT},
-    alpha_psii::FT,
-    alpha_psi::FT,
-    alpha_psii_dark::FT = alpha_psii,
-    alpha_psi_dark::FT = alpha_psi,
-) where {FT<:AbstractFloat}
-    isfinite(alpha_psii) && isfinite(alpha_psi) &&
-        isfinite(alpha_psii_dark) && isfinite(alpha_psi_dark) &&
-        alpha_psii > zero(FT) && alpha_psi >= zero(FT) &&
-        alpha_psii_dark > zero(FT) && alpha_psi_dark >= zero(FT) ||
-        return unavailable_pam_fluorescence(FT, FluorescenceInvalidInput)
+    observer::PAMFluorescenceObserver{FTO},
+    fl::CytochromeFluorescence{FTF},
+    result::CytochromeFluorescenceResult{FTR},
+    alpha_psii::FT2,
+    alpha_psi::FT1,
+    alpha_psii_dark::FT2D = alpha_psii,
+    alpha_psi_dark::FT1D = alpha_psi,
+) where {FTO<:Real,FTF<:Real,FTR<:Real,FT2<:Real,FT1<:Real,FT2D<:Real,FT1D<:Real}
+    _, _, _, a2, a1, a2_d, a1_d = promote_compatible(
+        pam_fluorescence,
+        zero(FTO), zero(FTF), zero(FTR),
+        alpha_psii, alpha_psi, alpha_psii_dark, alpha_psi_dark,
+    )
+    S = typeof(a2)
+    a2_p, a1_p, a2d_p, a1d_p = map(primal_scalar, (a2, a1, a2_d, a1_d))
+    isfinite(a2_p) && isfinite(a1_p) &&
+        isfinite(a2d_p) && isfinite(a1d_p) &&
+        a2_p > zero(a2_p) && a1_p >= zero(a1_p) &&
+        a2d_p > zero(a2d_p) && a1d_p >= zero(a1d_p) ||
+        return unavailable_pam_fluorescence(S, FluorescenceInvalidInput)
 
     result.status == FluorescenceLit ||
-        return unavailable_pam_fluorescence(FT, result.status)
+        return unavailable_pam_fluorescence(S, result.status)
 
     psii = fl.psii
     psi = fl.psi
-    eps2 = observer.psii_sensitivity
-    eps1 = observer.psi_sensitivity
-    kn = result.psii_quenching_rate
+    eps2 = S(observer.psii_sensitivity)
+    eps1 = S(observer.psi_sensitivity)
+    kn = S(result.psii_quenching_rate)
 
-    s2_closed_dark = psii.fluorescence_rate + psii.constitutive_heat_rate + psii.sustained_quenching_rate
-    s2_open_dark = s2_closed_dark + psii.maximum_photochemical_rate
+    s2_closed_dark = S(psii.fluorescence_rate + psii.constitutive_heat_rate + psii.sustained_quenching_rate)
+    s2_open_dark = S(s2_closed_dark + psii.maximum_photochemical_rate)
     s2_closed_light = s2_closed_dark + kn
-    s_scale = max(s2_closed_light, psii.maximum_photochemical_rate)
-    denom_open_light = (s2_closed_light / s_scale) + (psii.maximum_photochemical_rate / s_scale)
+    s_scale = max(s2_closed_light, S(psii.maximum_photochemical_rate))
+    denom_open_light = (s2_closed_light / s_scale) + (S(psii.maximum_photochemical_rate) / s_scale)
 
-    s1_open = psi.fluorescence_rate + psi.constitutive_heat_rate + psi.maximum_photochemical_rate
-    s1_closed = psi.fluorescence_rate + psi.constitutive_heat_rate + psi.closed_quenching_rate
+    s1_open = S(psi.fluorescence_rate + psi.constitutive_heat_rate + psi.maximum_photochemical_rate)
+    s1_closed = S(psi.fluorescence_rate + psi.constitutive_heat_rate + psi.closed_quenching_rate)
 
-    phi_f2_fm_dark = psii.fluorescence_rate / s2_closed_dark
-    phi_f2_fo_dark = psii.fluorescence_rate / s2_open_dark
-    phi_f2_fmp = psii.fluorescence_rate / s2_closed_light
-    phi_f2_fop = (psii.fluorescence_rate / s_scale) / denom_open_light
-    kp2_frac_light = (psii.maximum_photochemical_rate / s_scale) / denom_open_light
-    phi_f1_closed = psi.fluorescence_rate / s1_closed
-    phi_f1_open = psi.fluorescence_rate / s1_open
+    phi_f2_fm_dark = S(psii.fluorescence_rate) / s2_closed_dark
+    phi_f2_fo_dark = S(psii.fluorescence_rate) / s2_open_dark
+    phi_f2_fmp = S(psii.fluorescence_rate) / s2_closed_light
+    phi_f2_fop = (S(psii.fluorescence_rate) / s_scale) / denom_open_light
+    kp2_frac_light = (S(psii.maximum_photochemical_rate) / s_scale) / denom_open_light
+    phi_f1_closed = S(psi.fluorescence_rate) / s1_closed
+    phi_f1_open = S(psi.fluorescence_rate) / s1_open
 
-    fm_dark = (alpha_psii_dark * phi_f2_fm_dark) * eps2 + (alpha_psi_dark * phi_f1_closed) * eps1
-    fo_dark = (alpha_psii_dark * phi_f2_fo_dark) * eps2 + (alpha_psi_dark * phi_f1_open) * eps1
-    fm_prime = (alpha_psii * phi_f2_fmp) * eps2 + (alpha_psi * phi_f1_closed) * eps1
-    fo_prime = (alpha_psii * phi_f2_fop) * eps2 + (alpha_psi * phi_f1_open) * eps1
-    fs = (alpha_psii * result.psii_fluorescence_yield) * eps2 +
-         (alpha_psi * result.psi_fluorescence_yield) * eps1
+    fm_dark = (a2_d * phi_f2_fm_dark) * eps2 + (a1_d * phi_f1_closed) * eps1
+    fo_dark = (a2_d * phi_f2_fo_dark) * eps2 + (a1_d * phi_f1_open) * eps1
+    fm_prime = (a2 * phi_f2_fmp) * eps2 + (a1 * phi_f1_closed) * eps1
+    fo_prime = (a2 * phi_f2_fop) * eps2 + (a1 * phi_f1_open) * eps1
+    fs = (a2 * S(result.psii_fluorescence_yield)) * eps2 +
+         (a1 * S(result.psi_fluorescence_yield)) * eps1
 
-    # Overflow- and cancellation-free differences:
-    # Φ_F2,m' - Φ_F2 = Φ_P2 * Φ_F2,m' avoids 1 - Φ_P2 cancellation at low Φ_P2,
-    # and normalized ratios avoid rate^2 and (alpha * eps)^2 overflow/underflow in Float32.
     psi_closed_minus_open = phi_f1_closed *
-        ((psi.maximum_photochemical_rate - psi.closed_quenching_rate) / s1_open)
-    fmp_minus_fop = (alpha_psii * (phi_f2_fmp * kp2_frac_light)) * eps2 +
-        (alpha_psi * psi_closed_minus_open) * eps1
-    fmp_minus_fs = (alpha_psii * (result.psii_photochemical_yield * phi_f2_fmp)) * eps2 +
-        (alpha_psi * (result.psi_open_fraction * psi_closed_minus_open)) * eps1
-    fm_minus_fmp = ((alpha_psii_dark - alpha_psii) * phi_f2_fm_dark +
-        alpha_psii * (phi_f2_fm_dark * (kn / s2_closed_light))) * eps2 +
-        ((alpha_psi_dark - alpha_psi) * phi_f1_closed) * eps1
+        ((S(psi.maximum_photochemical_rate) - S(psi.closed_quenching_rate)) / s1_open)
+    fmp_minus_fop = (a2 * (phi_f2_fmp * kp2_frac_light)) * eps2 +
+        (a1 * psi_closed_minus_open) * eps1
+    fmp_minus_fs = (a2 * (S(result.psii_photochemical_yield) * phi_f2_fmp)) * eps2 +
+        (a1 * (S(result.psi_open_fraction) * psi_closed_minus_open)) * eps1
+    fm_minus_fmp = ((a2_d - a2) * phi_f2_fm_dark +
+        a2 * (phi_f2_fm_dark * (kn / s2_closed_light))) * eps2 +
+        ((a1_d - a1) * phi_f1_closed) * eps1
 
     phi_p_app = fmp_minus_fs / fm_prime
     phi_df_app = fs / fm_dark
@@ -202,9 +307,9 @@ avoid both `rate²` overflow and `Float32` PSI-offset cancellation in `F_m' - F_
 
     all(isfinite, (fs, fm_dark, fo_dark, fm_prime, fo_prime,
                    phi_p_app, phi_n_app, phi_df_app, npq_app, qp, ql)) ||
-        return unavailable_pam_fluorescence(FT, FluorescenceIncompatibleRates)
+        return unavailable_pam_fluorescence(S, FluorescenceIncompatibleRates)
 
-    return PAMFluorescenceResult(
+    return PAMFluorescenceResult{S}(
         FluorescenceLit,
         fs,
         fm_dark,

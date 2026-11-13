@@ -1,36 +1,45 @@
 # Derivatives of positive rate capacities. At a minimum-limitation tie we take
 # the first branch's one-sided derivative; safeguarded solving handles the kink.
 @inline function colimit_slope(a, b, da, db, ::MinimumLimitation)
-    return a <= b ? (a, da) : (b, db)
+    S = typeof(a + b)
+    DS = typeof(da + db)
+    return a <= b ? (S(a), DS(da)) : (S(b), DS(db))
 end
 
 @inline function colimit_slope(a, b, da, db, ::SerialLimitation)
     value = colimit(a, b, SerialLimitation())
-    isnan(value) && return (value, oftype(da + db, NaN))
+    DS = typeof(value + da + db)
+    isnan(value) && return (value, DS(NaN))
     if isinf(a) && isfinite(b)
-        return (value, oftype(da + db, db))
+        return (value, DS(db))
     elseif isinf(b) && isfinite(a)
-        return (value, oftype(da + db, da))
+        return (value, DS(da))
     elseif isinf(a) && isinf(b)
-        return (value, oftype(da + db, NaN))
+        return (value, DS(NaN))
     end
     scale = max(a, b)
-    iszero(scale) && return (zero(a + b), zero(da + db))
+    iszero(primal_scalar(scale)) && return (zero(value), zero(DS))
     x, y = a / scale, b / scale
     s = x + y
     wa, wb = y / s, x / s
-    return (value, da * wa^2 + db * wb^2)
+    return (value, DS(da * wa^2 + db * wb^2))
 end
 
 @inline function colimit_slope(a, b, da, db, p::QuadraticLimitation)
-    p.curvature == one(p.curvature) && return colimit_slope(a, b, da, db, MinimumLimitation())
+    if primal_scalar(p.curvature) == one(primal_scalar(p.curvature)) &&
+       (has_zero_tangent(p.curvature) || iszero(primal_scalar(a - b)))
+        return colimit_slope(a, b, da, db, MinimumLimitation())
+    end
     scale = max(a, b)
-    iszero(scale) && return (zero(a), zero(da))
-    value = colimit(a, b, p)
+    S = typeof(a + b + zero(p.curvature))
+    DS = typeof(S(0) + da + db)
+    iszero(primal_scalar(scale)) && return (zero(S), zero(DS))
+    value = S(colimit(a, b, p))
     x, y, q = a / scale, b / scale, value / scale
     two = one(x) + one(x)
-    denominator = sqrt((x - y)^2 + two * two * (one(p.curvature) - p.curvature) * x * y)
-    derivative = (da * (y - q) + db * (x - q)) / denominator
+    disc = (x - y)^2 + two * two * (one(p.curvature) - p.curvature) * x * y
+    denominator = disc > zero(disc) ? sqrt(disc) : zero(disc)
+    derivative = DS((da * (y - q) + db * (x - q)) / denominator)
     return value, derivative
 end
 
@@ -55,10 +64,12 @@ end
 """
     carbon_assimilation_derivative(rates, co2, oxygen, electrons, stoichiometry, limitation, compensation)
 
-Partial derivative of net assimilation with respect to biochemical-site CO₂
-[μmol CO₂ m⁻² leaf s⁻¹ Pa⁻¹], holding temperature, O₂, and electron supply fixed.
-At min/clipping kinks this returns a documented one-sided derivative, not a smooth
-derivative. Uses the same positive-capacity formulation as carbon_assimilation.
+Compute the partial derivative ``∂A_n / ∂C_c`` [μmol CO₂ m⁻² leaf s⁻¹ Pa⁻¹] of
+net assimilation with respect to biochemical-site CO₂ at fixed leaf temperature,
+O₂, and available electron supply.
+
+At [`MinimumLimitation`](@ref) or [`NonnegativeAssimilation`](@ref) kinks, return
+a consistent one-sided derivative.
 """
 @inline carbon_assimilation_derivative(r, co2, oxygen, electrons, s, limitation, compensation) =
     last(assimilation_and_slope(r, co2, oxygen, electrons, s, limitation, compensation))

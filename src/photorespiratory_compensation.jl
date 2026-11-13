@@ -1,12 +1,18 @@
-"""Interface for the photorespiratory CO₂ compensation point Γ* [Pa]."""
+"""
+    AbstractCompensationPoint
+
+Supertype for photorespiratory CO₂ compensation point (`Γ*` [Pa]) parameterizations.
+"""
 abstract type AbstractCompensationPoint end
 
 """
     PrescribedCompensationPoint(response)
 
-Explicit temperature-only Γ* response. The caller must supply an oxygen level
-compatible with its calibration. This component does not infer O₂ dependence.
-It is distinct from the signed/clipped carbon-assimilation compensation policy.
+Wrap a temperature-only `Γ*` law `response` [Pa] calibrated at a fixed O₂ level.
+
+The caller must supply an oxygen partial pressure compatible with `response`'s
+calibration; this component does not infer oxygen scaling and is distinct from
+the signed or clipped carbon-assimilation policy.
 """
 struct PrescribedCompensationPoint{R} <: AbstractCompensationPoint
     response::R
@@ -15,36 +21,36 @@ end
 """
     OxygenScaledCompensationPoint(response, reference_oxygen)
 
-Γ*(T,O) = Γ*(T,Oref) O/Oref at unchanged Rubisco specificity and photorespiratory
-stoichiometry. `response` is the entire Γ* temperature law [Pa] calibrated at the
-explicit biochemical O₂ partial pressure `reference_oxygen` [Pa], finite and >0.
-No ambient O₂ default, total-pressure multiplier or new stoichiometric constant
-is introduced. All inputs/parameters use one FT. Evaluation without an oxygen
-argument is unsupported.
+Scale a reference `Γ*` temperature law linearly with biochemical-site oxygen:
+``Γ^*(T, O) = Γ^*(T, O_{\\mathrm{ref}}) \\cdot O / O_{\\mathrm{ref}}``.
 
-The scalar law returns exact zero at O=0. Full gas exchange with this scaled
-treatment currently requires positive Γ*/O₂; this law alone does not model anaerobic respiration or zero-gas
-limits. Environmental oxygen must be finite and nonnegative.
+`response` evaluates `Γ*(T, O_ref)` [Pa] at the finite positive biochemical O₂
+partial pressure `reference_oxygen` [Pa]. No ambient O₂ default or stoichiometric
+recalibration is introduced, and evaluation without an explicit `oxygen` argument
+is unsupported. The scalar law returns exact zero at `oxygen == 0`.
 """
-struct OxygenScaledCompensationPoint{R,FT<:AbstractFloat} <: AbstractCompensationPoint
+struct OxygenScaledCompensationPoint{R,FT<:Real} <: AbstractCompensationPoint
     response::R
     reference_oxygen::FT
     function OxygenScaledCompensationPoint(
         response::R,
         reference_oxygen::FT,
-    ) where {R,FT<:AbstractFloat}
+    ) where {R,FT<:Real}
+        require_continuous_scalar(FT, OxygenScaledCompensationPoint, (response, reference_oxygen))
         isfinite(reference_oxygen) && reference_oxygen > zero(FT) ||
             throw(ArgumentError("reference oxygen must be finite and positive [Pa]"))
-        new{R,FT}(response, reference_oxygen)
+        return new{R,FT}(response, reference_oxygen)
     end
 end
 
 """
     compensation_point(response, temperature, oxygen)
 
-Evaluate Γ* [Pa] at temperature [K] and biochemical O₂ partial pressure [Pa].
-Legacy `temperature_response(response,T)` extensions remain prescribed-Γ* laws.
-Implement this function for a new AbstractCompensationPoint component.
+Evaluate the photorespiratory CO₂ compensation point `Γ*` [Pa] at leaf
+`temperature` [K] and biochemical-site `oxygen` partial pressure [Pa].
+
+Plain temperature laws delegate to [`temperature_response`](@ref); implement a
+method on `compensation_point` when adding a new [`AbstractCompensationPoint`](@ref).
 """
 @inline compensation_point(response, temperature, oxygen) =
     temperature_response(response, temperature)
