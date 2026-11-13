@@ -87,7 +87,8 @@ carbon = carbon_assimilation(rates, environment.co2, environment.oxygen,
 
 | Question | File |
 | --- | --- |
-| How are leaf components assembled? | [src/leaf_model.jl](src/leaf_model.jl) |
+| Where is the structured API Reference for all exported types and functions? | [docs/api/README.md](docs/api/README.md) |
+| How are leaf components assembled? | [src/leaf_model.jl](src/leaf_model.jl), [API: Leaf Composition](docs/api/leaf_composition_and_environments.md) |
 | What is a complete C3 calculation? | [src/photosynthesis.jl](src/photosynthesis.jl) |
 | How do biochemical rates depend on temperature? | [src/temperature_response.jl](src/temperature_response.jl) |
 | How does Γ* respond to oxygen? | [src/photorespiratory_compensation.jl](src/photorespiratory_compensation.jl), [oxygen example](docs/oxygen_response.md) |

@@ -1,5 +1,7 @@
 /Manifest.toml
 /test/Manifest.toml
 /test/gpu/Manifest.toml
+/docs/Manifest.toml
+/docs/build/
 /examples/output/
 /docs/node_modules/

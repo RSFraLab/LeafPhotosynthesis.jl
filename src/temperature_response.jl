@@ -52,10 +52,12 @@ end
     Arrhenius{FT}(; value_ref, activation_energy, temperature_ref, gas_constant)
     Arrhenius(value_ref, activation_energy, temperature_ref, gas_constant)
 
-Construct an Arrhenius temperature response normalized at `temperature_ref` [K].
+Construct an Arrhenius temperature response
+``k_{\\mathrm{ref}} \\exp\\!\\big[(E_a / R)(T_{\\mathrm{ref}}^{-1} - T^{-1})\\big]``
+normalized at `temperature_ref` (`T_ref` [K]).
 
-`activation_energy` has units of J mol⁻¹ and `gas_constant` has units of
-J mol⁻¹ K⁻¹; `value_ref` carries the units of the quantity being scaled. All
+`activation_energy` (`E_a`) has units of J mol⁻¹ and `gas_constant` (`R`) has units of
+J mol⁻¹ K⁻¹; `value_ref` (`k_ref`) carries the units of the quantity being scaled. All
 scientific parameters are supplied explicitly.
 
 # Examples
@@ -102,9 +104,10 @@ Arrhenius(v::Real, ea::Real, tref::Real, r::Real) =
     PeakedArrhenius(arrhenius, deactivation_energy, entropy)
 
 Construct an Arrhenius temperature response with high-temperature thermal
-inhibition normalized at `arrhenius.temperature_ref` [K].
+inhibition normalized at `arrhenius.temperature_ref` (`T_ref` [K]):
+``f_{\\mathrm{Arr}}(T) \\, \\big(1 + \\exp[(ΔS \\, T_{\\mathrm{ref}} - H_d)/(R \\, T_{\\mathrm{ref}})]\\big) / \\big(1 + \\exp[(ΔS \\, T - H_d)/(R \\, T)]\\big)``.
 
-`deactivation_energy` is in J mol⁻¹ and `entropy` is in J mol⁻¹ K⁻¹.
+`deactivation_energy` (`H_d`) is in J mol⁻¹ and `entropy` (`ΔS`) is in J mol⁻¹ K⁻¹.
 """
 struct PeakedArrhenius{FT<:Real}
     arrhenius::Arrhenius{FT}

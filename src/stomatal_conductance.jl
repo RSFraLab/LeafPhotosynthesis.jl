@@ -67,9 +67,10 @@ StomatalDrivers(a::Real, cs::Real, p::Real, rh::Real, vpd::Real) =
     BallBerry(minimum_conductance, slope, micromole_to_mole)
 
 Parameterize the Ball–Berry stomatal H₂O conductance target
-``g_0 + g_1 \\max(A_n, 0) h_s / χ_s`` [mol H₂O m⁻² leaf s⁻¹], with
-`minimum_conductance` (`g₀` [mol H₂O m⁻² leaf s⁻¹]), dimensionless `slope` (`g₁`),
-and `micromole_to_mole` [mol μmol⁻¹].
+``g_0 + g_1 \\max(A_n, 0) h_s / χ_s`` [mol H₂O m⁻² leaf s⁻¹], where
+``χ_s = C_s / P`` is the leaf-surface CO₂ mole fraction (`surface_co2 / pressure`
+in [`StomatalDrivers`](@ref)), with `minimum_conductance` (`g₀` [mol H₂O m⁻² leaf s⁻¹]),
+dimensionless `slope` (`g₁`), and `micromole_to_mole` [mol μmol⁻¹] converting `A_n`.
 """
 Base.@kwdef struct BallBerry{FT<:Real} <: AbstractStomatalTarget
     minimum_conductance::FT
@@ -101,9 +102,11 @@ BallBerry(g0::Real, g1::Real, conv::Real) =
 
 Parameterize the Medlyn stomatal H₂O conductance target
 ``g_0 + r (1 + g_1 / \\sqrt{\\max(D_s, D_{\\min})}) \\max(A_n, 0) / χ_s``
-[mol H₂O m⁻² leaf s⁻¹], with `minimum_conductance` (`g₀`), `slope` (`g₁` [Pa¹ᐟ²]),
-H₂O/CO₂ `diffusivity_ratio` (`r`), `micromole_to_mole` [mol μmol⁻¹], and positive
-regularization `vpd_floor` (`D_min` [Pa]).
+[mol H₂O m⁻² leaf s⁻¹], where ``χ_s = C_s / P`` is the leaf-surface CO₂ mole fraction
+(`surface_co2 / pressure` in [`StomatalDrivers`](@ref)), with `minimum_conductance`
+(`g₀`), `slope` (`g₁` [Pa¹ᐟ²]), H₂O/CO₂ `diffusivity_ratio` (`r`),
+`micromole_to_mole` [mol μmol⁻¹] converting `A_n`, and positive regularization
+`vpd_floor` (`D_min` [Pa]).
 """
 Base.@kwdef struct Medlyn{FT<:Real} <: AbstractStomatalTarget
     minimum_conductance::FT

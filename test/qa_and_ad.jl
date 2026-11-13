@@ -219,6 +219,14 @@ end
         @test photosynthesize.(c3_model, @view(sites_std[1:2:3])) == photosynthesize.(Ref(c3_model), sites_std[1:2:3])
     end
 
+    @testset "Generated API docs sync" begin
+        api_mod = Module(:_LeafPhotosynthesisAPIDocsCheck)
+        Base.include(api_mod, joinpath(dirname(@__DIR__), "docs", "api_catalog.jl"))
+        @test length(Base.invokelatest(getfield, api_mod, :API_PAGES)) == 6
+        cmd = `$(Base.julia_cmd()) --startup-file=no --project=$(dirname(@__DIR__)) $(joinpath(dirname(@__DIR__), "docs", "build_api_docs.jl")) --check`
+        @test success(cmd)
+    end
+
     if _HAS_EXTENDED_QA_DEPS
     @testset "OffsetArrays, @view slices, and Base.broadcastable scalar models" begin
         lp_root = dirname(@__DIR__)

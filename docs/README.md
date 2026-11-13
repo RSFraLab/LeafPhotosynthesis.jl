@@ -2,7 +2,8 @@
 
 Open the [live GitHub Pages gallery](https://rsfralab.github.io/LeafPhotosynthesis.jl/examples.html)
 or open [examples.html](examples.html) **from your local checkout** for the interactive
-Chart.js gallery. Viewing `examples.html` inside the GitHub repository tree displays HTML
+Chart.js gallery, and browse the [structured API Reference](api/README.md) for all
+exported types, status codes, and functions grouped by biophysical process. Viewing `examples.html` inside the GitHub repository tree displays HTML
 source rather than executing it. The gallery works completely offline: the plotting
 library and both FP32/FP64 datasets are bundled locally.
 
@@ -61,7 +62,10 @@ julia --project=. examples/fluorescence.jl
 julia --project=. examples/cytochrome_stress.jl
 julia --project=. examples/johnson_berry_2021.jl
 julia --project=. docs/build_examples.jl
+julia --project=. docs/build_api_docs.jl
 ```
+
+`docs/build_api_docs.jl` regenerates `docs/api/*.md` from the package docstrings (`--check` verifies zero drift), and `julia --project=docs -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()' && julia --project=docs docs/make.jl` builds the local `Documenter.jl` HTML site in `docs/build/`.
 
 The builder calls the example functions directly, then writes the CSV tables and
 `assets/examples-data.js`. It embeds the current example source, so the displayed
