@@ -44,7 +44,7 @@ julia> temperature_response(r, 303.15)
 0.75
 ```
 
-*Kind:* Struct · *Source:* [`src/temperature_response.jl:148`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L148)
+*Kind:* Struct · *Source:* [`src/temperature_response.jl:161`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L161)
 
 ### `Arrhenius`
 
@@ -69,7 +69,7 @@ julia> temperature_response(law, 298.15)
 60.0
 ```
 
-*Kind:* Struct · *Source:* [`src/temperature_response.jl:51`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L51)
+*Kind:* Struct · *Source:* [`src/temperature_response.jl:64`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L64)
 
 ### `PeakedArrhenius`
 
@@ -84,7 +84,7 @@ $f_{\mathrm{Arr}}(T) \, \big(1 + \exp[(ΔS \, T_{\mathrm{ref}} - H_d)/(R \, T_{\
 
 `deactivation_energy` (`H_d`) is in J mol⁻¹ and `entropy` (`ΔS`) is in J mol⁻¹ K⁻¹.
 
-*Kind:* Struct · *Source:* [`src/temperature_response.jl:102`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L102)
+*Kind:* Struct · *Source:* [`src/temperature_response.jl:115`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L115)
 
 ### `temperature_response`
 
@@ -94,7 +94,7 @@ temperature_response(response, temperature)
 
 Evaluate `response` at leaf `temperature` [K].
 
-*Kind:* Function · *Source:* [`src/temperature_response.jl:178`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L178)
+*Kind:* Function · *Source:* [`src/temperature_response.jl:191`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L191)
 
 ---
 
@@ -112,7 +112,7 @@ Bundle the six C3 biochemical temperature responses (`vcmax`, `jmax`,
 `gamma_star` may be a temperature-response law or an explicit
 [`AbstractCompensationPoint`](#abstractcompensationpoint) component.
 
-*Kind:* Struct · *Source:* [`src/temperature_response.jl:211`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L211)
+*Kind:* Struct · *Source:* [`src/temperature_response.jl:224`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L224)
 
 ### `C3Rates`
 
@@ -128,7 +128,7 @@ selected, biochemical-site O₂.
 - `jmax`: μmol electrons m⁻² leaf s⁻¹.
 - `kc`, `ko`, `gamma_star`: Pa.
 
-*Kind:* Struct · *Source:* [`src/temperature_response.jl:229`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L229)
+*Kind:* Struct · *Source:* [`src/temperature_response.jl:242`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L242)
 
 ### `CytochromeCapacity`
 
@@ -191,7 +191,7 @@ biochemical-site `oxygen` partial pressure [Pa] without mutating `responses`.
 The two-argument form evaluates temperature-only responses; the three-argument
 form also passes `oxygen` to [`compensation_point`](#compensation_point) for `gamma_star`.
 
-*Kind:* Function · *Source:* [`src/temperature_response.jl:270`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L270)
+*Kind:* Function · *Source:* [`src/temperature_response.jl:283`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L283)
 
 ---
 

@@ -9,7 +9,7 @@ fluorescence across `Float32`, `Float64`, GPU kernels, and automatic differentia
 """
 module LeafPhotosynthesis
 
-export AbstractPhotosynthesis, C3Photosynthesis, CytochromePhotosynthesis,
+export AbstractPhotosynthesis, AbstractC3Photosynthesis, C3Photosynthesis, CytochromePhotosynthesis,
     LeafModel, LeafEnvironment,
     ConstantResponse, Arrhenius, PeakedArrhenius, temperature_response,
     C3TemperatureResponse, C3Rates,

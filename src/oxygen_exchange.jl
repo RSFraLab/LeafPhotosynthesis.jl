@@ -147,33 +147,31 @@ compensation point causes no `0/0` singularity.
     photorespiration = p.oxygen_per_oxygenation * x.rubisco_oxygenation
     respiration = x.respiration / p.respiratory_quotient
     net = gross - photorespiration - respiration
-    S = typeof(gross + photorespiration + respiration)
-    return (;
-        gross_production = S(gross),
-        photorespiratory_uptake = S(photorespiration),
-        respiratory_uptake = S(respiration),
-        net_release = S(net),
-    )
+    return typed_result(typeof(gross + photorespiration + respiration), (;
+        gross_production = gross,
+        photorespiratory_uptake = photorespiration,
+        respiratory_uptake = respiration,
+        net_release = net,
+    ))
 end
 
 @inline function oxygen_exchange(
     p::CoreOxygenExchange,
-    model::C3Photosynthesis{T,E,S,L,SignedAssimilation},
+    model::AbstractC3Photosynthesis{L,SignedAssimilation},
     env::LeafEnvironment,
     excitation::AbstractExcitation = BroadbandExcitation(),
-) where {T,E,S,L}
+) where {L}
+    # Gross O₂ evolution comes from PSII water oxidation (realized linear_electron_flow).
     turnover = biochemical_turnover(model, env, excitation)
     oxygenation = turnover.photorespiratory_co2 / p.co2_per_oxygenation
     inputs = OxygenFluxInputs(turnover.linear_electron_flow, oxygenation, turnover.respiration)
     ox = oxygen_exchange(p, inputs)
     OutFT = typeof(ox.net_release + turnover.carboxylation)
-    return (;
-        gross_production = OutFT(ox.gross_production),
-        photorespiratory_uptake = OutFT(ox.photorespiratory_uptake),
-        respiratory_uptake = OutFT(ox.respiratory_uptake),
-        net_release = OutFT(ox.net_release),
-        carboxylation = OutFT(turnover.carboxylation),
-        rubisco_oxygenation = OutFT(oxygenation),
-        linear_electron_flow = OutFT(turnover.linear_electron_flow),
-    )
+    return typed_result(OutFT, (;
+        ox...,
+        turnover.carboxylation,
+        rubisco_oxygenation = oxygenation,
+        turnover.linear_electron_flow,
+        turnover_electron_flows(model, turnover)...,
+    ))
 end

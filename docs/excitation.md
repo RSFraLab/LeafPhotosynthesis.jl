@@ -84,8 +84,11 @@ zero tendency, independent of whether the separate exchange was valid.
 
 The constructor intentionally stores invalid inputs so device evaluations can
 return diagnostics without throwing. Validate forcing before large launches when
-appropriate. A caller is still responsible for the other environmental domains
-and for coherent same-FT parameters.
+appropriate. Both `C3Photosynthesis` and `CytochromePhotosynthesis` apply one
+environment domain in every leaf entry point: finite positive temperature, finite
+nonnegative CO₂ and O₂, and for gas exchange finite positive pressure, stomatal
+conductance and CO₂ supply conductance; outside it every field is NaN. A caller is
+still responsible for coherent same-FT parameters.
 
 ## Extend without changing the environment
 

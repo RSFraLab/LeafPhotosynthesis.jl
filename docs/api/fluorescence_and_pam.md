@@ -271,7 +271,7 @@ Compute the minimum broadband PSII photon fraction `β_min` ensuring
 capacities, and CO₂ partial pressures under [`SerialLimitation`](carbon_assimilation_and_turnover.md#seriallimitation)
 (Johnson & Berry 2021, Eq. 20).
 
-*Kind:* Function · *Source:* [`src/cytochrome_fluorescence.jl:666`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_fluorescence.jl#L666)
+*Kind:* Function · *Source:* [`src/cytochrome_fluorescence.jl:660`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_fluorescence.jl#L660)
 
 ### `fluorescence_low_light_yield`
 
@@ -282,7 +282,7 @@ fluorescence_low_light_yield(model::RateCompetitionFluorescence)
 Return the low-light (`Q₂ → 0`) PSII photochemical yield implied by `model` and
 its selected [`AbstractQuenching`](#abstractquenching) law.
 
-*Kind:* Function · *Source:* [`src/fluorescence.jl:460`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L460)
+*Kind:* Function · *Source:* [`src/fluorescence.jl:450`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L450)
 
 ### `validate_fluorescence_coupling`
 
@@ -298,7 +298,7 @@ Verify on the host that low-light photochemical yields and photosystem partition
 parameters of `electron_transport` (or `photosynthesis`) are consistent with
 `fluorescence_model` within `yield_tolerance`, throwing `ArgumentError` on mismatch.
 
-*Kind:* Function · *Source:* [`src/fluorescence.jl:480`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L480)
+*Kind:* Function · *Source:* [`src/fluorescence.jl:470`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L470)
 
 ---
 
@@ -466,7 +466,7 @@ Evaluate the pointwise, closed-form PSII absorbed-photon fraction `β ∈ (0, 1)
 under `rule` at `site` (Johnson & Berry 2021, Cases 10–12), returning `NaN` on
 invalid or incompatible inputs without throwing.
 
-*Kind:* Function · *Source:* [`src/cytochrome_state_transitions.jl:99`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_state_transitions.jl#L99)
+*Kind:* Function · *Source:* [`src/cytochrome_state_transitions.jl:96`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_state_transitions.jl#L96)
 
 ### `state_transition_excitation`
 
@@ -481,7 +481,7 @@ Berry (2021) dynamic state transitions (`qT`) at `site` via a Sterbenz-exact
 split of `site.absorbed_par` so `Q₂ + Q₁ == site.absorbed_par` holds identically
 across all IEEE-754 binades.
 
-*Kind:* Function · *Source:* [`src/cytochrome_state_transitions.jl:193`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_state_transitions.jl#L193)
+*Kind:* Function · *Source:* [`src/cytochrome_state_transitions.jl:183`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_state_transitions.jl#L183)
 
 ---
 

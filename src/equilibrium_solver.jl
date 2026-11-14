@@ -283,18 +283,16 @@ end
     isfinite(primal_scalar(p.vpd_floor)) && primal_scalar(p.vpd_floor) > zero(primal_scalar(p.vpd_floor))
 
 @inline function valid_equilibrium_inputs(env, d, target)
-    t_p, par_p, co2_p, o2_p, p_p, rh_p, vpd_p = map(
-        primal_scalar,
-        (env.temperature, env.absorbed_par, env.co2, env.oxygen, env.pressure, env.relative_humidity, env.vpd),
+    par_p, p_p, rh_p, vpd_p = map(
+        primal_scalar, (env.absorbed_par, env.pressure, env.relative_humidity, env.vpd),
     )
     gb_p, gm_p, dr_p, conv_p = map(
         primal_scalar,
         (d.boundary_co2, d.mesophyll_co2, d.diffusivity_ratio, d.mole_to_micromole),
     )
     g0_p = primal_scalar(target.minimum_conductance)
-    return all(isfinite, (t_p, par_p, co2_p, o2_p, p_p, rh_p, vpd_p)) &&
-        t_p > zero(t_p) && p_p > zero(p_p) &&
-        min(par_p, co2_p, o2_p) >= zero(co2_p) &&
+    return valid_site(env) && all(isfinite, (par_p, p_p, rh_p, vpd_p)) &&
+        p_p > zero(p_p) && par_p >= zero(par_p) &&
         zero(rh_p) <= rh_p <= one(rh_p) &&
         gb_p > zero(gb_p) && gm_p > zero(gm_p) &&
         isfinite(dr_p) && dr_p > zero(dr_p) &&
@@ -364,23 +362,24 @@ end
     return x
 end
 
-@inline function equilibrium_result(::Type{OutFT}, co2, p, r, electrons, env, d, g0, gain, width, iterations, status) where {OutFT}
+# Assemble the solution at `co2`; outside the model's electron domain the solve is invalid.
+@inline function equilibrium_result(
+    ::Type{OutFT}, co2, p, r, electrons, supply, env, d, g0, gain, width, iterations, status,
+) where {OutFT}
     co2_s = OutFT(co2)
+    valid, transport, _ = electron_state(p, r, supply, co2_s)
+    valid || return invalid_equilibrium(OutFT, EquilibriumInvalidInput)
     e = equilibrium_residual(co2_s, p, r, electrons, env, d, g0, gain)
-    carbon_raw = carbon_assimilation(r, co2_s, env.oxygen, electrons, p.stoichiometry, p.limitation, p.compensation)
-    carbon = (;
-        rubisco_limited = OutFT(carbon_raw.rubisco_limited),
-        electron_limited = OutFT(carbon_raw.electron_limited),
-        assimilation = OutFT(carbon_raw.assimilation),
-        respiration = OutFT(carbon_raw.respiration),
-        net_assimilation = OutFT(carbon_raw.net_assimilation),
-    )
+    carbon = typed_result(OutFT, carbon_assimilation(
+        r, co2_s, env.oxygen, electrons, p.stoichiometry, p.limitation, p.compensation,
+    ))
     conductance = OutFT(inv(e.resistance))
-    flux_residual = OutFT(e.residual * conductance * d.mole_to_micromole / env.pressure)
-    intercellular = OutFT(co2_s + carbon.net_assimilation * env.pressure / (d.mole_to_micromole * d.mesophyll_co2))
+    flux_residual = e.residual * conductance * d.mole_to_micromole / env.pressure
+    intercellular = co2_s + carbon.net_assimilation * env.pressure / (d.mole_to_micromole * d.mesophyll_co2)
+    # The solution constructor converts every scalar field to OutFT.
     return EquilibriumSolution{OutFT,typeof(carbon)}(
-        carbon, OutFT(electrons), co2_s, intercellular, OutFT(e.surface), OutFT(e.gs),
-        conductance, OutFT(e.residual), flux_residual, OutFT(width), iterations, status, status == EquilibriumConverged,
+        carbon, transport, co2_s, intercellular, e.surface, e.gs,
+        conductance, e.residual, flux_residual, width, iterations, status, status == EquilibriumConverged,
     )
 end
 
@@ -398,9 +397,9 @@ end
     equilibrium_gas_exchange(leaf, environment, diffusion, solver[, excitation];
         initial_co2=nothing)
 
-Solve coupled steady-state C3 assimilation, series CO₂ diffusion, and
-Ball–Berry or Medlyn stomatal conductance at prescribed leaf temperature and
-humidity.
+Solve coupled steady-state C3 assimilation ([`C3Photosynthesis`](@ref) or
+[`CytochromePhotosynthesis`](@ref)), series CO₂ diffusion, and Ball–Berry or Medlyn
+stomatal conductance at prescribed leaf temperature and humidity.
 
 `biochemical_co2` (`Cc`) is solved inside a physics-derived bracket while
 `intercellular_co2` (`Ci`) and `surface_co2` (`Cs`) are reconstructed from
@@ -410,7 +409,7 @@ branch, and invalid inputs or non-convergence return explicit
 [`EquilibriumStatus`](@ref) codes without throwing.
 """
 @inline function equilibrium_gas_exchange(
-    p::C3Photosynthesis,
+    p::AbstractC3Photosynthesis,
     stomata::SteadyStateStomata,
     env::GasExchangeEnvironment{FT},
     d::SeriesDiffusion,
@@ -419,23 +418,11 @@ branch, and invalid inputs or non-convergence return explicit
     initial_co2 = nothing,
 ) where {FT<:Real}
     g0, gain = equilibrium_coefficients(stomata.target, env)
-    r = biochemical_rates(p.temperature, env.temperature, env.oxygen)
-    electrons = electron_transport(p.electron_transport, env.absorbed_par, r.jmax, excitation)
-    s = p.stoichiometry
-    OutFT = typeof(
-        r.vcmax + s.electrons_per_carboxylation + env.co2 + d.diffusivity_ratio +
-        g0 + gain + electrons + zero(solver.co2_atol),
-    )
-    valid_equilibrium_inputs(env, d, stomata.target) || return invalid_equilibrium(OutFT, EquilibriumInvalidInput)
-    valid_excitation(excitation, env.absorbed_par) || return invalid_equilibrium(OutFT, EquilibriumInvalidInput)
-    isfinite(gain) || return invalid_equilibrium(OutFT, EquilibriumInvalidInput)
-    all(x -> isfinite(x) && x > zero(x), (s.electrons_per_carboxylation, s.oxygenation_cost)) ||
-        return invalid_equilibrium(OutFT, EquilibriumInvalidInput)
-    all(isfinite, (r.vcmax, r.jmax, r.respiration, r.kc, r.ko, r.gamma_star)) &&
-        min(primal_scalar(r.vcmax), primal_scalar(r.jmax), primal_scalar(r.respiration)) >= zero(primal_scalar(r.vcmax)) &&
-        min(r.kc, r.ko, r.gamma_star) > zero(r.kc) ||
-        return invalid_equilibrium(OutFT, EquilibriumInvalidInput)
-    isfinite(electrons) && primal_scalar(electrons) >= zero(primal_scalar(electrons)) ||
+    r, electrons, supply = light_supply(p, env, excitation)
+    OutFT = leaf_result_type(p, r, supply, env.co2, d.diffusivity_ratio, g0, gain, zero(solver.co2_atol))
+    valid_equilibrium_inputs(env, d, stomata.target) && valid_excitation(excitation, env.absorbed_par) &&
+        isfinite(gain) && valid_equilibrium_biochemistry(p, r) &&
+        isfinite(electrons) && primal_scalar(electrons) >= zero(primal_scalar(electrons)) ||
         return invalid_equilibrium(OutFT, EquilibriumInvalidInput)
     resistance0 = inv(d.boundary_co2) + d.diffusivity_ratio / g0 + inv(d.mesophyll_co2)
     if iszero(primal_scalar(electrons)) || iszero(primal_scalar(r.vcmax))
@@ -445,7 +432,7 @@ branch, and invalid inputs or non-convergence return explicit
         x_pol = polish_equilibrium_tangent(
             x, zero(OutFT), x + max(one(OutFT), x), p, r, electrons, env, d, g0, gain, status,
         )
-        return equilibrium_result(OutFT, x_pol, p, r, electrons, env, d, g0, gain, zero(OutFT), 0, status)
+        return equilibrium_result(OutFT, x_pol, p, r, electrons, supply, env, d, g0, gain, zero(OutFT), 0, status)
     end
     lo = zero(OutFT)
     elo = equilibrium_residual(lo, p, r, electrons, env, d, g0, gain)
@@ -453,11 +440,11 @@ branch, and invalid inputs or non-convergence return explicit
     ehi = equilibrium_residual(hi, p, r, electrons, env, d, g0, gain)
     if equilibrium_resolved(elo, lo, env, d, solver)
         x_lo = polish_equilibrium_tangent(lo, lo, hi, p, r, electrons, env, d, g0, gain, EquilibriumConverged)
-        return equilibrium_result(OutFT, x_lo, p, r, electrons, env, d, g0, gain, hi - lo, 0, EquilibriumConverged)
+        return equilibrium_result(OutFT, x_lo, p, r, electrons, supply, env, d, g0, gain, hi - lo, 0, EquilibriumConverged)
     end
     if equilibrium_resolved(ehi, hi, env, d, solver)
         x_hi = polish_equilibrium_tangent(hi, lo, hi, p, r, electrons, env, d, g0, gain, EquilibriumConverged)
-        return equilibrium_result(OutFT, x_hi, p, r, electrons, env, d, g0, gain, hi - lo, 0, EquilibriumConverged)
+        return equilibrium_result(OutFT, x_hi, p, r, electrons, supply, env, d, g0, gain, hi - lo, 0, EquilibriumConverged)
     end
     isfinite(hi) && isfinite(elo.residual) && isfinite(ehi.residual) && elo.residual >= zero(OutFT) && ehi.residual <= zero(OutFT) ||
         return invalid_equilibrium(OutFT, EquilibriumInvalidBracket)
@@ -482,7 +469,7 @@ branch, and invalid inputs or non-convergence return explicit
         end
         if equilibrium_resolved(e, x, env, d, solver)
             x_pol = polish_equilibrium_tangent(x, lo_orig, hi_orig, p, r, electrons, env, d, g0, gain, EquilibriumConverged)
-            return equilibrium_result(OutFT, x_pol, p, r, electrons, env, d, g0, gain, hi - lo, iteration, EquilibriumConverged)
+            return equilibrium_result(OutFT, x_pol, p, r, electrons, supply, env, d, g0, gain, hi - lo, iteration, EquilibriumConverged)
         end
         if e.residual > zero(OutFT)
             lo = x
@@ -491,10 +478,10 @@ branch, and invalid inputs or non-convergence return explicit
         end
         candidate = equilibrium_step(solver.method, x, e, lo, hi, iteration)
         if !(lo < candidate < hi)
-            return equilibrium_result(OutFT, best, p, r, electrons, env, d, g0, gain, hi - lo, iteration, EquilibriumPrecisionLimit)
+            return equilibrium_result(OutFT, best, p, r, electrons, supply, env, d, g0, gain, hi - lo, iteration, EquilibriumPrecisionLimit)
         end
         x = candidate
     end
-    return equilibrium_result(OutFT, best, p, r, electrons, env, d, g0, gain, hi - lo,
+    return equilibrium_result(OutFT, best, p, r, electrons, supply, env, d, g0, gain, hi - lo,
         solver.max_iterations, EquilibriumIterationLimit)
 end

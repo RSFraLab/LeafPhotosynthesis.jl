@@ -441,19 +441,9 @@ After solving gas exchange, verify solver convergence first and pass a
     q2 = psii_excitation(p.electron_transport, site.absorbed_par, excitation)
     OutFT = promote_type(typeof(q2), typeof(turnover.linear_electron_flow))
     nan = OutFT(NaN)
-    t_p, par_p, co2_p, o2_p = map(
-        primal_scalar,
-        (site.temperature, site.absorbed_par, site.co2, site.oxygen),
-    )
-    isfinite(t_p) &&
-    t_p > zero(t_p) &&
-    isfinite(par_p) &&
-    par_p >= zero(par_p) &&
-    isfinite(co2_p) &&
-    co2_p >= zero(co2_p) &&
-    isfinite(o2_p) &&
-    o2_p >= zero(o2_p) || return PSIIFluxInputs(nan, nan)
-    valid_excitation(excitation, site.absorbed_par) || return PSIIFluxInputs(nan, nan)
+    par_p = primal_scalar(site.absorbed_par)
+    valid_site(site) && isfinite(par_p) && par_p >= zero(par_p) &&
+        valid_excitation(excitation, site.absorbed_par) || return PSIIFluxInputs(nan, nan)
     return PSIIFluxInputs(OutFT(q2), OutFT(turnover.linear_electron_flow))
 end
 

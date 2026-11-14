@@ -2,7 +2,8 @@
 
 [API Overview](README.md) · Walkthroughs: [Biochemical turnover](../biochemical_turnover.md) · [Bonan 11.1 curves](../bonan_exercises.md) · [Interactive Gallery](../examples.html)
 
-Photosynthetic demand components (`C3Photosynthesis`, `CytochromePhotosynthesis`)
+Photosynthetic demand components (`C3Photosynthesis`, `CytochromePhotosynthesis`,
+both subtypes of `AbstractC3Photosynthesis`, whose leaf entry points are shared)
 combine Rubisco-limited and electron-transport-limited assimilation via explicit
 colimitation rules (`MinimumLimitation`, `SerialLimitation`,
 `QuadraticLimitation`) and respiration sign policies (`SignedAssimilation`,
@@ -13,7 +14,7 @@ point.
 
 ## Contents
 
-- **Photosynthesis Demand Components**: [`AbstractPhotosynthesis`](#abstractphotosynthesis), [`C3Photosynthesis`](#c3photosynthesis), [`CytochromePhotosynthesis`](#cytochromephotosynthesis)
+- **Photosynthesis Demand Components**: [`AbstractPhotosynthesis`](#abstractphotosynthesis), [`AbstractC3Photosynthesis`](#abstractc3photosynthesis), [`C3Photosynthesis`](#c3photosynthesis), [`CytochromePhotosynthesis`](#cytochromephotosynthesis)
 - **Rate Colimitation & Sign Policies**: [`MinimumLimitation`](#minimumlimitation), [`SerialLimitation`](#seriallimitation), [`QuadraticLimitation`](#quadraticlimitation), [`colimit`](#colimit), [`SignedAssimilation`](#signedassimilation), [`NonnegativeAssimilation`](#nonnegativeassimilation)
 - **Carbon Demand & Realized Biochemical Turnover**: [`carbon_assimilation`](#carbon_assimilation), [`biochemical_turnover`](#biochemical_turnover)
 
@@ -31,6 +32,46 @@ Supertype for leaf photosynthetic biochemistry components implementing [`photosy
 
 *Kind:* Abstract Type · *Source:* [`src/photosynthesis.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photosynthesis.jl#L1)
 
+### `AbstractC3Photosynthesis`
+
+```julia
+AbstractC3Photosynthesis{L,C} <: AbstractPhotosynthesis
+```
+
+Supertype for C3 biochemistry that co-limits Rubisco carboxylation and a light-driven
+electron supply with carbon co-limitation `L` and compensation treatment `C`.
+
+[`C3Photosynthesis`](#c3photosynthesis) and [`CytochromePhotosynthesis`](#cytochromephotosynthesis) are its subtypes. The
+leaf entry points [`photosynthesize`](leaf_composition_and_environments.md#photosynthesize), [`biochemical_turnover`](#biochemical_turnover),
+[`gas_exchange`](stomata_diffusion_and_equilibrium.md#gas_exchange), [`equilibrium_gas_exchange`](stomata_diffusion_and_equilibrium.md#equilibrium_gas_exchange),
+[`assimilation_sensitivity`](stomata_diffusion_and_equilibrium.md#assimilation_sensitivity) and the coupled [`oxygen_exchange`](stomata_diffusion_and_equilibrium.md#oxygen_exchange) are written
+once for this supertype; a subtype supplies only how its electron supply limits carbon.
+
+#### Implementation
+
+A subtype has the fields `temperature`, `electron_transport`, `stoichiometry`,
+`limitation::L` and `compensation::C`, and implements these internal methods:
+
+- `light_supply(p, environment, excitation) -> (rates, electrons, supply)`: kinetic
+  rates at leaf temperature and O₂, the electron flux `electrons` that limits carbon
+  [μmol e⁻ m⁻² leaf s⁻¹], and a NamedTuple `supply` of all available-supply scalars.
+- `light_limited_kinetics(p, rates, electrons) -> (m, k)`: capacity `m`
+  [μmol CO₂ m⁻² leaf s⁻¹] and half-saturation `k` [Pa] of the light-limited branch
+  $A_j = m (C_c - Γ^*) / (C_c + k)$.
+- `electron_state(p, rates, supply, co2) -> (valid, electron_transport, extras)`:
+  whether the electron state at finite biochemical-site `co2` lies in the model domain,
+  the available linear electron transport reported to callers, and a NamedTuple
+  of extra diagnostics appended to every leaf result.
+- `valid_biochemistry(p, rates)` and `valid_equilibrium_biochemistry(p, rates)`: the
+  parameter domains of the prescribed-CO₂ entry points and of the equilibrium solver.
+- `electron_demand(rates, co2, stoichiometry)`, `capacity_and_slope` and the signed
+  `biochemical_turnover` for the model's rate and stoichiometry types; the electron-
+  limited capacity is `electrons / electron_demand` (see [`carbon_assimilation`](#carbon_assimilation)).
+- `turnover_electron_flows(p, turnover)`: realized electron flows beyond
+  `linear_electron_flow` that [`oxygen_exchange`](stomata_diffusion_and_equilibrium.md#oxygen_exchange) reports.
+
+*Kind:* Abstract Type · *Source:* [`src/photosynthesis.jl:8`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photosynthesis.jl#L8)
+
 ### `C3Photosynthesis`
 
 ```julia
@@ -43,7 +84,7 @@ Compose Farquhar–von Caemmerer–Berry C3 biochemistry from concrete `temperat
 `C3Photosynthesis` holds immutable parameters only, with no per-leaf arrays,
 scratch buffers, or hidden empirical defaults.
 
-*Kind:* Struct · *Source:* [`src/photosynthesis.jl:8`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photosynthesis.jl#L8)
+*Kind:* Struct · *Source:* [`src/photosynthesis.jl:45`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photosynthesis.jl#L45)
 
 ### `CytochromePhotosynthesis`
 
@@ -56,7 +97,7 @@ Compose steady-state C3 photosynthesis governed by Cytochrome b₆f plastoquinol
 oxidation, PSI photochemistry, and coupled linear/cyclic ATP–NADPH stoichiometry
 (Johnson & Berry 2021) from immutable component structs.
 
-*Kind:* Struct · *Source:* [`src/cytochrome_photosynthesis.jl:378`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L378)
+*Kind:* Struct · *Source:* [`src/cytochrome_photosynthesis.jl:375`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L375)
 
 ---
 
@@ -152,6 +193,11 @@ Compute C3 carbon assimilation fluxes [μmol CO₂ m⁻² leaf s⁻¹] at prescr
 biochemical-site `co2` and `oxygen` partial pressures [Pa] and available
 electron flux `electrons` [μmol electrons m⁻² leaf s⁻¹].
 
+The electron-limited flux is $J (C_c - Γ^*) / D$, with electron demand
+$D = e_c (C_c + a Γ^*)$ for [`C3Rates`](temperature_and_compensation.md#c3rates) and $D = c_1 C_c + c_2 Γ^*$ (PSI
+electrons, see [`cytochrome_carbon_coefficients`](excitation_and_electron_transport.md#cytochrome_carbon_coefficients)) for
+[`CytochromeRates`](temperature_and_compensation.md#cytochromerates).
+
 Return `(; rubisco_limited, electron_limited, assimilation, respiration, net_assimilation)`,
 where positive `net_assimilation` denotes net CO₂ uptake and `assimilation`
 already accounts for photorespiratory CO₂ release prior to subtracting
@@ -159,7 +205,7 @@ mitochondrial `respiration`. Co-limitation acts on nonnegative biochemical
 capacities before multiplying by CO₂ excess so realized turnover remains
 well-defined across `Γ*`.
 
-*Kind:* Function · *Source:* [`src/carbon_assimilation.jl:64`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/carbon_assimilation.jl#L64)
+*Kind:* Function · *Source:* [`src/carbon_assimilation.jl:69`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/carbon_assimilation.jl#L69)
 
 ### `biochemical_turnover`
 
@@ -172,11 +218,13 @@ biochemical_turnover(leaf, environment[, excitation])
 Compute realized C3 gross biochemical turnover prior to cancellation between
 Rubisco carboxylation and photorespiratory CO₂ release.
 
-Return `(; carboxylation, photorespiratory_co2, respiration, linear_electron_flow)`
-(plus `electron_supply` on environment entry points, and `psi_electron_flow`,
-`cyclic_electron_flow`, `psi_electron_supply`, `psii_open_fraction` on
-[`CytochromePhotosynthesis`](#cytochromephotosynthesis)), with carbon fluxes in μmol CO₂ m⁻² leaf s⁻¹
-and electron fluxes in μmol electrons m⁻² leaf s⁻¹. Only [`SignedAssimilation`](#signedassimilation)
-defines this turnover contract.
+Return `(; carboxylation, photorespiratory_co2, respiration, linear_electron_flow)`,
+with carbon fluxes in μmol CO₂ m⁻² leaf s⁻¹ and electron fluxes in μmol electrons
+m⁻² leaf s⁻¹. [`CytochromePhotosynthesis`](#cytochromephotosynthesis) adds the realized `psi_electron_flow`
+and `cyclic_electron_flow`. Environment entry points append the available
+`electron_supply` and, for [`CytochromePhotosynthesis`](#cytochromephotosynthesis), `psi_electron_supply`,
+`psii_open_fraction` and `psi_to_psii_ratio`, as [`photosynthesize`](leaf_composition_and_environments.md#photosynthesize) does; input
+outside the physical domain gives `NaN` in every field. Only
+[`SignedAssimilation`](#signedassimilation) defines this turnover contract.
 
 *Kind:* Function · *Source:* [`src/carbon_assimilation.jl:103`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/carbon_assimilation.jl#L103)

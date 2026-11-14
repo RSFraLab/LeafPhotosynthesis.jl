@@ -46,10 +46,15 @@ Evaluate leaf photosynthetic carbon assimilation and available electron supply
 for `environment` using `BroadbandExcitation()` by default or an explicit
 [`AbstractExcitation`](excitation_and_electron_transport.md#abstractexcitation).
 
-The returned `electron_transport` field reports available electron supply; use
-[`biochemical_turnover`](carbon_assimilation_and_turnover.md#biochemical_turnover) for realized `linear_electron_flow`.
+Return the carbon fluxes of [`carbon_assimilation`](carbon_assimilation_and_turnover.md#carbon_assimilation) followed by
+`electron_transport` [μmol e⁻ m⁻² leaf s⁻¹], the available linear electron supply
+(use [`biochemical_turnover`](carbon_assimilation_and_turnover.md#biochemical_turnover) for realized `linear_electron_flow`);
+[`CytochromePhotosynthesis`](carbon_assimilation_and_turnover.md#cytochromephotosynthesis) appends `psi_electron_supply`, `psii_open_fraction`
+and `psi_to_psii_ratio`. Inputs outside the physical domain (non-finite or negative
+light, CO₂ or O₂, non-positive temperature, invalid excitation or model domain)
+give `NaN` in every field.
 
-*Kind:* Function · *Source:* [`src/photosynthesis.jl:58`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photosynthesis.jl#L58)
+*Kind:* Function · *Source:* [`src/photosynthesis.jl:140`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photosynthesis.jl#L140)
 
 ---
 
@@ -65,7 +70,7 @@ LeafEnvironment(temperature, absorbed_par, co2, oxygen)
 Represent prescribed leaf `temperature` [K], `absorbed_par` [μmol photons m⁻² leaf s⁻¹],
 and biochemical-site `co2` and `oxygen` partial pressures [Pa].
 
-*Kind:* Struct · *Source:* [`src/photosynthesis.jl:25`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photosynthesis.jl#L25)
+*Kind:* Struct · *Source:* [`src/photosynthesis.jl:62`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photosynthesis.jl#L62)
 
 ### `GasExchangeEnvironment`
 

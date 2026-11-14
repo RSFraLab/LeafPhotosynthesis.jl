@@ -9,43 +9,43 @@ temperature, ambient CO₂ and O₂, absorbed light, and boundary/mesophyll cond
 
 Return `(; dco2_dgs, dnet_assimilation_dgs, dassimilation_dgs)` in units of
 Pa (mol H₂O m⁻² s⁻¹)⁻¹ and μmol CO₂ (mol H₂O)⁻¹. Supplying a precomputed
-`exchange` reuses its converged solution; passing an [`AbstractExcitation`](@ref)
-in the fifth position performs a fresh [`gas_exchange`](@ref) solve for that
-excitation convention.
+`exchange` (a [`gas_exchange`](@ref) result or an [`EquilibriumSolution`](@ref))
+reuses its `biochemical_co2` and `conductance`; passing an
+[`AbstractExcitation`](@ref) in the fifth position performs a fresh
+[`gas_exchange`](@ref) solve for that excitation convention. With ``g`` the total
+CO₂ supply conductance, ``∂C_c/∂g_{sw} = (∂g/∂g_{sw}) (C_a - C_c) / (∂A_n/∂C_c + g)``.
+Input outside the domain of [`gas_exchange`](@ref) gives `NaN` in every field.
 """
 @inline function assimilation_sensitivity(
-    p::C3Photosynthesis,
+    p::AbstractC3Photosynthesis,
     env::GasExchangeEnvironment,
     state::StomatalState,
     d::SeriesDiffusion,
     exchange = gas_exchange(p, env, state, d),
     excitation::AbstractExcitation = BroadbandExcitation(),
 )
-    r = biochemical_rates(p.temperature, env.temperature, env.oxygen)
-    OutFT = typeof(
-        r.vcmax + p.stoichiometry.electrons_per_carboxylation +
-        env.co2 + state.conductance + d.diffusivity_ratio + exchange.biochemical_co2,
-    )
-    if !valid_excitation(excitation, env.absorbed_par)
-        n = OutFT(NaN)
-        return (; dco2_dgs = n, dnet_assimilation_dgs = n, dassimilation_dgs = n)
-    end
+    r, electrons, supply = light_supply(p, env, excitation)
+    co2 = exchange.biochemical_co2
+    OutFT = leaf_result_type(p, r, supply, env.co2, state.conductance, d.diffusivity_ratio, co2)
+    valid_co2, _, _ = electron_state(p, r, supply, co2)
     slope = carbon_assimilation_derivative(
-        r, exchange.biochemical_co2, env.oxygen,
-        exchange.electron_transport, p.stoichiometry, p.limitation, p.compensation,
+        r, co2, env.oxygen, electrons, p.stoichiometry, p.limitation, p.compensation,
     )
     conductance = exchange.conductance
     conversion = d.mole_to_micromole / env.pressure
     supply_slope = conductance * conversion
     dg_dgs = (conductance / state.conductance)^2 * d.diffusivity_ratio * conversion
-    dco2_dgs = OutFT(dg_dgs * (env.co2 - exchange.biochemical_co2) / (slope + supply_slope))
+    dco2_dgs = OutFT(dg_dgs * (env.co2 - co2) / (slope + supply_slope))
     derivative = OutFT(slope * dco2_dgs)
-    return (; dco2_dgs, dnet_assimilation_dgs = derivative, dassimilation_dgs = derivative)
+    valid = valid_co2 && valid_excitation(excitation, env.absorbed_par) &&
+        isfinite(co2) && valid_exchange_inputs(env, state, supply_slope) && valid_biochemistry(p, r)
+    return checked_result(OutFT, valid,
+        (; dco2_dgs, dnet_assimilation_dgs = derivative, dassimilation_dgs = derivative))
 end
 
 # A typed light input at the fifth position requests a fresh solve; callers reusing exchange pass light sixth.
 @inline assimilation_sensitivity(
-    p::C3Photosynthesis,
+    p::AbstractC3Photosynthesis,
     env::GasExchangeEnvironment,
     state::StomatalState,
     d::SeriesDiffusion,

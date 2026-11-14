@@ -53,11 +53,16 @@ end
 @inline co2_excess(co2, gamma_star, ::NonnegativeAssimilation) =
     max(co2 - gamma_star, zero(co2 - gamma_star))
 
+# Electrons consumed per unit of carboxylation capacity [e⁻ Pa]: the light-limited
+# capacity is electrons / electron_demand, e (C + a Γ*) for C3 linear electron flow.
+@inline electron_demand(r::C3Rates, co2, s::C3Stoichiometry) =
+    s.electrons_per_carboxylation * (co2 + s.oxygenation_cost * r.gamma_star)
+
 # Co-limit positive biochemical capacities before multiplying by CO₂ excess.
 # This preserves turnover at the compensation point, including photorespiration.
 @inline function assimilation_capacity(r, co2, oxygen, electrons, s, limitation)
     rubisco = r.vcmax / (co2 + r.kc * (one(oxygen) + oxygen / r.ko))
-    light = electrons / (s.electrons_per_carboxylation * (co2 + s.oxygenation_cost * r.gamma_star))
+    light = electrons / electron_demand(r, co2, s)
     return colimit(rubisco, light, limitation)
 end
 
@@ -68,6 +73,11 @@ Compute C3 carbon assimilation fluxes [μmol CO₂ m⁻² leaf s⁻¹] at prescr
 biochemical-site `co2` and `oxygen` partial pressures [Pa] and available
 electron flux `electrons` [μmol electrons m⁻² leaf s⁻¹].
 
+The electron-limited flux is ``J (C_c - Γ^*) / D``, with electron demand
+``D = e_c (C_c + a Γ^*)`` for [`C3Rates`](@ref) and ``D = c_1 C_c + c_2 Γ^*`` (PSI
+electrons, see [`cytochrome_carbon_coefficients`](@ref)) for
+[`CytochromeRates`](@ref).
+
 Return `(; rubisco_limited, electron_limited, assimilation, respiration, net_assimilation)`,
 where positive `net_assimilation` denotes net CO₂ uptake and `assimilation`
 already accounts for photorespiratory CO₂ release prior to subtracting
@@ -75,29 +85,19 @@ mitochondrial `respiration`. Co-limitation acts on nonnegative biochemical
 capacities before multiplying by CO₂ excess so realized turnover remains
 well-defined across `Γ*`.
 """
-@inline function carbon_assimilation(
-    r::C3Rates,
-    co2,
-    oxygen,
-    electrons,
-    s::C3Stoichiometry,
-    limitation,
-    compensation,
-)
+@inline function carbon_assimilation(r, co2, oxygen, electrons, s, limitation, compensation)
     excess = co2_excess(co2, r.gamma_star, compensation)
     rubisco = r.vcmax * excess / (co2 + r.kc * (one(oxygen) + oxygen / r.ko))
-    light = electrons * excess /
-            (s.electrons_per_carboxylation * (co2 + s.oxygenation_cost * r.gamma_star))
+    light = electrons * excess / electron_demand(r, co2, s)
     assimilation = assimilation_capacity(r, co2, oxygen, electrons, s, limitation) * excess
     net = assimilation - r.respiration
-    S = typeof(rubisco + light + net)
-    return (;
-        rubisco_limited = S(rubisco),
-        electron_limited = S(light),
-        assimilation = S(assimilation),
-        respiration = S(r.respiration),
-        net_assimilation = S(net),
-    )
+    return typed_result(typeof(rubisco + light + net), (;
+        rubisco_limited = rubisco,
+        electron_limited = light,
+        assimilation,
+        r.respiration,
+        net_assimilation = net,
+    ))
 end
 
 """
@@ -108,12 +108,14 @@ end
 Compute realized C3 gross biochemical turnover prior to cancellation between
 Rubisco carboxylation and photorespiratory CO₂ release.
 
-Return `(; carboxylation, photorespiratory_co2, respiration, linear_electron_flow)`
-(plus `electron_supply` on environment entry points, and `psi_electron_flow`,
-`cyclic_electron_flow`, `psi_electron_supply`, `psii_open_fraction` on
-[`CytochromePhotosynthesis`](@ref)), with carbon fluxes in μmol CO₂ m⁻² leaf s⁻¹
-and electron fluxes in μmol electrons m⁻² leaf s⁻¹. Only [`SignedAssimilation`](@ref)
-defines this turnover contract.
+Return `(; carboxylation, photorespiratory_co2, respiration, linear_electron_flow)`,
+with carbon fluxes in μmol CO₂ m⁻² leaf s⁻¹ and electron fluxes in μmol electrons
+m⁻² leaf s⁻¹. [`CytochromePhotosynthesis`](@ref) adds the realized `psi_electron_flow`
+and `cyclic_electron_flow`. Environment entry points append the available
+`electron_supply` and, for [`CytochromePhotosynthesis`](@ref), `psi_electron_supply`,
+`psii_open_fraction` and `psi_to_psii_ratio`, as [`photosynthesize`](@ref) does; input
+outside the physical domain gives `NaN` in every field. Only
+[`SignedAssimilation`](@ref) defines this turnover contract.
 """
 @inline function biochemical_turnover(
     r::C3Rates,
@@ -129,11 +131,10 @@ defines this turnover contract.
     photorespiratory_co2 = capacity * r.gamma_star
     linear_flow = s.electrons_per_carboxylation * capacity *
                   (co2 + s.oxygenation_cost * r.gamma_star)
-    S = typeof(carboxylation + photorespiratory_co2 + linear_flow + r.respiration)
-    return (;
-        carboxylation = S(carboxylation),
-        photorespiratory_co2 = S(photorespiratory_co2),
-        respiration = S(r.respiration),
-        linear_electron_flow = S(linear_flow),
-    )
+    return typed_result(typeof(carboxylation + photorespiratory_co2 + linear_flow + r.respiration), (;
+        carboxylation,
+        photorespiratory_co2,
+        r.respiration,
+        linear_electron_flow = linear_flow,
+    ))
 end

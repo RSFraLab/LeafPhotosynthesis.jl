@@ -120,7 +120,8 @@ const API_PAGES = [
             ("Bonan 11.1 curves", "../bonan_exercises.md"),
         ],
         summary = """
-        Photosynthetic demand components (`C3Photosynthesis`, `CytochromePhotosynthesis`)
+        Photosynthetic demand components (`C3Photosynthesis`, `CytochromePhotosynthesis`,
+        both subtypes of `AbstractC3Photosynthesis`, whose leaf entry points are shared)
         combine Rubisco-limited and electron-transport-limited assimilation via explicit
         colimitation rules (`MinimumLimitation`, `SerialLimitation`,
         `QuadraticLimitation`) and respiration sign policies (`SignedAssimilation`,
@@ -132,6 +133,7 @@ const API_PAGES = [
         sections = [
             "Photosynthesis Demand Components" => [
                 :AbstractPhotosynthesis,
+                :AbstractC3Photosynthesis,
                 :C3Photosynthesis,
                 :CytochromePhotosynthesis,
             ],

@@ -74,12 +74,9 @@ Eqs. 28, 30, Table 2), returning `NaN` on invalid inputs without throwing.
     p.electron_transport.limitation isa SerialLimitation || return nan
     phi1_max = psi_maximum_photochemical_yield(fl)
     primal_scalar(abs(p.electron_transport.psi_maximum_yield - phi1_max)) <= primal_scalar(fl.yield_tolerance) || return nan
-    t_p, co2_p, o2_p = map(primal_scalar, (temperature, co2, oxygen))
-    isfinite(t_p) && t_p > zero(t_p) &&
-        isfinite(co2_p) && co2_p >= zero(co2_p) &&
-        isfinite(o2_p) && o2_p >= zero(o2_p) || return nan
-    valid_cytochrome_rates_and_stoichiometry(rates, p.stoichiometry; require_positive_gamma = false) &&
-        !(iszero(co2_p) && iszero(primal_scalar(rates.gamma_star))) || return nan
+    valid_site(temperature, co2, oxygen) || return nan
+    valid_biochemistry(p, rates) &&
+        !(iszero(primal_scalar(co2)) && iszero(primal_scalar(rates.gamma_star))) || return nan
     eta = psi_to_psii_electron_ratio(rates, co2, p.stoichiometry)
     phi2_max = psii_maximum_photochemical_yield(fl, one(FTR))
     return T(phi1_max / (phi1_max + eta * phi2_max))
@@ -125,17 +122,10 @@ invalid or incompatible inputs without throwing.
     p.electron_transport.limitation isa SerialLimitation || return nan
     phi1_max = psi_maximum_photochemical_yield(fl)
     primal_scalar(abs(p.electron_transport.psi_maximum_yield - phi1_max)) <= primal_scalar(fl.yield_tolerance) || return nan
-    t_p, par_p, co2_p, o2_p = map(
-        primal_scalar,
-        (site.temperature, site.absorbed_par, site.co2, site.oxygen),
-    )
-    isfinite(t_p) && t_p > zero(t_p) &&
-        isfinite(par_p) && par_p >= zero(par_p) &&
-        isfinite(co2_p) && co2_p >= zero(co2_p) &&
-        isfinite(o2_p) && o2_p >= zero(o2_p) || return nan
-
-    valid_cytochrome_rates_and_stoichiometry(rates, p.stoichiometry; require_positive_gamma = false) &&
-        !(iszero(co2_p) && iszero(primal_scalar(rates.gamma_star))) || return nan
+    par_p = primal_scalar(site.absorbed_par)
+    valid_site(site) && isfinite(par_p) && par_p >= zero(par_p) || return nan
+    valid_biochemistry(p, rates) &&
+        !(iszero(primal_scalar(site.co2)) && iszero(primal_scalar(rates.gamma_star))) || return nan
 
     # Dimensionless PSII rate ratios bounded in [0, 1] (zero rate^2 overflow in Float32).
     psii = fl.psii

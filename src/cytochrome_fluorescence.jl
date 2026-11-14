@@ -644,14 +644,8 @@ turnover at biochemical-site `site.co2` (`Cc`).
     q1 = psi_excitation(p.electron_transport, site.absorbed_par, excitation)
     OutFT = promote_type(typeof(q2), typeof(q1), typeof(turnover.linear_electron_flow))
     nan = OutFT(NaN)
-    t_p, par_p, co2_p, o2_p = map(
-        primal_scalar,
-        (site.temperature, site.absorbed_par, site.co2, site.oxygen),
-    )
-    isfinite(t_p) && t_p > zero(t_p) &&
-        isfinite(par_p) && par_p >= zero(par_p) &&
-        isfinite(co2_p) && co2_p >= zero(co2_p) &&
-        isfinite(o2_p) && o2_p >= zero(o2_p) &&
+    par_p = primal_scalar(site.absorbed_par)
+    valid_site(site) && isfinite(par_p) && par_p >= zero(par_p) &&
         valid_excitation(excitation, site.absorbed_par) ||
         return CoupledPhotosystemInputs(nan, nan, nan, nan, nan)
     return CoupledPhotosystemInputs(

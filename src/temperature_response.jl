@@ -48,6 +48,19 @@ end
     return promote(x, rest...)
 end
 
+# Result assembly for scalar entry points; a result is a scalar or a nested NamedTuple.
+# `typed_result` converts every scalar to the output type FT and `invalid_result`
+# returns the same shape with every scalar FT(NaN), so the valid and the invalid result
+# of an entry point share field names, order and types.
+@inline typed_result(::Type{FT}, x::Real) where {FT<:Real} = FT(x)
+@inline typed_result(::Type{FT}, x::NamedTuple) where {FT<:Real} =
+    map(v -> typed_result(FT, v), x)
+@inline invalid_result(::Type{FT}, ::Real) where {FT<:Real} = FT(NaN)
+@inline invalid_result(::Type{FT}, x::NamedTuple) where {FT<:Real} =
+    map(v -> invalid_result(FT, v), x)
+@inline checked_result(::Type{FT}, valid::Bool, x) where {FT<:Real} =
+    valid ? typed_result(FT, x) : invalid_result(FT, x)
+
 """
     Arrhenius{FT}(; value_ref, activation_energy, temperature_ref, gas_constant)
     Arrhenius(value_ref, activation_energy, temperature_ref, gas_constant)

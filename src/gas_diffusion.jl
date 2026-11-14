@@ -143,60 +143,59 @@ positive stomatal conductance `state` (Liu et al. 2024, Eqs. 1–2).
 
 Supports [`MinimumLimitation`](@ref) with [`SignedAssimilation`](@ref) (for both
 [`C3Photosynthesis`](@ref) and [`CytochromePhotosynthesis`](@ref)) without A–Ci
-iteration. Return carbon diagnostics, `electron_transport`, `surface_co2`,
-`intercellular_co2`, `biochemical_co2` [Pa], total CO₂ `conductance`
-[mol m⁻² leaf s⁻¹], and `diffusion_residual` [μmol CO₂ m⁻² leaf s⁻¹].
+iteration: each limiting branch ``A = m (C_c - Γ^*)/(C_c + k) - R_d`` meets the supply
+``g (C_a - C_c)`` at the root of a quadratic, and the binding branch is the larger
+root above the compensation point and the smaller one below it. Return `carbon`
+diagnostics, `electron_transport` (followed by the model's extra electron diagnostics,
+as in [`photosynthesize`](@ref)), `surface_co2`, `intercellular_co2`, `biochemical_co2`
+[Pa], total CO₂ `conductance` [mol m⁻² leaf s⁻¹], and `diffusion_residual`
+[μmol CO₂ m⁻² leaf s⁻¹]. Invalid excitation or forcing gives `NaN` in every field.
 """
 @inline function gas_exchange(
-    p::C3Photosynthesis{T,E,S,MinimumLimitation,SignedAssimilation},
-    env::GasExchangeEnvironment{FT},
+    p::AbstractC3Photosynthesis{MinimumLimitation,SignedAssimilation},
+    env::GasExchangeEnvironment,
     state::StomatalState,
     d::SeriesDiffusion,
     excitation::AbstractExcitation = BroadbandExcitation(),
-) where {T,E,S,FT<:Real}
+)
     conductance = inv(inv(d.boundary_co2) + d.diffusivity_ratio / state.conductance + inv(d.mesophyll_co2))
     g = conductance * d.mole_to_micromole / env.pressure
-    r = biochemical_rates(p.temperature, env.temperature, env.oxygen)
-    electrons = electron_transport(p.electron_transport, env.absorbed_par, r.jmax, excitation)
-    OutFT = typeof(r.vcmax + p.stoichiometry.electrons_per_carboxylation + env.co2 + g + conductance + electrons)
-    if !valid_excitation(excitation, env.absorbed_par)
-        n = OutFT(NaN)
-        return (; carbon = invalid_carbon(OutFT), electron_transport = n,
-            surface_co2 = n, intercellular_co2 = n, biochemical_co2 = n,
-            conductance = n, diffusion_residual = n)
-    end
+    r, electrons, supply = light_supply(p, env, excitation)
+    OutFT = leaf_result_type(p, r, supply, env.co2, g, conductance)
     km = r.kc * (one(env.oxygen) + env.oxygen / r.ko)
     rubisco_co2 = diffusion_co2_root(r.vcmax, km, r.gamma_star, r.respiration, env.co2, g)
-    light_co2 = diffusion_co2_root(
-        electrons / p.stoichiometry.electrons_per_carboxylation,
-        p.stoichiometry.oxygenation_cost * r.gamma_star,
-        r.gamma_star,
-        r.respiration,
-        env.co2,
-        g,
-    )
+    m, k = light_limited_kinetics(p, r, electrons)
+    light_co2 = diffusion_co2_root(m, k, r.gamma_star, r.respiration, env.co2, g)
     # Both roots lie on the same side of gamma_star. Below it, the smaller
     # positive capacity produces the less negative pre-respiration assimilation.
     above_compensation = g * (env.co2 - r.gamma_star) + r.respiration >= zero(g)
     co2 = OutFT(above_compensation ? max(rubisco_co2, light_co2) : min(rubisco_co2, light_co2))
-    carbon_raw = carbon_assimilation(r, co2, env.oxygen, electrons, p.stoichiometry, p.limitation, p.compensation)
-    carbon = (;
-        rubisco_limited = OutFT(carbon_raw.rubisco_limited),
-        electron_limited = OutFT(carbon_raw.electron_limited),
-        assimilation = OutFT(carbon_raw.assimilation),
-        respiration = OutFT(carbon_raw.respiration),
-        net_assimilation = OutFT(carbon_raw.net_assimilation),
-    )
+    valid_co2, transport, extras = electron_state(p, r, supply, co2)
+    carbon = typed_result(OutFT, carbon_assimilation(
+        r, co2, env.oxygen, electrons, p.stoichiometry, p.limitation, p.compensation,
+    ))
     pressure_flux = carbon.net_assimilation * env.pressure / d.mole_to_micromole
-    surface_co2 = OutFT(env.co2 - pressure_flux / d.boundary_co2)
-    intercellular_co2 = OutFT(co2 + pressure_flux / d.mesophyll_co2)
-    return (;
+    valid = valid_co2 && isfinite(co2) && valid_excitation(excitation, env.absorbed_par) &&
+        valid_exchange_inputs(env, state, g) && valid_biochemistry(p, r)
+    return checked_result(OutFT, valid, (;
         carbon,
-        electron_transport = OutFT(electrons),
-        surface_co2,
-        intercellular_co2,
+        electron_transport = transport,
+        extras...,
+        surface_co2 = env.co2 - pressure_flux / d.boundary_co2,
+        intercellular_co2 = co2 + pressure_flux / d.mesophyll_co2,
         biochemical_co2 = co2,
-        conductance = OutFT(conductance),
-        diffusion_residual = OutFT(g * (env.co2 - co2) - carbon.net_assimilation),
-    )
+        conductance,
+        diffusion_residual = g * (env.co2 - co2) - carbon.net_assimilation,
+    ))
+end
+
+# Domain of gas exchange at prescribed conductance: a valid site (`valid_site`),
+# positive finite total pressure [Pa] and stomatal conductance [mol H₂O m⁻² s⁻¹], and a
+# positive finite CO₂ supply conductance `g` [μmol CO₂ m⁻² s⁻¹ Pa⁻¹].
+@inline function valid_exchange_inputs(env, state, g)
+    p_p, gs_p, g_p = map(primal_scalar, (env.pressure, state.conductance, g))
+    return valid_site(env) &&
+        isfinite(p_p) && p_p > zero(p_p) &&
+        isfinite(gs_p) && gs_p > zero(gs_p) &&
+        isfinite(g_p) && g_p > zero(g_p)
 end

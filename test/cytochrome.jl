@@ -538,3 +538,39 @@ end
         end
     end
 end
+
+@testset "One physical input domain for C3 and Cytochrome leaf paths" begin
+    for FT in (Float32, Float64)
+        case = setup_cytochrome_stress(FT)
+        x = case.settings["experiment"]
+        site(t, co2, o2) = LeafEnvironment{FT}(t, x["high_light_par"], co2, o2)
+        gas(t, co2, o2, pressure) = GasExchangeEnvironment{FT}(
+            t, x["high_light_par"], co2, o2, pressure, x["relative_humidity"], x["vpd_Pa"],
+        )
+        t0, ca, o2, pa = x["temperature_K"], x["ambient_co2_Pa"], x["oxygen_Pa"], x["pressure_Pa"]
+        state = StomatalState(FT(0.2))
+        allnan(r) = all(isnan, values(r))
+        for p in (case.fvcb_leaf.photosynthesis, case.cyto_leaf.photosynthesis)
+            @test all(isfinite, values(photosynthesize(p, site(t0, ca, o2))))
+            exchange = gas_exchange(p, gas(t0, ca, o2, pa), state, case.diffusion)
+            @test all(isfinite, values(exchange.carbon))
+            for bad in ((zero(FT), ca, o2), (FT(-5), ca, o2), (FT(Inf), ca, o2), (FT(NaN), ca, o2),
+                    (t0, -one(FT), o2), (t0, FT(Inf), o2), (t0, ca, -one(FT)), (t0, ca, FT(NaN)))
+                @test allnan(photosynthesize(p, site(bad...)))
+                @test allnan(biochemical_turnover(p, site(bad...)))
+                @test allnan(oxygen_exchange(case.cyto_leaf.oxygen, p, site(bad...)))
+                bad_exchange = gas_exchange(p, gas(bad..., pa), state, case.diffusion)
+                @test allnan(bad_exchange.carbon) && isnan(bad_exchange.conductance)
+                @test allnan(assimilation_sensitivity(p, gas(bad..., pa), state, case.diffusion))
+            end
+            for (pressure, gs) in ((zero(FT), FT(0.2)), (-one(FT), FT(0.2)), (FT(NaN), FT(0.2)),
+                    (pa, zero(FT)), (pa, FT(-0.1)), (pa, FT(Inf)), (pa, FT(NaN)))
+                bad_exchange = gas_exchange(p, gas(t0, ca, o2, pressure), StomatalState(gs), case.diffusion)
+                @test allnan(bad_exchange.carbon) && isnan(bad_exchange.surface_co2)
+                @test allnan(assimilation_sensitivity(
+                    p, gas(t0, ca, o2, pressure), StomatalState(gs), case.diffusion,
+                ))
+            end
+        end
+    end
+end

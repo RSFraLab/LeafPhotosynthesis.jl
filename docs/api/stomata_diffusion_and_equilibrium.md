@@ -213,9 +213,13 @@ positive stomatal conductance `state` (Liu et al. 2024, Eqs. 1–2).
 
 Supports [`MinimumLimitation`](carbon_assimilation_and_turnover.md#minimumlimitation) with [`SignedAssimilation`](carbon_assimilation_and_turnover.md#signedassimilation) (for both
 [`C3Photosynthesis`](carbon_assimilation_and_turnover.md#c3photosynthesis) and [`CytochromePhotosynthesis`](carbon_assimilation_and_turnover.md#cytochromephotosynthesis)) without A–Ci
-iteration. Return carbon diagnostics, `electron_transport`, `surface_co2`,
-`intercellular_co2`, `biochemical_co2` [Pa], total CO₂ `conductance`
-[mol m⁻² leaf s⁻¹], and `diffusion_residual` [μmol CO₂ m⁻² leaf s⁻¹].
+iteration: each limiting branch $A = m (C_c - Γ^*)/(C_c + k) - R_d$ meets the supply
+$g (C_a - C_c)$ at the root of a quadratic, and the binding branch is the larger
+root above the compensation point and the smaller one below it. Return `carbon`
+diagnostics, `electron_transport` (followed by the model's extra electron diagnostics,
+as in [`photosynthesize`](leaf_composition_and_environments.md#photosynthesize)), `surface_co2`, `intercellular_co2`, `biochemical_co2`
+[Pa], total CO₂ `conductance` [mol m⁻² leaf s⁻¹], and `diffusion_residual`
+[μmol CO₂ m⁻² leaf s⁻¹]. Invalid excitation or forcing gives `NaN` in every field.
 
 *Kind:* Function · *Source:* [`src/gas_diffusion.jl:137`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/gas_diffusion.jl#L137)
 
@@ -378,9 +382,9 @@ equilibrium_gas_exchange(leaf, environment, diffusion, solver[, excitation];
     initial_co2=nothing)
 ```
 
-Solve coupled steady-state C3 assimilation, series CO₂ diffusion, and
-Ball–Berry or Medlyn stomatal conductance at prescribed leaf temperature and
-humidity.
+Solve coupled steady-state C3 assimilation ([`C3Photosynthesis`](carbon_assimilation_and_turnover.md#c3photosynthesis) or
+[`CytochromePhotosynthesis`](carbon_assimilation_and_turnover.md#cytochromephotosynthesis)), series CO₂ diffusion, and Ball–Berry or Medlyn
+stomatal conductance at prescribed leaf temperature and humidity.
 
 `biochemical_co2` (`Cc`) is solved inside a physics-derived bracket while
 `intercellular_co2` (`Ci`) and `surface_co2` (`Cs`) are reconstructed from
@@ -389,7 +393,7 @@ electron supply are evaluated once per solve, darkness uses an exact analytic
 branch, and invalid inputs or non-convergence return explicit
 [`EquilibriumStatus`](#equilibriumstatus) codes without throwing.
 
-*Kind:* Function · *Source:* [`src/equilibrium_solver.jl:395`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/equilibrium_solver.jl#L395)
+*Kind:* Function · *Source:* [`src/equilibrium_solver.jl:394`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/equilibrium_solver.jl#L394)
 
 ---
 
@@ -424,9 +428,12 @@ temperature, ambient CO₂ and O₂, absorbed light, and boundary/mesophyll cond
 
 Return `(; dco2_dgs, dnet_assimilation_dgs, dassimilation_dgs)` in units of
 Pa (mol H₂O m⁻² s⁻¹)⁻¹ and μmol CO₂ (mol H₂O)⁻¹. Supplying a precomputed
-`exchange` reuses its converged solution; passing an [`AbstractExcitation`](excitation_and_electron_transport.md#abstractexcitation)
-in the fifth position performs a fresh [`gas_exchange`](#gas_exchange) solve for that
-excitation convention.
+`exchange` (a [`gas_exchange`](#gas_exchange) result or an [`EquilibriumSolution`](#equilibriumsolution))
+reuses its `biochemical_co2` and `conductance`; passing an
+[`AbstractExcitation`](excitation_and_electron_transport.md#abstractexcitation) in the fifth position performs a fresh
+[`gas_exchange`](#gas_exchange) solve for that excitation convention. With $g$ the total
+CO₂ supply conductance, $∂C_c/∂g_{sw} = (∂g/∂g_{sw}) (C_a - C_c) / (∂A_n/∂C_c + g)$.
+Input outside the domain of [`gas_exchange`](#gas_exchange) gives `NaN` in every field.
 
 *Kind:* Function · *Source:* [`src/gas_exchange_sensitivities.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/gas_exchange_sensitivities.jl#L1)
 
