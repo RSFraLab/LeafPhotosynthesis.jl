@@ -1,5 +1,5 @@
-isdefined(@__MODULE__, :setup_excitation_test) || include("excitation_fixture.jl")
-
+# Shared batch checks (need excitation_fixture.jl); run on CPU by excitation.jl and on CUDA by
+# gpu/runtests.jl.
 function compare_excitation_diagnostics(actual, expected, ::Type{FT}, rtol, atol) where {FT}
     @test typeof(actual)===typeof(expected)
     if actual isa AbstractFloat

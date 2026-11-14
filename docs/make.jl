@@ -90,17 +90,19 @@ makedocs(;
     warnonly = false,
 )
 
-# Deployment happens only in CI (GitHub Actions); a local build stops here.
+# Deployment happens only in CI (.github/workflows/Documentation.yml): pushes to main deploy
+# dev/, tags deploy vX.Y.Z/ and stable/. Pull requests only build (push_preview = false; set it
+# to true to publish previews under previews/PR<number>). A local build stops here.
 if IN_CI
     if HTML_FALLBACK
-        deploydocs(; repo = REPO * ".git", devbranch = "main", push_preview = true)
+        deploydocs(; repo = REPO * ".git", devbranch = "main", push_preview = false)
     else
         DocumenterVitepress.deploydocs(;
             repo = REPO * ".git",
             target = joinpath(DOCS, "build"),
             devbranch = "main",
             devurl = "dev",
-            push_preview = true,
+            push_preview = false,
         )
     end
 end

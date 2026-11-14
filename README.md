@@ -50,23 +50,49 @@ The same example is a doctest on the manual's home page. Runnable exercises with
 parameter files, units and provenance are in [`examples/`](examples), for instance
 `julia --project=. examples/bonan_11_1.jl`.
 
-## Tests
+## Development
+
+Tests (all groups, as in CI):
 
 ```sh
 julia --project=. -e 'using Pkg; Pkg.test()'
 ```
 
-The optional CUDA tests live in their own environment:
+The suite is split into named groups (`core_exchange`, `turnover`, `equilibrium`, `oxygen`,
+`fluorescence`, `leaf`, `excitation`, `cytochrome`, `flexas`, `qa`, `jet`; the table is at
+the top of [`test/runtests.jl`](test/runtests.jl)). Each group runs in its own module and can
+run alone:
 
 ```sh
-julia --project=test/gpu -e 'using Pkg; Pkg.develop(path="."); Pkg.instantiate()'
+julia --project=. -e 'using Pkg; Pkg.test(test_args = ["cytochrome", "qa"])'
+# or directly in the test environment (Julia ≥ 1.11; instantiate once):
+julia --project=test -e 'using Pkg; Pkg.instantiate()'
+julia --project=test test/runtests.jl cytochrome qa
+```
+
+The tests build their leaves and parameter sets with the example code: `test/common.jl`
+includes the needed files of `examples/` once per group, so a broken example fails the
+tests. The `qa` group runs Aqua, ExplicitImports, the doctests and the automatic
+differentiation checks; `jet` runs JET's error and runtime-dispatch analysis on the entry
+points of both models in `Float32` and `Float64`.
+
+The `test`, `test/gpu` and `docs` environments find the package through `[sources]`
+(`path = ".."`) in their `Project.toml`, which Julia ≥ 1.11 reads; on Julia 1.10 use
+`Pkg.test()` (it adds the package itself). Pkg 1.10 refuses to merge a `test/Manifest.toml`
+written by a direct run on a newer Julia ("can not merge projects"); delete that git-ignored
+file before `Pkg.test()` on 1.10.
+
+The CUDA tests need an NVIDIA GPU and are not run in CI:
+
+```sh
+julia --project=test/gpu -e 'using Pkg; Pkg.instantiate()'
 julia --project=test/gpu test/gpu/runtests.jl
 ```
 
-## Building the documentation
+Documentation build and local preview:
 
 ```sh
-julia --project=docs -e 'using Pkg; Pkg.develop(path="."); Pkg.instantiate()'
+julia --project=docs -e 'using Pkg; Pkg.instantiate()'
 julia --project=docs docs/make.jl
 python3 -m http.server --bind 127.0.0.1 --directory docs/build/1 8000
 ```
@@ -79,6 +105,12 @@ The site is a single-page application: serve it, do not open the files directly.
 `LEAF_DOCS_FORMAT=html julia --project=docs docs/make.jl` builds a plain Documenter HTML
 site in `docs/build/` instead, without Node.js. Pages are in `docs/src/`, the chart code
 in `docs/src/public/leaf/` and the chart data generator in `docs/gallery_data.jl`.
+Working notes and validation records that are not part of the manual are in `docs/dev_notes/`.
+
+Continuous integration (`.github/workflows/`): `CI.yml` runs the tests on Julia 1.10 and
+the current release (Linux, plus macOS on the current release); `Documentation.yml` builds
+the site on every pull request and deploys it from `main` (`…/dev/`) and from tags;
+`TagBot.yml` and `CompatHelper.yml` are the usual registry helpers.
 
 ## License
 

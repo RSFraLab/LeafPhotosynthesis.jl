@@ -251,3 +251,7 @@ end
         )
     end
 end
+
+@testset "Fluorescence CPU batches" begin
+    check_fluorescence_batches(identity, () -> nothing)
+end

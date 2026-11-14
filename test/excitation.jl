@@ -1,6 +1,3 @@
-include("excitation_fixture.jl")
-include("excitation_reference.jl")
-
 @testset "Explicit excitation interfaces and independent leaf responses" begin
     @test isempty(Test.detect_ambiguities(LeafPhotosynthesis))
     for FT in (Float32, Float64)
@@ -564,4 +561,8 @@ end
             end
         end
     end
+end
+
+@testset "Explicit excitation CPU batches" begin
+    check_excitation_batches(identity, () -> nothing)
 end

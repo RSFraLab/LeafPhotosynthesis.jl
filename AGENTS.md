@@ -1,6 +1,6 @@
 # Working on LeafPhotosynthesis
 
-Read README.md, docs/src/design.md, and docs/session_notes.md before changing scientific code.
+Read README.md, docs/src/design.md, and docs/dev_notes/session_notes.md before changing scientific code.
 The user explicitly wants a small package, physical organization, easy navigation,
 concrete component types, no embedded scientific constants, and Float32/Float64 support.
 
@@ -29,5 +29,6 @@ concrete component types, no embedded scientific constants, and Float32/Float64 
   Combined exercises belong in a separate example repository later, not here.
 - Keep prior source audits qualified: isolated reproduction is not a full model run.
 
-Validation: `julia --project=. test/runtests.jl` and
+Validation: `julia --project=. -e 'using Pkg; Pkg.test()'` (one group:
+`Pkg.test(test_args = ["leaf"])`; groups are listed in test/runtests.jl) and
 `julia --project=. examples/bonan_11_1.jl /tmp/leaf-photosynthesis-example`.

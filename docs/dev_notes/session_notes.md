@@ -1,5 +1,9 @@
 # Session notes for continuing the modular land model work
 
+> Working notes, not part of the manual (moved from `docs/` in November 2026). File paths,
+> function names and test counts describe the repository when the notes were written; the
+> manual (`docs/src/`) and `CHANGELOG.md` describe the current state.
+
 Updated 2026-11-06. These notes preserve Christian's requirements, the code review,
 and the initial implementation scope. They are working notes, not a completed
 scientific validation of the reference models.
@@ -405,7 +409,7 @@ Both independent reviewers cleared design and implementation. Full CPU39,104 and
 CUDA7,032 checks pass (new scalar2,318 and batch1,438 in each backend), FP32/64.
 Independent BigFloat rate reconstruction, normalization invariance, dark/compensation,
 invalid/quenching-limit cases, allocation/inference and CUDA NoOp are covered.
-Validation sources/versions/reviews are recorded in docs/fluorescence_validation.json.
+Validation sources/versions/reviews are recorded in docs/dev_notes/fluorescence_validation.json.
 
 The short example and Bonan entry point pass. Thirteen offline Chart.js plots pass
 browser checks including exact data and valid-dark gaps; four new static previews

@@ -1,3 +1,4 @@
+# Shared batch checks; run on CPU by oxygen_compensation.jl and on CUDA by gpu/runtests.jl.
 @inline function oxygen_batch_response(leaf, env, state, diffusion, solver)
     rates = biochemical_rates(leaf.photosynthesis.temperature, env.temperature, env.oxygen)
     site = LeafEnvironment(env.temperature, env.absorbed_par, rates.gamma_star, env.oxygen)

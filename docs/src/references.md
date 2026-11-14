@@ -15,8 +15,9 @@ The new core is written independently around explicit mathematical operations;
 no upstream source files are bundled. Bonan's scientific parameter values and
 experimental settings are attributed in the TOML file. An upstream license was
 not present in the inspected Bonan tree; do not vendor its MATLAB files or datasets
-without establishing redistribution terms. The new package has not been assigned
-a distribution license or published; choose its license before release.
+without establishing redistribution terms. LeafPhotosynthesis.jl itself is licensed
+under the [Apache License, Version 2.0](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/LICENSE);
+it is not registered in the General registry yet.
 
 The test oracle recomputes the reference equations with BigFloat, mole fractions,
 and the direct quadratic formula. It does not execute MATLAB. A future reference

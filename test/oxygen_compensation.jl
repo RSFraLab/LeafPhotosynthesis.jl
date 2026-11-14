@@ -208,3 +208,7 @@ end
         end
     end
 end
+
+@testset "Oxygen-aware CPU batches" begin
+    check_oxygen_batches(identity, () -> nothing)
+end

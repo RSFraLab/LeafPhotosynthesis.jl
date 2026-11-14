@@ -73,17 +73,15 @@ analytical diffusion residuals, equilibrium, fixed-O₂ conductance derivatives,
 NoOp parity, type inference and zero warmed scalar allocations are tested in both
 precisions. CPU/CUDA batches reorder dark and lit cases and retain native solver
 diagnostics. The unchanged Bonan exercise remains covered by its existing oracle.
-The full suite passes 35,348 CPU checks and 5,594 CUDA checks, including the
-existing tests. Both independent reviewers cleared the scientific implementation
-and example. The nine-plot gallery passes data, precision/temperature controls,
-tables, series toggles, PNG export, mobile and offline browser checks. Existing
-Bonan/stomatal/turnover CSVs and their seven previews remain byte-for-byte unchanged.
-The [validation record](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/docs/oxygen_response_validation.json) pins sources, software,
+When the component was added (November 2026), the full suite passed 35,348 CPU
+checks and 5,594 CUDA checks, and two independent reviewers cleared the scientific
+implementation and example. The oxygen charts of the gallery are generated and
+checked by the documentation build. The [validation record](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/docs/dev_notes/oxygen_response_validation.json) pins sources, software,
 tests and the separate code/biophysics reviews.
 
 ```sh
 julia --project=. examples/oxygen_response.jl
-julia --project=. test/runtests.jl
+julia --project=. -e 'using Pkg; Pkg.test(test_args = ["oxygen"])'
 julia --project=test/gpu test/gpu/runtests.jl
 julia --project=docs docs/make.jl
 ```

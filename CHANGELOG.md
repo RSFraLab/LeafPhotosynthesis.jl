@@ -147,3 +147,19 @@ status enums with their values (`EquilibriumStatus`, `EquilibriumConverged`,
   committed (`docs/assets/examples-data.js`, `flexas-2002-data.js`, `docs/assets/data/`,
   `docs/assets/figures/` removed). The browser checks that needed Playwright are replaced
   by Julia checks in the build (`docs/gallery_data.jl`).
+
+### Development
+
+- Tests are split into named groups (`test/runtests.jl`), each run in its own module and
+  selectable with `Pkg.test(test_args = ["group", …])`; all groups run by default. The
+  example code the tests use as fixtures is loaded in one place, `test/common.jl`.
+  Before: one script with shared globals and includes in a fixed order.
+- New `jet` test group: JET's error and runtime-dispatch analysis of the entry points of
+  both models in `Float32` and `Float64` (test-only dependency).
+- Continuous integration in `.github/workflows/`: tests (Julia 1.10 and current release on
+  Linux, current release on macOS), documentation build and deployment, TagBot,
+  CompatHelper. The CUDA tests are not run in CI.
+- The `test`, `test/gpu` and `docs` environments find the package through `[sources]`;
+  every dependency has a compat bound. `Project.toml` has `authors`.
+- Working notes and validation records moved from `docs/` to `docs/dev_notes/` (not part of
+  the manual).

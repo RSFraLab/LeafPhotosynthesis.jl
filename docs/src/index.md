@@ -105,7 +105,7 @@ CUDA is isolated in a test environment; it is not a core dependency. From the pa
 root, on a GPU-enabled host:
 
 ```sh
-julia --project=test/gpu -e 'using Pkg; Pkg.develop(path="."); Pkg.instantiate()'
+julia --project=test/gpu -e 'using Pkg; Pkg.instantiate()'
 julia --project=test/gpu test/gpu/runtests.jl
 ```
 
@@ -116,6 +116,10 @@ causes failure, not a skipped test that could look like success. The core and no
 components pass on an NVIDIA L40S with Julia 1.12.6 and CUDA.jl 6.5.1. Older CUDA 5.11.3
 failed compilation in the tested Julia environment; support for every version in the
 optional environment's compatibility range is not implied. Apple Metal remains untested.
+
+The CUDA tests are not run in continuous integration. How to run the CPU test groups and
+build this manual locally is described in the
+[README](https://github.com/RSFraLab/LeafPhotosynthesis.jl#development).
 
 ## License
 

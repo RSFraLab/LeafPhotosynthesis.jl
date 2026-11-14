@@ -1,5 +1,9 @@
 # Interface proposal: Cytochrome $b_6f$ photosynthesis and coupled PSII/PSI fluorescence
 
+> Working notes, not part of the manual (moved from `docs/` in November 2026). File paths,
+> function names and test counts describe the repository when the notes were written; the
+> manual (`docs/src/`) and `CHANGELOG.md` describe the current state.
+
 **Scope:** Additive leaf-biophysics extension in an isolated `LeafPhotosynthesis` worktree (`feat/cytochrome-fluorescence`), implementing the steady-state C3 Cytochrome $b_6f$ electron-transport and coupled PSII/PSI fluorescence formulation of Johnson & Berry (2021, *Photosynthesis Research* 148:101–136, <https://doi.org/10.1007/s11120-021-00840-4>) alongside existing FvCB (`C3Photosynthesis`) and empirical PSII rate-competition (`RateCompetitionFluorescence`, van der Tol et al. 2014) components.
 
 No existing public signatures, defaults, parameter files, or outputs change.

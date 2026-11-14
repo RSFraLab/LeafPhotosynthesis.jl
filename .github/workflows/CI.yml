@@ -1,0 +1,53 @@
+# Tests on Julia 1.10 (lower bound in Project.toml) and the current stable release on Linux,
+# plus the current release on macOS (Apple silicon). Every test group runs (test/runtests.jl).
+# The CUDA tests (test/gpu/) need an NVIDIA GPU and are not run here; run them by hand
+# (README, "Development"). The documentation is built by Documentation.yml.
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  actions: write   # julia-actions/cache requires this to prune
+
+jobs:
+  test:
+    name: Julia ${{ matrix.version }} / ${{ matrix.os }} / ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.10'     # lower bound declared in Project.toml
+          - '1'        # current stable release
+        os:
+          - ubuntu-latest
+        arch:
+          - x64
+        include:
+          - os: macos-latest
+            version: '1'
+            arch: aarch64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+
+      - uses: julia-actions/cache@v2
+
+      - uses: julia-actions/julia-buildpkg@v1
+
+      - uses: julia-actions/julia-runtest@v1

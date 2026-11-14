@@ -1,3 +1,4 @@
+# Shared batch checks; run on CPU by fluorescence.jl and on CUDA by gpu/runtests.jl.
 function check_fluorescence_batches(to_device, synchronize)
     for FT in (Float32, Float64)
         case=setup_fluorescence(FT)

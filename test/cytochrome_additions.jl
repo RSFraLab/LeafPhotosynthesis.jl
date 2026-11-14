@@ -458,3 +458,7 @@ end
         end
     end
 end
+
+@testset "Cytochrome CPU batches" begin
+    check_cytochrome_batches(identity, () -> nothing)
+end

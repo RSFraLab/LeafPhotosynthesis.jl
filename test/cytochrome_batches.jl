@@ -1,3 +1,4 @@
+# Shared batch checks; run on CPU by cytochrome_additions.jl and on CUDA by gpu/runtests.jl.
 function check_cytochrome_batches(to_device, synchronize)
     for FT in (Float32, Float64)
         case = setup_cytochrome_stress(FT)

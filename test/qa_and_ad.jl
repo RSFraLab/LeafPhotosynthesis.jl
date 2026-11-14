@@ -255,9 +255,6 @@ end
         solver64 = core_solver(Float64, s64)
         env_base = core_environment(Float64, p64, s64)
         vdt_case = setup_fluorescence(Float64)
-        if !isdefined(@__MODULE__, :setup_johnson_berry_2021)
-            include(joinpath(lp_root, "examples", "setup", "johnson_berry_2021.jl"))
-        end
         jb = setup_johnson_berry_2021(Float64)
         cyto_steady = LeafModel(;
             photosynthesis = jb.photo,
@@ -352,9 +349,6 @@ end
         c3_prog_bf, diff_bf = core_leaf(BigFloat, p_bf, s_bf)
         vdt64 = setup_fluorescence(Float64)
         vdt_bf = setup_fluorescence(BigFloat)
-        if !isdefined(@__MODULE__, :setup_johnson_berry_2021)
-            include(joinpath(lp_root, "examples", "setup", "johnson_berry_2021.jl"))
-        end
         jb64 = setup_johnson_berry_2021(Float64)
         jb_bf = setup_johnson_berry_2021(BigFloat)
 

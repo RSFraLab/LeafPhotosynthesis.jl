@@ -1,5 +1,3 @@
-include("../examples/flexas_2002.jl")
-
 @testset "Flexas et al. (2002) water-stress fluorescence benchmark" begin
     for FT in (Float32, Float64)
         @testset "$FT" begin

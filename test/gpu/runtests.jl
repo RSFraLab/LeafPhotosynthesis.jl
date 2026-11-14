@@ -1,38 +1,29 @@
-using Test
+# CUDA acceptance test: the CPU batch checks of the main suite, run on CuArrays. Not run in CI.
+#   julia --project=test/gpu -e 'using Pkg; Pkg.instantiate()'
+#   CUDA_VISIBLE_DEVICES=<idle device> julia --project=test/gpu test/gpu/runtests.jl
 using CUDA
-using LeafPhotosynthesis
-using LeafPhotosynthesis: AbstractPhotosynthesis, AbstractExcitation, AbstractOxygenExchange,
-    biochemical_rates, valid_excitation, colimit, carbon_assimilation, EquilibriumConverged,
-    EquilibriumInvalidInput, PSIIFluxInputs, CoupledPhotosystemInputs,
-    RateCompetitionResult, CytochromeFluorescenceResult, PAMFluorescenceResult,
-    maximum_photochemical_yield, psi_maximum_photochemical_yield,
-    psii_maximum_photochemical_yield, dark_balanced_psii_partition,
-    state_transition_partition
-include("../../examples/core_exchange.jl")
+include("../common.jl")   # Test, LeafPhotosynthesis and the example fixtures, as in every group
 include("../device_checks.jl")
-include("../../examples/setup/oxygen_response.jl")
 include("../oxygen_batches.jl")
-include("../../examples/setup/fluorescence.jl")
 include("../fluorescence_batches.jl")
+include("../excitation_fixture.jl")
+include("../excitation_batches.jl")
+include("../cytochrome_batches.jl")
 
 # Do not silently skip this explicitly requested GPU acceptance test.
 CUDA.functional(true) || error("A functional CUDA device is required")
 CUDA.allowscalar(false)
 @testset "CUDA leaf physics" begin
-    path = joinpath(@__DIR__, "..", "..", "examples", "parameters", "bonan_11_1.toml")
-    check_leaf_batches(CuArray, CUDA.synchronize, path)
-    check_core_batches(CuArray, CUDA.synchronize, path)
-    check_turnover_batches(CuArray, CUDA.synchronize, path)
-    check_equilibrium_batches(CuArray, CUDA.synchronize, path)
+    check_leaf_batches(CuArray, CUDA.synchronize, parameter_path)
+    check_core_batches(CuArray, CUDA.synchronize, parameter_path)
+    check_turnover_batches(CuArray, CUDA.synchronize, parameter_path)
+    check_equilibrium_batches(CuArray, CUDA.synchronize, parameter_path)
     check_oxygen_batches(CuArray, CUDA.synchronize)
     check_fluorescence_batches(CuArray, CUDA.synchronize)
 end
-include("../excitation_batches.jl")
 @testset "Explicit excitation CUDA batches" begin
-    check_excitation_batches(CuArray,CUDA.synchronize)
+    check_excitation_batches(CuArray, CUDA.synchronize)
 end
-include("../../examples/setup/cytochrome_stress.jl")
-include("../cytochrome_batches.jl")
 @testset "Cytochrome CUDA batches" begin
     check_cytochrome_batches(CuArray, CUDA.synchronize)
 end

@@ -1,6 +1,3 @@
-isdefined(@__MODULE__, :setup_fluorescence) ||
-    include(joinpath(@__DIR__, "../examples/setup/fluorescence.jl"))
-
 function setup_excitation_test(::Type{FT}) where {FT}
     fluorescence=setup_fluorescence(FT)
     directory=joinpath(@__DIR__, "../examples/parameters")
