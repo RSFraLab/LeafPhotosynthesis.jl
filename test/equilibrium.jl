@@ -157,7 +157,7 @@ end
                 exchange = equilibrium_gas_exchange(model, SteadyStateStomata(first(targets)), env, d, solver)
                 @test exchange.converged
                 gs = exchange.stomatal_conductance
-                sensitivity = @inferred assimilation_sensitivity(model, env, StomatalState(gs), d, exchange)
+                sensitivity = @inferred assimilation_sensitivity(model, env, StomatalState(gs), d, BroadbandExcitation(), exchange)
                 h = BigFloat(gs) * BigFloat("1e-12")
                 cp, ap = reference_equilibrium(model, nothing, env, d; fixed_gs = BigFloat(gs) + h)
                 cm, am = reference_equilibrium(model, nothing, env, d; fixed_gs = BigFloat(gs) - h)

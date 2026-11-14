@@ -4,7 +4,7 @@
 Supertype for leaf photosystem light-allocation conventions, kept separate from
 the leaf gas and temperature environment.
 """
-abstract type AbstractExcitation end
+abstract type AbstractExcitation <: AbstractLeafScalar end
 
 """
     BroadbandExcitation()
@@ -14,6 +14,8 @@ Partition total absorbed PAR using the electron-transport component's broadband
 
 # Examples
 ```jldoctest
+julia> using LeafPhotosynthesis: valid_excitation
+
 julia> valid_excitation(BroadbandExcitation(), 800.0)
 true
 ```
@@ -35,15 +37,11 @@ compatibility; [`valid_excitation`](@ref) rejects non-finite or negative values,
 """
 struct PrescribedPSIIExcitation{FT<:Real} <: AbstractExcitation
     photons::FT
-    function PrescribedPSIIExcitation{FT}(photons) where {FT<:Real}
-        require_continuous_scalar(FT, PrescribedPSIIExcitation{FT}, (photons,))
-        return new{FT}(photons)
-    end
-    function PrescribedPSIIExcitation(photons::FT) where {FT<:Real}
-        require_continuous_scalar(FT, PrescribedPSIIExcitation, (photons,))
-        return new{FT}(photons)
-    end
+    PrescribedPSIIExcitation{FT}(fields::Vararg{Any,1}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, PrescribedPSIIExcitation{FT}, fields)...)
 end
+PrescribedPSIIExcitation(fields::Vararg{Real,1}) =
+    PrescribedPSIIExcitation{scalar_type(PrescribedPSIIExcitation, fields...)}(fields...)
 
 """
     PrescribedDualExcitation(psii_photons, psi_photons)
@@ -58,26 +56,14 @@ PAR spectral interval as `LeafEnvironment.absorbed_par`.
 (permitting non-photosynthetic pigment absorption when strict inequality holds),
 and compatible continuous scalar precision.
 """
-struct PrescribedDualExcitation{FT<:Real} <: AbstractExcitation
+Base.@kwdef struct PrescribedDualExcitation{FT<:Real} <: AbstractExcitation
     psii_photons::FT
     psi_photons::FT
-    function PrescribedDualExcitation{FT}(psii_photons, psi_photons) where {FT<:Real}
-        require_continuous_scalar(
-            FT, PrescribedDualExcitation{FT}, (psii_photons, psi_photons),
-        )
-        return new{FT}(psii_photons, psi_photons)
-    end
-    function PrescribedDualExcitation(psii_photons::FT, psi_photons::FT) where {FT<:Real}
-        require_continuous_scalar(
-            FT, PrescribedDualExcitation, (psii_photons, psi_photons),
-        )
-        return new{FT}(psii_photons, psi_photons)
-    end
+    PrescribedDualExcitation{FT}(fields::Vararg{Any,2}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, PrescribedDualExcitation{FT}, fields)...)
 end
-PrescribedDualExcitation(psii_photons::Real, psi_photons::Real) =
-    PrescribedDualExcitation(promote_compatible(PrescribedDualExcitation, psii_photons, psi_photons)...)
-PrescribedDualExcitation(; psii_photons, psi_photons) =
-    PrescribedDualExcitation(psii_photons, psi_photons)
+PrescribedDualExcitation(fields::Vararg{Real,2}) =
+    PrescribedDualExcitation{scalar_type(PrescribedDualExcitation, fields...)}(fields...)
 
 """
     valid_excitation(excitation, total_absorbed_par) -> Bool

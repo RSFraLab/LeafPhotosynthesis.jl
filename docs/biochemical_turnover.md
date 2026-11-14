@@ -48,7 +48,7 @@ carboxylation          = u C
 photorespiratory_co2   = u Γ*
 net_assimilation      = u (C − Γ*) − Rd
 linear_electron_flow  = e u (C + a Γ*)
-electron_supply       = J
+electron_transport    = J
 ```
 
 Carbon fluxes and Rd are μmol CO₂ m⁻² leaf s⁻¹; electron fluxes are

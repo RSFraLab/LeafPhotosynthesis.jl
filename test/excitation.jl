@@ -65,7 +65,7 @@ include("excitation_reference.jl")
                 rtol,
                 atol,
             )
-            @test flux.excitation===excitation.photons
+            @test flux.psii_excitation===excitation.photons
             @test flux.linear_electron_flow===turnover.linear_electron_flow
             @test fluorescence_valid(fluorescence_result)
             @test fluorescence_result.status ==
@@ -202,7 +202,7 @@ end
                 equilibrium.biochemical_co2,
                 env.oxygen,
             )
-            @test psii_flux_inputs(p, site, excitation).excitation===excitation.photons
+            @test psii_flux_inputs(p, site, excitation).psii_excitation===excitation.photons
             @test isapprox(
                 photosynthesize(p, site, excitation).net_assimilation,
                 equilibrium.carbon.net_assimilation;
@@ -282,8 +282,8 @@ end
             env,
             case.state,
             case.diffusion,
-            fixed,
             excitation,
+            fixed,
         )
         @test all(x->x isa FT, values(derivative))
         gs=BigFloat(case.state.conductance)
@@ -327,9 +327,9 @@ end
             env,
             case.state,
             case.diffusion,
-            old,
             BroadbandExcitation(),
-        )==assimilation_sensitivity(p, env, case.state, case.diffusion, old)
+            old,
+        )==assimilation_sensitivity(p, env, case.state, case.diffusion, BroadbandExcitation())
     end
 end
 
@@ -377,13 +377,13 @@ end
                         env,
                         case.state,
                         case.diffusion,
-                        exchange,
                         input,
+                        exchange,
                     ),
                 ),
             )
             flux=@inferred psii_flux_inputs(p, site, input)
-            @test isnan(flux.excitation)&&isnan(flux.linear_electron_flow)
+            @test isnan(flux.psii_excitation)&&isnan(flux.linear_electron_flow)
             @test fluorescence(case.fluorescence.regulated, flux).status===FluorescenceInvalidInput
         end
         Other=FT==Float32 ? Float64 : Float32
@@ -404,8 +404,8 @@ end
                 env,
                 case.state,
                 case.diffusion,
-                exchange,
                 mismatch,
+                exchange,
             )),
         )
             @test all(x->x isa FT&&isnan(x), values(output))
@@ -429,18 +429,19 @@ end
         @test mismatch_equilibrium.biochemical_co2 isa FT
         mismatch_flux=@inferred psii_flux_inputs(p, site, mismatch)
         @test mismatch_flux isa PSIIFluxInputs{FT}
-        @test isnan(mismatch_flux.excitation)&&isnan(mismatch_flux.linear_electron_flow)
+        @test isnan(mismatch_flux.psii_excitation)&&isnan(mismatch_flux.linear_electron_flow)
         @test !valid_excitation(PrescribedPSIIExcitation(one(FT)), zero(FT))
         @test valid_excitation(PrescribedPSIIExcitation(zero(FT)), zero(FT))
-        legacy=LegacyTestElectrons(
+        broadband_only=BroadbandOnlyElectrons(
             p.electron_transport.psii_fraction*p.electron_transport.psii_yield,
             p.electron_transport.psii_fraction,
         )
-        custom=with_test_electrons(p, legacy)
+        custom=with_test_electrons(p, broadband_only)
         @test photosynthesize(custom, site).electron_transport===electron_transport(
-            legacy,
+            broadband_only,
             site.absorbed_par,
             biochemical_rates(p.temperature, site.temperature, site.oxygen).jmax,
+            BroadbandExcitation(),
         )
         @test photosynthesize(custom, site, BroadbandExcitation())==photosynthesize(
             custom,
@@ -452,8 +453,8 @@ end
             PrescribedPSIIExcitation(zero(FT)),
         )
         custom_leaf=LeafModel(;
-            photosynthesis = LegacyTestPhotosynthesis(one(FT)),
-            oxygen = LegacyTestOxygen(),
+            photosynthesis = BroadbandOnlyPhotosynthesis(one(FT)),
+            oxygen = BroadbandOnlyOxygen(),
         )
         @test photosynthesize(custom_leaf, site, BroadbandExcitation())==photosynthesize(
             custom_leaf,
@@ -474,7 +475,7 @@ end
         @test valid_excitation(extra, env.absorbed_par)
         @test !valid_excitation(PrescribedPSIIExcitation(extra.photons), env.absorbed_par)
         @test all(isfinite, values(photosynthesize(p, site, extra)))
-        @test psii_flux_inputs(p, site, extra).excitation===extra.photons
+        @test psii_flux_inputs(p, site, extra).psii_excitation===extra.photons
         @test equilibrium_gas_exchange(case.steady, env, case.diffusion, case.solver, extra).converged
         @test all(
             isfinite,

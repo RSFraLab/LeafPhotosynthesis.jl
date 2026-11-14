@@ -3,6 +3,7 @@
 # scaling (Case 12), and apparent PAM fluorometry with PSI detector leakage (Eqs. 38-42).
 # Run: julia --project=. examples/johnson_berry_2021.jl [output_directory]
 using LeafPhotosynthesis
+using LeafPhotosynthesis: FluorescenceDark, state_transition_partition
 include("setup/johnson_berry_2021.jl")
 
 function johnson_berry_2021_curves(::Type{FT}) where {FT}

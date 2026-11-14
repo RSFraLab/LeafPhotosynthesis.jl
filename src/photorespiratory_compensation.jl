@@ -3,7 +3,7 @@
 
 Supertype for photorespiratory CO₂ compensation point (`Γ*` [Pa]) parameterizations.
 """
-abstract type AbstractCompensationPoint end
+abstract type AbstractCompensationPoint <: AbstractLeafScalar end
 
 """
     PrescribedCompensationPoint(response)
@@ -32,16 +32,17 @@ is unsupported. The scalar law returns exact zero at `oxygen == 0`.
 struct OxygenScaledCompensationPoint{R,FT<:Real} <: AbstractCompensationPoint
     response::R
     reference_oxygen::FT
-    function OxygenScaledCompensationPoint(
-        response::R,
-        reference_oxygen::FT,
-    ) where {R,FT<:Real}
-        require_continuous_scalar(FT, OxygenScaledCompensationPoint, (response, reference_oxygen))
-        isfinite(reference_oxygen) && reference_oxygen > zero(FT) ||
+    function OxygenScaledCompensationPoint{R,FT}(fields::Vararg{Any,2}) where {R,FT<:Real}
+        p = new{R,FT}(continuous_fields(FT, OxygenScaledCompensationPoint{R,FT}, fields)...)
+        isfinite(p.reference_oxygen) && p.reference_oxygen > zero(FT) ||
             throw(ArgumentError("reference oxygen must be finite and positive [Pa]"))
-        return new{R,FT}(response, reference_oxygen)
+        return p
     end
 end
+OxygenScaledCompensationPoint(response, reference_oxygen::Real) =
+    OxygenScaledCompensationPoint{
+        typeof(response),scalar_type(OxygenScaledCompensationPoint, reference_oxygen),
+    }(response, reference_oxygen)
 
 """
     compensation_point(response, temperature, oxygen)

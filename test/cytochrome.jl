@@ -405,7 +405,7 @@ end
         end
 
         # Analytic assimilation_sensitivity vs 256-bit BigFloat central finite differences (including eta(Cc) derivative).
-        sens = @inferred assimilation_sensitivity(photo, gas_env, state, case.diffusion, ex)
+        sens = @inferred assimilation_sensitivity(photo, gas_env, state, case.diffusion, BroadbandExcitation(), ex)
         if FT === Float64
             bf_case = setup_cytochrome_stress(BigFloat)
             bf_env = GasExchangeEnvironment(BigFloat(T), BigFloat(800), BigFloat(41),

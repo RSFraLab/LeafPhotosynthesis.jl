@@ -166,7 +166,7 @@ function render() {
   plot("turnover-plots", {id: "electron-use", title: "Available and realized electrons",
     description: "Electron supply is fixed by light and capacity. Realized flow also depends on carbon metabolism and photorespiration.",
     rows: data.turnover, x: "co2_gamma_ratio", xLabel: "Biochemical-site CO₂ / Γ*", yLabel: "μmol electrons m⁻² leaf s⁻¹", file: csv("turnover"),
-    series: [{key: "linear_electron_flow", label: "Realized linear flow"}, {key: "electron_supply", label: "Available supply", dash: [6, 4]}]});
+    series: [{key: "linear_electron_flow", label: "Realized linear flow"}, {key: "electron_transport", label: "Available supply", dash: [6, 4]}]});
   plot("turnover-plots", {id: "carbon-turnover", title: "Gross turnover and net carbon uptake",
     description: "At CO₂/Γ* = 1, carboxylation and photorespiratory release match. Their cancellation does not switch off electron flow.",
     rows: data.turnover, x: "co2_gamma_ratio", xLabel: "Biochemical-site CO₂ / Γ*", yLabel: "μmol CO₂ m⁻² leaf s⁻¹", file: csv("turnover"),

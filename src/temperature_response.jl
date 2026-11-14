@@ -28,9 +28,11 @@ end
 @inline is_continuous_scalar(::Type{T}) where {T<:Real} =
     !(T <: UnsupportedDiscreteScalar) && !(primal_float_type(T) <: UnsupportedDiscreteScalar)
 
-@inline function require_continuous_scalar(::Type{FT}, ctor, args) where {FT<:Real}
-    is_continuous_scalar(FT) || throw(MethodError(ctor, args))
-    return nothing
+# Every inner constructor of a scalar struct with parameter `FT` passes its field values
+# through here to `new`, which converts each to its field type; `FT` must be continuous.
+@inline function continuous_fields(::Type{FT}, ctor, fields::Tuple) where {FT<:Real}
+    is_continuous_scalar(FT) || throw(MethodError(ctor, fields))
+    return fields
 end
 
 @inline compatible_scalar(::Type{A}, ::Type{B}) where {A<:AbstractFloat,B<:AbstractFloat} = A === B
@@ -47,6 +49,11 @@ end
     compatible_scalars(x, rest...) || throw(MethodError(ctor, (x, rest...)))
     return promote(x, rest...)
 end
+
+# Parameter `FT` that an outer constructor `ctor` computes from its scalar arguments: one
+# binary precision, with dual numbers on it promoted in. Discrete or mixed-precision
+# scalars are a `MethodError` of `ctor`.
+@inline scalar_type(ctor, x::Real...) = typeof(first(promote_compatible(ctor, x...)))
 
 # Result assembly for scalar entry points; a result is a scalar or a nested NamedTuple.
 # `typed_result` converts every scalar to the output type FT and `invalid_result`
@@ -75,42 +82,24 @@ scientific parameters are supplied explicitly.
 
 # Examples
 ```jldoctest
+julia> using LeafPhotosynthesis: temperature_response
+
 julia> law = Arrhenius(60.0, 65330.0, 298.15, 8.314);
 
 julia> temperature_response(law, 298.15)
 60.0
 ```
 """
-Base.@kwdef struct Arrhenius{FT<:Real}
+Base.@kwdef struct Arrhenius{FT<:Real} <: AbstractLeafScalar
     value_ref::FT
     activation_energy::FT
     temperature_ref::FT
     gas_constant::FT
-    function Arrhenius{FT}(
-        value_ref,
-        activation_energy,
-        temperature_ref,
-        gas_constant,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT, Arrhenius{FT}, (value_ref, activation_energy, temperature_ref, gas_constant),
-        )
-        return new{FT}(value_ref, activation_energy, temperature_ref, gas_constant)
-    end
-    function Arrhenius(
-        value_ref::FT,
-        activation_energy::FT,
-        temperature_ref::FT,
-        gas_constant::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT, Arrhenius, (value_ref, activation_energy, temperature_ref, gas_constant),
-        )
-        return new{FT}(value_ref, activation_energy, temperature_ref, gas_constant)
-    end
+    Arrhenius{FT}(fields::Vararg{Any,4}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, Arrhenius{FT}, fields)...)
 end
-Arrhenius(v::Real, ea::Real, tref::Real, r::Real) =
-    Arrhenius(promote_compatible(Arrhenius, v, ea, tref, r)...)
+Arrhenius(fields::Vararg{Real,4}) =
+    Arrhenius{scalar_type(Arrhenius, fields...)}(fields...)
 
 """
     PeakedArrhenius(; arrhenius, deactivation_energy, entropy)
@@ -122,41 +111,18 @@ inhibition normalized at `arrhenius.temperature_ref` (`T_ref` [K]):
 
 `deactivation_energy` (`H_d`) is in J mol⁻¹ and `entropy` (`ΔS`) is in J mol⁻¹ K⁻¹.
 """
-struct PeakedArrhenius{FT<:Real}
+Base.@kwdef struct PeakedArrhenius{FT<:Real} <: AbstractLeafScalar
     arrhenius::Arrhenius{FT}
     deactivation_energy::FT
     entropy::FT
-    function PeakedArrhenius{FT}(
-        arrhenius::Arrhenius{FT},
-        deactivation_energy,
-        entropy,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT, PeakedArrhenius{FT}, (arrhenius, deactivation_energy, entropy),
-        )
-        return new{FT}(arrhenius, deactivation_energy, entropy)
-    end
+    PeakedArrhenius{FT}(fields::Vararg{Any,3}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, PeakedArrhenius{FT}, fields)...)
 end
-function PeakedArrhenius(
-    arrhenius::Arrhenius{FA},
-    deactivation_energy::FD,
-    entropy::FE,
-) where {FA<:Real,FD<:Real,FE<:Real}
-    if FA === FD && FD === FE
-        return PeakedArrhenius{FA}(arrhenius, deactivation_energy, entropy)
-    end
-    _, d, e = promote_compatible(PeakedArrhenius, zero(FA), deactivation_energy, entropy)
-    FT = typeof(d)
-    a = Arrhenius{FT}(
-        FT(arrhenius.value_ref),
-        FT(arrhenius.activation_energy),
-        FT(arrhenius.temperature_ref),
-        FT(arrhenius.gas_constant),
-    )
-    return PeakedArrhenius{FT}(a, d, e)
+function PeakedArrhenius(a::Arrhenius{FA}, deactivation_energy::Real, entropy::Real) where {FA<:Real}
+    FT = scalar_type(PeakedArrhenius, zero(FA), deactivation_energy, entropy)
+    arrhenius = Arrhenius{FT}(a.value_ref, a.activation_energy, a.temperature_ref, a.gas_constant)
+    return PeakedArrhenius{FT}(arrhenius, deactivation_energy, entropy)
 end
-PeakedArrhenius(; arrhenius, deactivation_energy, entropy) =
-    PeakedArrhenius(arrhenius, deactivation_energy, entropy)
 
 """
     ConstantResponse(value)
@@ -172,21 +138,24 @@ preserves homogeneous rate types.
 
 # Examples
 ```jldoctest
+julia> using LeafPhotosynthesis: temperature_response
+
 julia> r = ConstantResponse(0.75);
 
 julia> temperature_response(r, 303.15)
 0.75
 ```
 """
-struct ConstantResponse{FT<:Real}
+Base.@kwdef struct ConstantResponse{FT<:Real} <: AbstractLeafScalar
     value::FT
-    function ConstantResponse(value::FT) where {FT<:Real}
-        require_continuous_scalar(FT, ConstantResponse, (value,))
-        isfinite(value) || throw(ArgumentError("ConstantResponse value must be finite"))
-        return new{FT}(value)
+    function ConstantResponse{FT}(fields::Vararg{Any,1}) where {FT<:Real}
+        r = new{FT}(continuous_fields(FT, ConstantResponse{FT}, fields)...)
+        isfinite(r.value) || throw(ArgumentError("ConstantResponse value must be finite"))
+        return r
     end
 end
-ConstantResponse(; value) = ConstantResponse(value)
+ConstantResponse(fields::Vararg{Real,1}) =
+    ConstantResponse{scalar_type(ConstantResponse, fields...)}(fields...)
 
 """
     temperature_response(response, temperature)
@@ -230,7 +199,7 @@ Bundle the six C3 biochemical temperature responses (`vcmax`, `jmax`,
 `gamma_star` may be a temperature-response law or an explicit
 [`AbstractCompensationPoint`](@ref) component.
 """
-Base.@kwdef struct C3TemperatureResponse{V,J,R,C,O,G}
+Base.@kwdef struct C3TemperatureResponse{V,J,R,C,O,G} <: AbstractLeafScalar
     vcmax::V
     jmax::J
     respiration::R
@@ -250,35 +219,18 @@ selected, biochemical-site O₂.
 - `jmax`: μmol electrons m⁻² leaf s⁻¹.
 - `kc`, `ko`, `gamma_star`: Pa.
 """
-Base.@kwdef struct C3Rates{FT<:Real}
+Base.@kwdef struct C3Rates{FT<:Real} <: AbstractLeafScalar
     vcmax::FT
     jmax::FT
     respiration::FT
     kc::FT
     ko::FT
     gamma_star::FT
-    function C3Rates{FT}(vcmax, jmax, respiration, kc, ko, gamma_star) where {FT<:Real}
-        require_continuous_scalar(
-            FT, C3Rates{FT}, (vcmax, jmax, respiration, kc, ko, gamma_star),
-        )
-        return new{FT}(vcmax, jmax, respiration, kc, ko, gamma_star)
-    end
-    function C3Rates(
-        vcmax::FT,
-        jmax::FT,
-        respiration::FT,
-        kc::FT,
-        ko::FT,
-        gamma_star::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT, C3Rates, (vcmax, jmax, respiration, kc, ko, gamma_star),
-        )
-        return new{FT}(vcmax, jmax, respiration, kc, ko, gamma_star)
-    end
+    C3Rates{FT}(fields::Vararg{Any,6}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, C3Rates{FT}, fields)...)
 end
-C3Rates(vc::Real, jm::Real, rd::Real, kc::Real, ko::Real, gs::Real) =
-    C3Rates(promote_compatible(C3Rates, vc, jm, rd, kc, ko, gs)...)
+C3Rates(fields::Vararg{Real,6}) =
+    C3Rates{scalar_type(C3Rates, fields...)}(fields...)
 
 """
     biochemical_rates(responses, temperature[, oxygen])

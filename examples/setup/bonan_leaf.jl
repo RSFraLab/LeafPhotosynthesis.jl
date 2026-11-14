@@ -1,4 +1,6 @@
 # Host-side parameter assembly. Every scientific value comes from the TOML file.
+using LeafPhotosynthesis: electron_transport, carbon_assimilation
+
 """Compose the leaf from named physical components and explicit parameters."""
 function bonan_leaf(::Type{FT}, settings) where {FT}
     c, b = settings["constants"], settings["biochemistry"]

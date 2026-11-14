@@ -20,7 +20,7 @@ rates and a concrete `AbstractQuenching{FT}` component. `ConstantQuenching` and
 `quenching_rate(law, saturation)` without changing a switch or union. To use the
 host coupling check, also define `fluorescence_low_light_yield` for that law's
 rate-competition model, or supply a specialized coupling validator. The function
-`fluorescence(model, PSIIFluxInputs(Q₂,J))` returns an immutable scalar result.
+`fluorescence(model, LeafPhotosynthesis.PSIIFluxInputs(Q₂, J))` returns an immutable scalar result.
 No field was added to `LeafModel`; callers compose this diagnostic alongside
 photosynthesis. `NoFluorescence` returns `nothing` without input preparation.
 

@@ -9,54 +9,74 @@ fluorescence across `Float32`, `Float64`, GPU kernels, and automatic differentia
 """
 module LeafPhotosynthesis
 
-export AbstractPhotosynthesis, AbstractC3Photosynthesis, C3Photosynthesis, CytochromePhotosynthesis,
-    LeafModel, LeafEnvironment,
-    ConstantResponse, Arrhenius, PeakedArrhenius, temperature_response,
-    C3TemperatureResponse, C3Rates,
-    CytochromeCapacity, CytochromeTemperatureResponse, CytochromeRates,
-    biochemical_rates, ElectronTransportParameters, electron_transport,
-    CytochromeElectronParameters, cytochrome_electron_supply,
+# What a user writes to build and run a leaf model: components, environments, light
+# inputs, and the entry points.
+export LeafModel, C3Photosynthesis, CytochromePhotosynthesis,
+    ConstantResponse, Arrhenius, PeakedArrhenius, C3TemperatureResponse,
+    CytochromeTemperatureResponse, CytochromeCapacity,
+    PrescribedCompensationPoint, OxygenScaledCompensationPoint,
+    ElectronTransportParameters, CytochromeElectronParameters,
     C3Stoichiometry, CytochromeStoichiometry,
-    cytochrome_cyclic_coefficients, cytochrome_carbon_coefficients, psi_to_psii_electron_ratio,
-    MinimumLimitation, SerialLimitation, QuadraticLimitation, colimit,
-    SignedAssimilation, NonnegativeAssimilation, carbon_assimilation, photosynthesize,
-    biochemical_turnover
+    MinimumLimitation, SerialLimitation, QuadraticLimitation,
+    SignedAssimilation, NonnegativeAssimilation
 
-export AbstractCompensationPoint, PrescribedCompensationPoint,
-    OxygenScaledCompensationPoint, compensation_point
+export LeafEnvironment, GasExchangeEnvironment, StomatalState,
+    BroadbandExcitation, PrescribedPSIIExcitation, PrescribedDualExcitation
 
-export AbstractExcitation, BroadbandExcitation, PrescribedPSIIExcitation,
-    PrescribedDualExcitation, valid_excitation, psii_excitation, psi_excitation
+export BallBerry, Medlyn, SteadyStateStomata, PrognosticStomata, NoStomatalDynamics,
+    SeriesDiffusion, WaterVaporDiffusion, CoreOxygenExchange, NoOxygenExchange,
+    EquilibriumSolver, Bisection, SafeguardedNewton
 
-export AbstractFluorescence, NoFluorescence, AbstractQuenching, ConstantQuenching,
-    SaturationQuenching, RateCompetitionFluorescence, PSIIFluxInputs,
-    RateCompetitionResult, PSIIRateParameters, PSIRateParameters,
-    CytochromeFluorescence, CoupledPhotosystemInputs, CytochromeFluorescenceResult,
-    FluorescenceStatus, FluorescenceLit, FluorescenceDark,
-    FluorescenceInvalidInput, FluorescenceIncompatibleRates,
-    fluorescence, fluorescence_valid, quenching_rate, maximum_photochemical_yield,
-    psi_maximum_photochemical_yield, psii_maximum_photochemical_yield,
-    minimum_psii_partition, psii_flux_inputs, photosystem_flux_inputs,
-    fluorescence_low_light_yield, validate_fluorescence_coupling,
-    StateTransitionRule, dark_balanced_psii_partition,
-    state_transition_partition, state_transition_excitation,
-    PAMFluorescenceObserver, PAMFluorescenceResult,
-    pam_fluorescence_valid, dark_pam_levels, pam_fluorescence
+export NoFluorescence, RateCompetitionFluorescence, ConstantQuenching, SaturationQuenching,
+    CytochromeFluorescence, PSIIRateParameters, PSIRateParameters,
+    StateTransitionRule, PAMFluorescenceObserver
 
-export AbstractStomatalTarget, AbstractStomatalModel, BallBerry, Medlyn,
-    SteadyStateStomata, PrognosticStomata, NoStomatalDynamics, StomatalState, StomatalDrivers,
-    target_conductance, stomatal_tendency,
-    AbstractOxygenExchange, CoreOxygenExchange, NoOxygenExchange, OxygenFluxInputs, oxygen_exchange
+export photosynthesize, biochemical_turnover, oxygen_exchange, gas_exchange,
+    leaf_tendencies, equilibrium_gas_exchange, assimilation_sensitivity,
+    transpiration_sensitivity, psii_flux_inputs, photosystem_flux_inputs, fluorescence,
+    fluorescence_valid, validate_fluorescence_coupling, state_transition_excitation,
+    pam_fluorescence, pam_fluorescence_valid
 
-export AbstractLeafDiffusion, SeriesDiffusion, GasExchangeEnvironment,
-    gas_exchange, leaf_tendencies
+# Supported API that is rarely typed: abstract types for new components, component-level
+# functions, rate and input bundles, result types and status values. Qualify these as
+# `LeafPhotosynthesis.name` or import them with `using LeafPhotosynthesis: name`. The
+# `public` keyword parses from Julia 1.11 on.
+@static if VERSION >= v"1.11.0-DEV.469"
+    eval(Meta.parse("""
+    public AbstractLeafScalar, AbstractPhotosynthesis, AbstractC3Photosynthesis,
+        AbstractCompensationPoint, AbstractExcitation, AbstractFluorescence,
+        AbstractQuenching, AbstractStomatalTarget, AbstractStomatalModel,
+        AbstractOxygenExchange, AbstractLeafDiffusion, AbstractEquilibriumMethod,
+        temperature_response, biochemical_rates, compensation_point, C3Rates, CytochromeRates,
+        electron_transport, cytochrome_electron_supply, valid_excitation, psii_excitation,
+        psi_excitation, cytochrome_cyclic_coefficients, cytochrome_carbon_coefficients,
+        psi_to_psii_electron_ratio, colimit, carbon_assimilation,
+        carbon_assimilation_derivative, StomatalDrivers, target_conductance,
+        stomatal_tendency, OxygenFluxInputs,
+        EquilibriumSolution, EquilibriumStatus, EquilibriumConverged,
+        EquilibriumIterationLimit, EquilibriumPrecisionLimit, EquilibriumInvalidInput,
+        EquilibriumInvalidBracket,
+        PSIIFluxInputs, CoupledPhotosystemInputs, RateCompetitionResult,
+        CytochromeFluorescenceResult, PAMFluorescenceResult, FluorescenceStatus,
+        FluorescenceLit, FluorescenceDark, FluorescenceInvalidInput,
+        FluorescenceIncompatibleRates, quenching_rate, maximum_photochemical_yield,
+        psi_maximum_photochemical_yield, psii_maximum_photochemical_yield,
+        fluorescence_low_light_yield, minimum_psii_partition,
+        dark_balanced_psii_partition, state_transition_partition, dark_pam_levels
+    """))
+end
 
-export carbon_assimilation_derivative, assimilation_sensitivity,
-    WaterVaporDiffusion, transpiration_sensitivity,
-    AbstractEquilibriumMethod, Bisection, SafeguardedNewton, EquilibriumSolver,
-    EquilibriumSolution, EquilibriumStatus, EquilibriumConverged,
-    EquilibriumIterationLimit, EquilibriumPrecisionLimit, EquilibriumInvalidInput,
-    EquilibriumInvalidBracket, equilibrium_gas_exchange
+"""
+    AbstractLeafScalar
+
+Supertype of every component, parameter, input and result struct of LeafPhotosynthesis.
+
+Its subtypes are immutable values that broadcast as scalars, so
+`photosynthesize.(leaf, environments)` needs no `Ref(leaf)`. A new struct gets this by
+subtyping `AbstractLeafScalar` or one of the package's abstract component types.
+"""
+abstract type AbstractLeafScalar end
+Base.broadcastable(x::AbstractLeafScalar) = Ref(x)
 
 # Follow this list from physical responses to a complete prescribed-CO₂ leaf call.
 include("temperature_response.jl")
@@ -78,54 +98,5 @@ include("cytochrome_fluorescence.jl")
 include("leaf_model.jl")
 include("cytochrome_state_transitions.jl")
 include("pam_fluorescence.jl")
-
-const _ScalarBroadcastable = Union{
-    LeafModel,
-    AbstractPhotosynthesis,
-    AbstractStomatalModel,
-    AbstractStomatalTarget,
-    AbstractOxygenExchange,
-    AbstractLeafDiffusion,
-    AbstractEquilibriumMethod,
-    EquilibriumSolver,
-    AbstractFluorescence,
-    AbstractQuenching,
-    AbstractExcitation,
-    AbstractCompensationPoint,
-    Arrhenius,
-    PeakedArrhenius,
-    ConstantResponse,
-    C3TemperatureResponse,
-    C3Rates,
-    CytochromeCapacity,
-    CytochromeTemperatureResponse,
-    CytochromeRates,
-    ElectronTransportParameters,
-    CytochromeElectronParameters,
-    C3Stoichiometry,
-    CytochromeStoichiometry,
-    MinimumLimitation,
-    SerialLimitation,
-    QuadraticLimitation,
-    SignedAssimilation,
-    NonnegativeAssimilation,
-    LeafEnvironment,
-    GasExchangeEnvironment,
-    StomatalState,
-    StomatalDrivers,
-    OxygenFluxInputs,
-    PSIIFluxInputs,
-    CoupledPhotosystemInputs,
-    PSIIRateParameters,
-    PSIRateParameters,
-    StateTransitionRule,
-    PAMFluorescenceObserver,
-    RateCompetitionResult,
-    CytochromeFluorescenceResult,
-    PAMFluorescenceResult,
-    EquilibriumSolution,
-}
-
-Base.broadcastable(x::_ScalarBroadcastable) = Ref(x)
 
 end

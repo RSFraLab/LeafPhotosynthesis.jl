@@ -16,7 +16,8 @@ function equilibrium_example(::Type{FT}, biochemistry, settings) where {FT}
     state = StomatalState(exchange.stomatal_conductance)
 
     # Evaluate carbon and water responses to opening the stomata, at fixed T.
-    carbon = assimilation_sensitivity(steady_leaf.photosynthesis, environment, state, diffusion, exchange)
+    carbon = assimilation_sensitivity(steady_leaf.photosynthesis, environment, state, diffusion,
+        BroadbandExcitation(), exchange)
     water_settings = settings["water"]
     water = transpiration_sensitivity(WaterVaporDiffusion(water_settings["boundary_water"]),
         state, water_settings["leaf_to_air_vpd"], environment.pressure)

@@ -4,14 +4,14 @@
 Supertype for instantaneous stomatal conductance target laws, kept separate from
 prognostic time evolution.
 """
-abstract type AbstractStomatalTarget end
+abstract type AbstractStomatalTarget <: AbstractLeafScalar end
 
 """
     AbstractStomatalModel
 
 Supertype for equilibrium, prognostic, or disabled stomatal conductance models.
 """
-abstract type AbstractStomatalModel end
+abstract type AbstractStomatalModel <: AbstractLeafScalar end
 
 """
     NoStomatalDynamics()
@@ -28,39 +28,17 @@ Bundle leaf-surface drivers for stomatal target evaluation: net `assimilation`
 [μmol CO₂ m⁻² leaf s⁻¹], `surface_co2` [Pa], total `pressure` [Pa],
 `relative_humidity` (`∈ [0, 1]`), and leaf-surface `vpd` [Pa].
 """
-Base.@kwdef struct StomatalDrivers{FT<:Real}
+Base.@kwdef struct StomatalDrivers{FT<:Real} <: AbstractLeafScalar
     assimilation::FT
     surface_co2::FT
     pressure::FT
     relative_humidity::FT
     vpd::FT
-    function StomatalDrivers{FT}(
-        assimilation,
-        surface_co2,
-        pressure,
-        relative_humidity,
-        vpd,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT, StomatalDrivers{FT}, (assimilation, surface_co2, pressure, relative_humidity, vpd),
-        )
-        return new{FT}(assimilation, surface_co2, pressure, relative_humidity, vpd)
-    end
-    function StomatalDrivers(
-        assimilation::FT,
-        surface_co2::FT,
-        pressure::FT,
-        relative_humidity::FT,
-        vpd::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT, StomatalDrivers, (assimilation, surface_co2, pressure, relative_humidity, vpd),
-        )
-        return new{FT}(assimilation, surface_co2, pressure, relative_humidity, vpd)
-    end
+    StomatalDrivers{FT}(fields::Vararg{Any,5}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, StomatalDrivers{FT}, fields)...)
 end
-StomatalDrivers(a::Real, cs::Real, p::Real, rh::Real, vpd::Real) =
-    StomatalDrivers(promote_compatible(StomatalDrivers, a, cs, p, rh, vpd)...)
+StomatalDrivers(fields::Vararg{Real,5}) =
+    StomatalDrivers{scalar_type(StomatalDrivers, fields...)}(fields...)
 
 """
     BallBerry{FT}(; minimum_conductance, slope, micromole_to_mole)
@@ -76,25 +54,11 @@ Base.@kwdef struct BallBerry{FT<:Real} <: AbstractStomatalTarget
     minimum_conductance::FT
     slope::FT
     micromole_to_mole::FT
-    function BallBerry{FT}(minimum_conductance, slope, micromole_to_mole) where {FT<:Real}
-        require_continuous_scalar(
-            FT, BallBerry{FT}, (minimum_conductance, slope, micromole_to_mole),
-        )
-        return new{FT}(minimum_conductance, slope, micromole_to_mole)
-    end
-    function BallBerry(
-        minimum_conductance::FT,
-        slope::FT,
-        micromole_to_mole::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT, BallBerry, (minimum_conductance, slope, micromole_to_mole),
-        )
-        return new{FT}(minimum_conductance, slope, micromole_to_mole)
-    end
+    BallBerry{FT}(fields::Vararg{Any,3}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, BallBerry{FT}, fields)...)
 end
-BallBerry(g0::Real, g1::Real, conv::Real) =
-    BallBerry(promote_compatible(BallBerry, g0, g1, conv)...)
+BallBerry(fields::Vararg{Real,3}) =
+    BallBerry{scalar_type(BallBerry, fields...)}(fields...)
 
 """
     Medlyn{FT}(; minimum_conductance, slope, diffusivity_ratio, micromole_to_mole, vpd_floor)
@@ -114,37 +78,11 @@ Base.@kwdef struct Medlyn{FT<:Real} <: AbstractStomatalTarget
     diffusivity_ratio::FT
     micromole_to_mole::FT
     vpd_floor::FT
-    function Medlyn{FT}(
-        minimum_conductance,
-        slope,
-        diffusivity_ratio,
-        micromole_to_mole,
-        vpd_floor,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            Medlyn{FT},
-            (minimum_conductance, slope, diffusivity_ratio, micromole_to_mole, vpd_floor),
-        )
-        return new{FT}(minimum_conductance, slope, diffusivity_ratio, micromole_to_mole, vpd_floor)
-    end
-    function Medlyn(
-        minimum_conductance::FT,
-        slope::FT,
-        diffusivity_ratio::FT,
-        micromole_to_mole::FT,
-        vpd_floor::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            Medlyn,
-            (minimum_conductance, slope, diffusivity_ratio, micromole_to_mole, vpd_floor),
-        )
-        return new{FT}(minimum_conductance, slope, diffusivity_ratio, micromole_to_mole, vpd_floor)
-    end
+    Medlyn{FT}(fields::Vararg{Any,5}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, Medlyn{FT}, fields)...)
 end
-Medlyn(g0::Real, g1::Real, r::Real, conv::Real, floor::Real) =
-    Medlyn(promote_compatible(Medlyn, g0, g1, r, conv, floor)...)
+Medlyn(fields::Vararg{Real,5}) =
+    Medlyn{scalar_type(Medlyn, fields...)}(fields...)
 
 """
     SteadyStateStomata(target)
@@ -166,30 +104,21 @@ and `closing_timescale` [s].
 
 Parameters are immutable; the caller owns [`StomatalState`](@ref) and time stepping.
 """
-struct PrognosticStomata{T<:AbstractStomatalTarget,FT<:Real} <: AbstractStomatalModel
+Base.@kwdef struct PrognosticStomata{T<:AbstractStomatalTarget,FT<:Real} <: AbstractStomatalModel
     target::T
     opening_timescale::FT
     closing_timescale::FT
-    function PrognosticStomata(
-        target::T,
-        opening_timescale::FT,
-        closing_timescale::FT,
-    ) where {T<:AbstractStomatalTarget,FT<:Real}
-        require_continuous_scalar(
-            FT, PrognosticStomata, (target, opening_timescale, closing_timescale),
-        )
-        all(x -> isfinite(x) && x > zero(FT), (opening_timescale, closing_timescale)) ||
+    function PrognosticStomata{T,FT}(fields::Vararg{Any,3}) where {T<:AbstractStomatalTarget,FT<:Real}
+        p = new{T,FT}(continuous_fields(FT, PrognosticStomata{T,FT}, fields)...)
+        all(x -> isfinite(x) && x > zero(FT), (p.opening_timescale, p.closing_timescale)) ||
             throw(ArgumentError("stomatal timescales must be positive and finite"))
-        return new{T,FT}(target, opening_timescale, closing_timescale)
+        return p
     end
 end
 PrognosticStomata(target::AbstractStomatalTarget, opening_timescale::Real, closing_timescale::Real) =
-    PrognosticStomata(
-        target,
-        promote_compatible(PrognosticStomata, opening_timescale, closing_timescale)...,
-    )
-PrognosticStomata(; target, opening_timescale, closing_timescale) =
-    PrognosticStomata(target, opening_timescale, closing_timescale)
+    PrognosticStomata{
+        typeof(target),scalar_type(PrognosticStomata, opening_timescale, closing_timescale),
+    }(target, opening_timescale, closing_timescale)
 
 """
     StomatalState(conductance)
@@ -198,17 +127,13 @@ PrognosticStomata(; target, opening_timescale, closing_timescale) =
 Hold leaf stomatal H₂O `conductance` [mol H₂O m⁻² leaf s⁻¹] separately from
 immutable model parameters.
 """
-struct StomatalState{FT<:Real}
+struct StomatalState{FT<:Real} <: AbstractLeafScalar
     conductance::FT
-    function StomatalState{FT}(conductance) where {FT<:Real}
-        require_continuous_scalar(FT, StomatalState{FT}, (conductance,))
-        return new{FT}(conductance)
-    end
-    function StomatalState(conductance::FT) where {FT<:Real}
-        require_continuous_scalar(FT, StomatalState, (conductance,))
-        return new{FT}(conductance)
-    end
+    StomatalState{FT}(fields::Vararg{Any,1}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, StomatalState{FT}, fields)...)
 end
+StomatalState(fields::Vararg{Real,1}) =
+    StomatalState{scalar_type(StomatalState, fields...)}(fields...)
 
 """
     target_conductance(target_or_model, drivers::StomatalDrivers)

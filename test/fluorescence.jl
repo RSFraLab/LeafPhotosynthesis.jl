@@ -4,7 +4,7 @@ function fluorescence_oracle(model, x)
     kf, kd, kpmax = BigFloat(model.fluorescence_rate),
     BigFloat(model.constitutive_heat_rate),
     BigFloat(model.maximum_photochemical_rate)
-    phi = BigFloat(x.linear_electron_flow)/BigFloat(x.excitation)
+    phi = BigFloat(x.linear_electron_flow)/BigFloat(x.psii_excitation)
     phi0 = kpmax/(kpmax+kf+kd)
     saturation = max(big(0), 1-phi/phi0) # Only test inputs within the numerical band.
     q = model.quenching
@@ -24,7 +24,7 @@ function fluorescence_oracle(model, x)
         regulated_heat_yield = kn/total,
         photochemical_rate = kp,
         quenching_rate = kn,
-        photon_flux = BigFloat(x.excitation)*kf/total,
+        photon_flux = BigFloat(x.psii_excitation)*kf/total,
     )
 end
 
@@ -86,7 +86,7 @@ end
                 e["oxygen_Pa"],
             )
             inputs=@inferred psii_flux_inputs(p, site)
-            @test inputs.excitation === p.electron_transport.psii_fraction*light
+            @test inputs.psii_excitation === p.electron_transport.psii_fraction*light
             @test inputs.linear_electron_flow ===
                   biochemical_turnover(p, site).linear_electron_flow
             @test oxygen_exchange(case.leaf, site) === nothing
@@ -130,7 +130,7 @@ end
                     )
                     @test all(x->zero(FT)<=x<=one(FT), yields)
                     @test isapprox(sum(yields), one(FT); rtol)
-                    @test result.photochemical_yield===inputs.linear_electron_flow/inputs.excitation
+                    @test result.photochemical_yield===inputs.linear_electron_flow/inputs.psii_excitation
                     # Gross LEF and fluorescence stay finite at carbon compensation.
                     factor==one(FT) && @test inputs.linear_electron_flow>zero(FT)
                 end

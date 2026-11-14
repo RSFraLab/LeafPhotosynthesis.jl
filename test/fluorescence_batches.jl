@@ -19,7 +19,7 @@ function check_fluorescence_batches(to_device, synchronize)
         inputs_device=psii_flux_inputs.(Ref(p), to_device(environments))
         synchronize()
         for (a, b) in zip(inputs, Array(inputs_device))
-            @test a.excitation≈b.excitation
+            @test a.psii_excitation≈b.psii_excitation
             @test isapprox(a.linear_electron_flow, b.linear_electron_flow; rtol, atol)
         end
         # Mix explicit failures, valid dark and valid light in one kernel.

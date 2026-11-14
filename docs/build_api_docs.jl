@@ -35,8 +35,14 @@ function symbol_kind(mod::Module, sym::Symbol)
     end
 end
 
+# The catalog lists every exported and every public name. `names` includes public names from
+# Julia 1.11 on; on Julia 1.10 a catalog name that is not exported must still be defined.
+api_status(mod::Module, sym::Symbol) =
+    Base.isexported(mod, sym) ? "exported" : "public: `$(nameof(mod)).$(sym)`"
+
 function verify_catalog_coverage(mod::Module)
     expected = sort!(filter(!=(nameof(mod)), collect(names(mod))))
+    exported = filter(s -> Base.isexported(mod, s), expected)
     seen = Symbol[]
     duplicates = Symbol[]
     seen_set = Set{Symbol}()
@@ -54,9 +60,14 @@ function verify_catalog_coverage(mod::Module)
     end
     !isempty(duplicates) && error("Duplicate symbols in API_PAGES: $(duplicates)")
     missing_syms = setdiff(Set(expected), seen_set)
-    extra_syms = setdiff(seen_set, Set(expected))
-    !isempty(missing_syms) && error("Exported symbols missing from API_PAGES: $(sort!(collect(missing_syms)))")
-    !isempty(extra_syms) && error("Non-exported symbols listed in API_PAGES: $(sort!(collect(extra_syms)))")
+    extra_syms = if VERSION >= v"1.11"
+        setdiff(seen_set, Set(expected))
+    else
+        filter(s -> !isdefined(mod, s), seen_set)
+    end
+    !isempty(missing_syms) && error("Exported or public symbols missing from API_PAGES: $(sort!(collect(missing_syms)))")
+    !isempty(extra_syms) && error("Symbols listed in API_PAGES that are neither exported nor public: $(sort!(collect(extra_syms)))")
+    isempty(setdiff(Set(exported), seen_set)) || error("Exported symbols missing from API_PAGES")
     return seen
 end
 
@@ -194,7 +205,7 @@ function render_symbol_entry(meta::IdDict, mod::Module, sym::Symbol, current_fil
         display_src = replace(relpath(src_path, REPO_ROOT), '\\' => '/')
         gh_src = "https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/$display_src#L$src_line"
         println(buf)
-        println(buf, "*Kind:* $(symbol_kind(mod, sym)) · *Source:* [`$display_src:$src_line`]($gh_src)")
+        println(buf, "*Kind:* $(symbol_kind(mod, sym)) · $(api_status(mod, sym)) · *Source:* [`$display_src:$src_line`]($gh_src)")
     end
     return String(take!(buf))
 end
@@ -244,7 +255,8 @@ function render_overview_page(meta::IdDict, mod::Module, sym_index::Dict{String,
 
     println(buf, "## Biophysical Process Map")
     println(buf)
-    println(buf, "All $(length(sym_index)) exported types, status codes, and functions in `LeafPhotosynthesis` are organized by biophysical process:")
+    n_exported = count(s -> Base.isexported(mod, Symbol(s)), keys(sym_index))
+    println(buf, "All $(length(sym_index)) types, status codes, and functions of the `LeafPhotosynthesis` API are organized by biophysical process. $(n_exported) are exported; the others are public and are written `LeafPhotosynthesis.name` or imported with `using LeafPhotosynthesis: name`:")
     println(buf)
     println(buf, "| Biophysical Process | Key Types & Entry Points | Walkthroughs |")
     println(buf, "| --- | --- | --- |")
@@ -269,13 +281,14 @@ function render_overview_page(meta::IdDict, mod::Module, sym_index::Dict{String,
         println(buf)
         println(buf, "### [$(page.title)]($fname)")
         println(buf)
-        println(buf, "| Symbol | Kind | Summary |")
-        println(buf, "| --- | --- | --- |")
+        println(buf, "| Symbol | Kind | API | Summary |")
+        println(buf, "| --- | --- | --- | --- |")
         for (_, syms) in page.sections
             for s in syms
                 kind = symbol_kind(mod, s)
                 summ = one_line_summary(meta, mod, s, "README.md", sym_index)
-                println(buf, "| [`$s`]($fname#$(symbol_anchor(s))) | $kind | $summ |")
+                status = Base.isexported(mod, s) ? "exported" : "public"
+                println(buf, "| [`$s`]($fname#$(symbol_anchor(s))) | $kind | $status | $summ |")
             end
         end
     end
@@ -300,13 +313,13 @@ function build_all(; check_only::Bool = false)
             actual = read(path, String)
             actual == expected || error("Stale generated API file: $path (re-run `julia --project=. docs/build_api_docs.jl`)")
         end
-        println("Verified $(length(outputs)) API Markdown files covering $(length(sym_index)) exported symbols with zero drift.")
+        println("Verified $(length(outputs)) API Markdown files covering $(length(sym_index)) exported and public symbols with zero drift.")
     else
         mkpath(API_DIR)
         for (path, content) in outputs
             write(path, content)
         end
-        println("Generated $(length(outputs)) API Markdown files in docs/api/ covering $(length(sym_index)) exported symbols.")
+        println("Generated $(length(outputs)) API Markdown files in docs/api/ covering $(length(sym_index)) exported and public symbols.")
     end
 end
 

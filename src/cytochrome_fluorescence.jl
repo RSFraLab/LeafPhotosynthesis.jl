@@ -13,38 +13,22 @@ sharing a common normalization (conventionally ns⁻¹, Johnson & Berry 2021, Ta
   `> 0` selects connected-units exciton sharing).
 - `sustained_quenching_rate` (`K_N,sus ≥ 0`; dark-sustained thermal dissipation).
 """
-struct PSIIRateParameters{FT<:Real}
+Base.@kwdef struct PSIIRateParameters{FT<:Real} <: AbstractLeafScalar
     fluorescence_rate::FT
     constitutive_heat_rate::FT
     maximum_photochemical_rate::FT
     exciton_transfer_rate::FT
     sustained_quenching_rate::FT
-    function PSIIRateParameters(
-        fluorescence_rate::FT,
-        constitutive_heat_rate::FT,
-        maximum_photochemical_rate::FT,
-        exciton_transfer_rate::FT,
-        sustained_quenching_rate::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            PSIIRateParameters,
-            (
-                fluorescence_rate,
-                constitutive_heat_rate,
-                maximum_photochemical_rate,
-                exciton_transfer_rate,
-                sustained_quenching_rate,
-            ),
-        )
+    function PSIIRateParameters{FT}(fields::Vararg{Any,5}) where {FT<:Real}
+        p = new{FT}(continuous_fields(FT, PSIIRateParameters{FT}, fields)...)
         kf, kd, kp, ku, kns = map(
             primal_scalar,
             (
-                fluorescence_rate,
-                constitutive_heat_rate,
-                maximum_photochemical_rate,
-                exciton_transfer_rate,
-                sustained_quenching_rate,
+                p.fluorescence_rate,
+                p.constitutive_heat_rate,
+                p.maximum_photochemical_rate,
+                p.exciton_transfer_rate,
+                p.sustained_quenching_rate,
             ),
         )
         d0 = kf + kd + kns
@@ -60,30 +44,11 @@ struct PSIIRateParameters{FT<:Real}
             ku >= zero(ku) && kns >= zero(kns) &&
             zero(phi_open) < phi_open < one(phi_open) && zero(phi_conn) < phi_conn < one(phi_conn) ||
             throw(ArgumentError("Invalid or unrepresentable PSII rate parameters"))
-        return new{FT}(
-            fluorescence_rate,
-            constitutive_heat_rate,
-            maximum_photochemical_rate,
-            exciton_transfer_rate,
-            sustained_quenching_rate,
-        )
+        return p
     end
 end
-PSIIRateParameters(kf::Real, kd::Real, kp::Real, ku::Real, kns::Real) =
-    PSIIRateParameters(promote_compatible(PSIIRateParameters, kf, kd, kp, ku, kns)...)
-PSIIRateParameters(;
-    fluorescence_rate,
-    constitutive_heat_rate,
-    maximum_photochemical_rate,
-    exciton_transfer_rate,
-    sustained_quenching_rate,
-) = PSIIRateParameters(
-    fluorescence_rate,
-    constitutive_heat_rate,
-    maximum_photochemical_rate,
-    exciton_transfer_rate,
-    sustained_quenching_rate,
-)
+PSIIRateParameters(fields::Vararg{Real,5}) =
+    PSIIRateParameters{scalar_type(PSIIRateParameters, fields...)}(fields...)
 
 """
     PSIRateParameters(; fluorescence_rate, constitutive_heat_rate,
@@ -98,34 +63,20 @@ Specify first-order PSI excitation decay rate constants sharing one normalizatio
 - `maximum_photochemical_rate` (`K_P1 > 0` in open P700 centers).
 - `closed_quenching_rate` (`K_X1 > 0` radiationless decay in oxidized P700⁺ centers).
 """
-struct PSIRateParameters{FT<:Real}
+Base.@kwdef struct PSIRateParameters{FT<:Real} <: AbstractLeafScalar
     fluorescence_rate::FT
     constitutive_heat_rate::FT
     maximum_photochemical_rate::FT
     closed_quenching_rate::FT
-    function PSIRateParameters(
-        fluorescence_rate::FT,
-        constitutive_heat_rate::FT,
-        maximum_photochemical_rate::FT,
-        closed_quenching_rate::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            PSIRateParameters,
-            (
-                fluorescence_rate,
-                constitutive_heat_rate,
-                maximum_photochemical_rate,
-                closed_quenching_rate,
-            ),
-        )
+    function PSIRateParameters{FT}(fields::Vararg{Any,4}) where {FT<:Real}
+        p = new{FT}(continuous_fields(FT, PSIRateParameters{FT}, fields)...)
         kf, kd, kp, kx = map(
             primal_scalar,
             (
-                fluorescence_rate,
-                constitutive_heat_rate,
-                maximum_photochemical_rate,
-                closed_quenching_rate,
+                p.fluorescence_rate,
+                p.constitutive_heat_rate,
+                p.maximum_photochemical_rate,
+                p.closed_quenching_rate,
             ),
         )
         s_open = kf + kd + kp
@@ -136,27 +87,11 @@ struct PSIRateParameters{FT<:Real}
             kf > zero(kf) && kd >= zero(kd) && kp > zero(kp) && kx > zero(kx) &&
             zero(phi_open) < phi_open < one(phi_open) && zero(phi_closed) < phi_closed < one(phi_closed) ||
             throw(ArgumentError("Invalid or unrepresentable PSI rate parameters"))
-        return new{FT}(
-            fluorescence_rate,
-            constitutive_heat_rate,
-            maximum_photochemical_rate,
-            closed_quenching_rate,
-        )
+        return p
     end
 end
-PSIRateParameters(kf::Real, kd::Real, kp::Real, kx::Real) =
-    PSIRateParameters(promote_compatible(PSIRateParameters, kf, kd, kp, kx)...)
-PSIRateParameters(;
-    fluorescence_rate,
-    constitutive_heat_rate,
-    maximum_photochemical_rate,
-    closed_quenching_rate,
-) = PSIRateParameters(
-    fluorescence_rate,
-    constitutive_heat_rate,
-    maximum_photochemical_rate,
-    closed_quenching_rate,
-)
+PSIRateParameters(fields::Vararg{Real,4}) =
+    PSIRateParameters{scalar_type(PSIRateParameters, fields...)}(fields...)
 
 @inline _convert_psii(::Type{FT}, p::PSIIRateParameters{FT}) where {FT<:Real} = p
 @inline _convert_psii(::Type{FT}, p::PSIIRateParameters) where {FT<:Real} =
@@ -185,23 +120,19 @@ Parameterize the mechanistic steady-state PSII + PSI fluorescence model coupled
 through Cytochrome b₆f redox poise and energy-dependent feedback quenching `K_N`
 (Johnson & Berry 2021, Eqs. 7–30).
 """
-struct CytochromeFluorescence{FT<:Real} <: AbstractFluorescence
+Base.@kwdef struct CytochromeFluorescence{FT<:Real} <: AbstractFluorescence
     psii::PSIIRateParameters{FT}
     psi::PSIRateParameters{FT}
     yield_tolerance::FT
-    function CytochromeFluorescence(
-        psii::PSIIRateParameters{FT},
-        psi::PSIRateParameters{FT},
-        yield_tolerance::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(FT, CytochromeFluorescence, (psii, psi, yield_tolerance))
-        phi2_max = psii_maximum_photochemical_yield(psii, one(FT))
-        phi1_max = psi_maximum_photochemical_yield(psi)
+    function CytochromeFluorescence{FT}(fields::Vararg{Any,3}) where {FT<:Real}
+        m = new{FT}(continuous_fields(FT, CytochromeFluorescence{FT}, fields)...)
+        phi2_max = psii_maximum_photochemical_yield(m.psii, one(FT))
+        phi1_max = psi_maximum_photochemical_yield(m.psi)
         headroom = primal_scalar(min(one(FT) - phi2_max, one(FT) - phi1_max))
-        ytp = primal_scalar(yield_tolerance)
+        ytp = primal_scalar(m.yield_tolerance)
         isfinite(ytp) && zero(ytp) <= ytp < headroom ||
             throw(ArgumentError("Invalid Cytochrome fluorescence yield tolerance"))
-        return new{FT}(psii, psi, yield_tolerance)
+        return m
     end
 end
 function CytochromeFluorescence(
@@ -209,12 +140,9 @@ function CytochromeFluorescence(
     psi::PSIRateParameters{FT1},
     yield_tolerance::Real,
 ) where {FT2<:Real,FT1<:Real}
-    _, _, yt = promote_compatible(CytochromeFluorescence, zero(FT2), zero(FT1), yield_tolerance)
-    FT = typeof(yt)
-    return CytochromeFluorescence(_convert_psii(FT, psii), _convert_psi(FT, psi), yt)
+    FT = scalar_type(CytochromeFluorescence, zero(FT2), zero(FT1), yield_tolerance)
+    return CytochromeFluorescence{FT}(_convert_psii(FT, psii), _convert_psi(FT, psi), yield_tolerance)
 end
-CytochromeFluorescence(; psii, psi, yield_tolerance) =
-    CytochromeFluorescence(psii, psi, yield_tolerance)
 
 """
     psi_maximum_photochemical_yield(psi_or_model)
@@ -270,38 +198,17 @@ Bundle scalar inputs for [`CytochromeFluorescence`](@ref):
 - `psi_electron_flow`: realized PSI electron flux `J_P700 = J_P680 + J_CEF` [μmol e⁻ m⁻² leaf s⁻¹].
 - `psii_open_fraction`: open PSII reaction-center fraction `q₂ ∈ [0, 1]`.
 """
-struct CoupledPhotosystemInputs{FT<:Real}
+Base.@kwdef struct CoupledPhotosystemInputs{FT<:Real} <: AbstractLeafScalar
     psii_excitation::FT
     psi_excitation::FT
     linear_electron_flow::FT
     psi_electron_flow::FT
     psii_open_fraction::FT
-    function CoupledPhotosystemInputs{FT}(
-        q2::FT, q1::FT, j2::FT, j1::FT, q2_open::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(FT, CoupledPhotosystemInputs, (q2, q1, j2, j1, q2_open))
-        return new{FT}(q2, q1, j2, j1, q2_open)
-    end
+    CoupledPhotosystemInputs{FT}(fields::Vararg{Any,5}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, CoupledPhotosystemInputs{FT}, fields)...)
 end
-CoupledPhotosystemInputs(q2::FT, q1::FT, j2::FT, j1::FT, q2_open::FT) where {FT<:Real} =
-    CoupledPhotosystemInputs{FT}(q2, q1, j2, j1, q2_open)
-CoupledPhotosystemInputs(q2::Real, q1::Real, j2::Real, j1::Real, q2_open::Real) =
-    CoupledPhotosystemInputs(
-        promote_compatible(CoupledPhotosystemInputs, q2, q1, j2, j1, q2_open)...,
-    )
-CoupledPhotosystemInputs(;
-    psii_excitation,
-    psi_excitation,
-    linear_electron_flow,
-    psi_electron_flow,
-    psii_open_fraction,
-) = CoupledPhotosystemInputs(
-    psii_excitation,
-    psi_excitation,
-    linear_electron_flow,
-    psi_electron_flow,
-    psii_open_fraction,
-)
+CoupledPhotosystemInputs(fields::Vararg{Real,5}) =
+    CoupledPhotosystemInputs{scalar_type(CoupledPhotosystemInputs, fields...)}(fields...)
 
 """
     CytochromeFluorescenceResult{FT}
@@ -315,7 +222,7 @@ internal leaf emission rates [μmol photons m⁻² one-sided leaf s⁻¹] prior 
 within-leaf optical escape and reabsorption. Check [`fluorescence_valid`](@ref)
 before consuming fluxes or yields.
 """
-struct CytochromeFluorescenceResult{FT<:Real}
+struct CytochromeFluorescenceResult{FT<:Real} <: AbstractLeafScalar
     status::FluorescenceStatus
     boundary_roundoff::Bool
     psii_photon_flux::FT
@@ -334,137 +241,16 @@ struct CytochromeFluorescenceResult{FT<:Real}
     psi_open_fraction::FT
     psii_quenching_rate::FT
     npq::FT
-    function CytochromeFluorescenceResult{FT}(
-        status::FluorescenceStatus,
-        boundary_roundoff::Bool,
-        psii_photon_flux,
-        psi_photon_flux,
-        total_photon_flux,
-        psii_photochemical_yield,
-        psii_fluorescence_yield,
-        psii_constitutive_heat_yield,
-        psii_regulated_heat_yield,
-        psi_photochemical_yield,
-        psi_fluorescence_yield,
-        psi_constitutive_heat_yield,
-        psi_regulated_heat_yield,
-        total_fluorescence_yield,
-        psii_open_fraction,
-        psi_open_fraction,
-        psii_quenching_rate,
-        npq,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            CytochromeFluorescenceResult{FT},
-            (
-                status,
-                boundary_roundoff,
-                psii_photon_flux,
-                psi_photon_flux,
-                total_photon_flux,
-                psii_photochemical_yield,
-                psii_fluorescence_yield,
-                psii_constitutive_heat_yield,
-                psii_regulated_heat_yield,
-                psi_photochemical_yield,
-                psi_fluorescence_yield,
-                psi_constitutive_heat_yield,
-                psi_regulated_heat_yield,
-                total_fluorescence_yield,
-                psii_open_fraction,
-                psi_open_fraction,
-                psii_quenching_rate,
-                npq,
-            ),
-        )
-        return new{FT}(
-            status,
-            boundary_roundoff,
-            psii_photon_flux,
-            psi_photon_flux,
-            total_photon_flux,
-            psii_photochemical_yield,
-            psii_fluorescence_yield,
-            psii_constitutive_heat_yield,
-            psii_regulated_heat_yield,
-            psi_photochemical_yield,
-            psi_fluorescence_yield,
-            psi_constitutive_heat_yield,
-            psi_regulated_heat_yield,
-            total_fluorescence_yield,
-            psii_open_fraction,
-            psi_open_fraction,
-            psii_quenching_rate,
-            npq,
-        )
-    end
-    function CytochromeFluorescenceResult(
-        status::FluorescenceStatus,
-        boundary_roundoff::Bool,
-        psii_photon_flux::FT,
-        psi_photon_flux::FT,
-        total_photon_flux::FT,
-        psii_photochemical_yield::FT,
-        psii_fluorescence_yield::FT,
-        psii_constitutive_heat_yield::FT,
-        psii_regulated_heat_yield::FT,
-        psi_photochemical_yield::FT,
-        psi_fluorescence_yield::FT,
-        psi_constitutive_heat_yield::FT,
-        psi_regulated_heat_yield::FT,
-        total_fluorescence_yield::FT,
-        psii_open_fraction::FT,
-        psi_open_fraction::FT,
-        psii_quenching_rate::FT,
-        npq::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            CytochromeFluorescenceResult,
-            (
-                status,
-                boundary_roundoff,
-                psii_photon_flux,
-                psi_photon_flux,
-                total_photon_flux,
-                psii_photochemical_yield,
-                psii_fluorescence_yield,
-                psii_constitutive_heat_yield,
-                psii_regulated_heat_yield,
-                psi_photochemical_yield,
-                psi_fluorescence_yield,
-                psi_constitutive_heat_yield,
-                psi_regulated_heat_yield,
-                total_fluorescence_yield,
-                psii_open_fraction,
-                psi_open_fraction,
-                psii_quenching_rate,
-                npq,
-            ),
-        )
-        return new{FT}(
-            status,
-            boundary_roundoff,
-            psii_photon_flux,
-            psi_photon_flux,
-            total_photon_flux,
-            psii_photochemical_yield,
-            psii_fluorescence_yield,
-            psii_constitutive_heat_yield,
-            psii_regulated_heat_yield,
-            psi_photochemical_yield,
-            psi_fluorescence_yield,
-            psi_constitutive_heat_yield,
-            psi_regulated_heat_yield,
-            total_fluorescence_yield,
-            psii_open_fraction,
-            psi_open_fraction,
-            psii_quenching_rate,
-            npq,
-        )
-    end
+    CytochromeFluorescenceResult{FT}(fields::Vararg{Any,18}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, CytochromeFluorescenceResult{FT}, fields)...)
 end
+CytochromeFluorescenceResult(
+    status::FluorescenceStatus,
+    boundary_roundoff::Bool,
+    scalars::Vararg{Real,16},
+) = CytochromeFluorescenceResult{scalar_type(CytochromeFluorescenceResult, scalars...)}(
+    status, boundary_roundoff, scalars...,
+)
 
 @inline fluorescence_valid(r::CytochromeFluorescenceResult) =
     r.status == FluorescenceLit || r.status == FluorescenceDark
@@ -628,7 +414,7 @@ end
 
 """
     photosystem_flux_inputs(photosynthesis::CytochromePhotosynthesis,
-        site::LeafEnvironment[, excitation])
+        site::LeafEnvironment, excitation=BroadbandExcitation())
 
 Extract coupled PSII and PSI excitations, realized linear (`J_P680`) and PSI
 (`J_P700`) electron flows, and open PSII fraction (`q₂`) from signed Cytochrome

@@ -7,32 +7,21 @@ Specify pulse-amplitude modulated (PAM) fluorometer detector weights
 PSII and PSI fluorescence yields to apparent detector levels `F / S`
 (Johnson & Berry 2021, Eqs. 38–42).
 """
-struct PAMFluorescenceObserver{FT<:Real}
+Base.@kwdef struct PAMFluorescenceObserver{FT<:Real} <: AbstractLeafScalar
     psii_sensitivity::FT
     psi_sensitivity::FT
-    function PAMFluorescenceObserver(
-        psii_sensitivity::FT,
-        psi_sensitivity::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT, PAMFluorescenceObserver, (psii_sensitivity, psi_sensitivity),
-        )
-        e2p = primal_scalar(psii_sensitivity)
-        e1p = primal_scalar(psi_sensitivity)
+    function PAMFluorescenceObserver{FT}(fields::Vararg{Any,2}) where {FT<:Real}
+        o = new{FT}(continuous_fields(FT, PAMFluorescenceObserver{FT}, fields)...)
+        e2p = primal_scalar(o.psii_sensitivity)
+        e1p = primal_scalar(o.psi_sensitivity)
         isfinite(e2p) && isfinite(e1p) &&
             e2p > zero(e2p) && e1p >= zero(e1p) ||
             throw(ArgumentError("PAMFluorescenceObserver requires finite psii_sensitivity > 0 and psi_sensitivity ≥ 0"))
-        return new{FT}(psii_sensitivity, psi_sensitivity)
+        return o
     end
 end
-
-PAMFluorescenceObserver(psii_sensitivity::Real, psi_sensitivity::Real) =
-    PAMFluorescenceObserver(
-        promote_compatible(PAMFluorescenceObserver, psii_sensitivity, psi_sensitivity)...,
-    )
-
-PAMFluorescenceObserver(; psii_sensitivity, psi_sensitivity) =
-    PAMFluorescenceObserver(psii_sensitivity, psi_sensitivity)
+PAMFluorescenceObserver(fields::Vararg{Real,2}) =
+    PAMFluorescenceObserver{scalar_type(PAMFluorescenceObserver, fields...)}(fields...)
 
 """
     PAMFluorescenceResult{FT}
@@ -45,7 +34,7 @@ pulse-ratio indices (`apparent_photochemical_yield`, `apparent_regulated_heat_yi
 Check [`pam_fluorescence_valid`](@ref) before consuming fields; non-lit states
 carry `NaN` fields without throwing on GPU devices.
 """
-struct PAMFluorescenceResult{FT<:Real}
+struct PAMFluorescenceResult{FT<:Real} <: AbstractLeafScalar
     status::FluorescenceStatus
     fs::FT
     fm_dark::FT
@@ -58,101 +47,11 @@ struct PAMFluorescenceResult{FT<:Real}
     apparent_npq::FT
     qp::FT
     ql::FT
-    function PAMFluorescenceResult{FT}(
-        status::FluorescenceStatus,
-        fs,
-        fm_dark,
-        fo_dark,
-        fm_prime,
-        fo_prime,
-        apparent_photochemical_yield,
-        apparent_regulated_heat_yield,
-        apparent_residual_yield,
-        apparent_npq,
-        qp,
-        ql,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            PAMFluorescenceResult{FT},
-            (
-                status,
-                fs,
-                fm_dark,
-                fo_dark,
-                fm_prime,
-                fo_prime,
-                apparent_photochemical_yield,
-                apparent_regulated_heat_yield,
-                apparent_residual_yield,
-                apparent_npq,
-                qp,
-                ql,
-            ),
-        )
-        return new{FT}(
-            status,
-            fs,
-            fm_dark,
-            fo_dark,
-            fm_prime,
-            fo_prime,
-            apparent_photochemical_yield,
-            apparent_regulated_heat_yield,
-            apparent_residual_yield,
-            apparent_npq,
-            qp,
-            ql,
-        )
-    end
-    function PAMFluorescenceResult(
-        status::FluorescenceStatus,
-        fs::FT,
-        fm_dark::FT,
-        fo_dark::FT,
-        fm_prime::FT,
-        fo_prime::FT,
-        apparent_photochemical_yield::FT,
-        apparent_regulated_heat_yield::FT,
-        apparent_residual_yield::FT,
-        apparent_npq::FT,
-        qp::FT,
-        ql::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            PAMFluorescenceResult,
-            (
-                status,
-                fs,
-                fm_dark,
-                fo_dark,
-                fm_prime,
-                fo_prime,
-                apparent_photochemical_yield,
-                apparent_regulated_heat_yield,
-                apparent_residual_yield,
-                apparent_npq,
-                qp,
-                ql,
-            ),
-        )
-        return new{FT}(
-            status,
-            fs,
-            fm_dark,
-            fo_dark,
-            fm_prime,
-            fo_prime,
-            apparent_photochemical_yield,
-            apparent_regulated_heat_yield,
-            apparent_residual_yield,
-            apparent_npq,
-            qp,
-            ql,
-        )
-    end
+    PAMFluorescenceResult{FT}(fields::Vararg{Any,12}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, PAMFluorescenceResult{FT}, fields)...)
 end
+PAMFluorescenceResult(status::FluorescenceStatus, scalars::Vararg{Real,11}) =
+    PAMFluorescenceResult{scalar_type(PAMFluorescenceResult, scalars...)}(status, scalars...)
 
 """
     pam_fluorescence_valid(result::PAMFluorescenceResult) -> Bool

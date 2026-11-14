@@ -61,7 +61,7 @@ assimilation_sensitivity(leaf.photosynthesis, gas_environment, stomatal_state,
     diffusion, excitation)
 # Reuse a solve only if all inputs, including excitation, match:
 assimilation_sensitivity(leaf.photosynthesis, gas_environment, stomatal_state,
-    diffusion, exchange, excitation)
+    diffusion, excitation, exchange)
 ```
 
 These partial derivatives hold Q₂ fixed. A previously computed `exchange` carries
@@ -99,10 +99,12 @@ A new input family subtypes `AbstractExcitation` and supplies:
 3. `psii_excitation(component, total_absorbed_par, input)` if using the current
    PSII fluorescence adapter.
 
-There is no generic fallback that discards unknown excitation. Existing custom
-electron components still work through their original three-argument method for
-broadband calls; explicit new inputs require an implementation. Likewise the
-`LeafModel` broadband wrappers preserve older component entry arities.
+There is no generic fallback that discards unknown excitation. Every entry point
+takes the excitation as its last positional argument with the default
+`BroadbandExcitation()`, so a custom electron or photosynthesis component that
+supports only broadband light implements that argument for `BroadbandExcitation`
+(for example `electron_transport(component, total_absorbed_par, jmax,
+::BroadbandExcitation)`); any other input then fails dispatch.
 
 The built-in prescribed convention covers the **same PAR domain only**. A test-only
 second family permits a different relation between Q₂ and PAR and compiles in the CUDA acceptance suite,

@@ -1,5 +1,18 @@
 using Test
 using LeafPhotosynthesis
+using LeafPhotosynthesis: AbstractPhotosynthesis, AbstractExcitation, AbstractQuenching,
+    AbstractStomatalModel, AbstractOxygenExchange, temperature_response, biochemical_rates,
+    compensation_point, CytochromeRates, electron_transport, valid_excitation,
+    psii_excitation, cytochrome_carbon_coefficients, colimit, carbon_assimilation,
+    carbon_assimilation_derivative, StomatalDrivers, target_conductance, stomatal_tendency,
+    OxygenFluxInputs, EquilibriumConverged, EquilibriumIterationLimit,
+    EquilibriumPrecisionLimit, EquilibriumInvalidInput, PSIIFluxInputs,
+    CoupledPhotosystemInputs, RateCompetitionResult, CytochromeFluorescenceResult,
+    PAMFluorescenceResult, FluorescenceLit, FluorescenceDark, FluorescenceInvalidInput,
+    FluorescenceIncompatibleRates, quenching_rate, maximum_photochemical_yield,
+    psi_maximum_photochemical_yield, psii_maximum_photochemical_yield,
+    minimum_psii_partition, dark_balanced_psii_partition, state_transition_partition,
+    dark_pam_levels
 include("../examples/core_exchange.jl")
 include("reference_bonan.jl")
 include("device_checks.jl")

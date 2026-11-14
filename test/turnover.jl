@@ -30,10 +30,10 @@ end
                 @test oxygen_exchange(disabled,site)===nothing
                 @test turnover_allocations(disabled,site)==0
                 carbon = photosynthesize(model,site)
-                @test t.electron_supply==carbon.electron_transport
+                @test t.electron_transport==carbon.electron_transport
                 @test isapprox(t.carboxylation-t.photorespiratory_co2-t.respiration,
                     carbon.net_assimilation;atol=tol)
-                @test t.linear_electron_flow<=t.electron_supply+tol
+                @test t.linear_electron_flow<=t.electron_transport+tol
                 oxygen = oxygen_exchange(enabled,site)
                 @test oxygen.linear_electron_flow==t.linear_electron_flow
                 @test oxygen.carboxylation==t.carboxylation
@@ -46,7 +46,7 @@ end
                 demand = BigFloat(s.electrons_per_carboxylation)*BigFloat(r.vcmax)*
                     (c+BigFloat(s.oxygenation_cost)*gamma)/
                     (c+BigFloat(r.kc)*(1+BigFloat(env.oxygen)/BigFloat(r.ko)))
-                supply = BigFloat(t.electron_supply)
+                supply = BigFloat(t.electron_transport)
                 expected = if limitation isa MinimumLimitation
                     min(demand,supply)
                 else

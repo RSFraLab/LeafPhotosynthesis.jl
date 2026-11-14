@@ -38,13 +38,15 @@ preserves homogeneous rate types.
 
 #### Examples
 ```julia
+julia> using LeafPhotosynthesis: temperature_response
+
 julia> r = ConstantResponse(0.75);
 
 julia> temperature_response(r, 303.15)
 0.75
 ```
 
-*Kind:* Struct · *Source:* [`src/temperature_response.jl:161`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L161)
+*Kind:* Struct · exported · *Source:* [`src/temperature_response.jl:127`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L127)
 
 ### `Arrhenius`
 
@@ -63,13 +65,15 @@ scientific parameters are supplied explicitly.
 
 #### Examples
 ```julia
+julia> using LeafPhotosynthesis: temperature_response
+
 julia> law = Arrhenius(60.0, 65330.0, 298.15, 8.314);
 
 julia> temperature_response(law, 298.15)
 60.0
 ```
 
-*Kind:* Struct · *Source:* [`src/temperature_response.jl:64`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L64)
+*Kind:* Struct · exported · *Source:* [`src/temperature_response.jl:71`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L71)
 
 ### `PeakedArrhenius`
 
@@ -84,7 +88,7 @@ $f_{\mathrm{Arr}}(T) \, \big(1 + \exp[(ΔS \, T_{\mathrm{ref}} - H_d)/(R \, T_{\
 
 `deactivation_energy` (`H_d`) is in J mol⁻¹ and `entropy` (`ΔS`) is in J mol⁻¹ K⁻¹.
 
-*Kind:* Struct · *Source:* [`src/temperature_response.jl:115`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L115)
+*Kind:* Struct · exported · *Source:* [`src/temperature_response.jl:104`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L104)
 
 ### `temperature_response`
 
@@ -94,7 +98,7 @@ temperature_response(response, temperature)
 
 Evaluate `response` at leaf `temperature` [K].
 
-*Kind:* Function · *Source:* [`src/temperature_response.jl:191`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L191)
+*Kind:* Function · public: `LeafPhotosynthesis.temperature_response` · *Source:* [`src/temperature_response.jl:160`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L160)
 
 ---
 
@@ -112,7 +116,7 @@ Bundle the six C3 biochemical temperature responses (`vcmax`, `jmax`,
 `gamma_star` may be a temperature-response law or an explicit
 [`AbstractCompensationPoint`](#abstractcompensationpoint) component.
 
-*Kind:* Struct · *Source:* [`src/temperature_response.jl:224`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L224)
+*Kind:* Struct · exported · *Source:* [`src/temperature_response.jl:193`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L193)
 
 ### `C3Rates`
 
@@ -128,7 +132,7 @@ selected, biochemical-site O₂.
 - `jmax`: μmol electrons m⁻² leaf s⁻¹.
 - `kc`, `ko`, `gamma_star`: Pa.
 
-*Kind:* Struct · *Source:* [`src/temperature_response.jl:242`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L242)
+*Kind:* Struct · public: `LeafPhotosynthesis.C3Rates` · *Source:* [`src/temperature_response.jl:211`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L211)
 
 ### `CytochromeCapacity`
 
@@ -142,7 +146,7 @@ site density `site_density` [μmol sites m⁻² leaf] and catalytic turnover law
 `turnover_rate` [mol e⁻ mol⁻¹ sites s⁻¹] (Johnson & Berry 2021):
 $V_{q\max}(T) = B \cdot k_q(T)$ [μmol e⁻ m⁻² leaf s⁻¹].
 
-*Kind:* Struct · *Source:* [`src/cytochrome_photosynthesis.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L1)
+*Kind:* Struct · exported · *Source:* [`src/cytochrome_photosynthesis.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L1)
 
 ### `CytochromeTemperatureResponse`
 
@@ -159,7 +163,7 @@ returning μmol e⁻ m⁻² leaf s⁻¹; `gamma_star` may be a temperature law o
 [`AbstractCompensationPoint`](#abstractcompensationpoint); `linear_atp_per_electron` (`η_L`) and
 `cyclic_atp_per_electron` (`η_C`) use [`ConstantResponse`](#constantresponse) or temperature laws.
 
-*Kind:* Struct · *Source:* [`src/cytochrome_photosynthesis.jl:27`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L27)
+*Kind:* Struct · exported · *Source:* [`src/cytochrome_photosynthesis.jl:29`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L29)
 
 ### `CytochromeRates`
 
@@ -177,7 +181,7 @@ at leaf temperature [K] and biochemical-site O₂ [Pa]:
 - `kc`, `ko`, `gamma_star`: Pa.
 - `linear_atp_per_electron` (`η_L`), `cyclic_atp_per_electron` (`η_C`): mol ATP (mol e⁻)⁻¹.
 
-*Kind:* Struct · *Source:* [`src/cytochrome_photosynthesis.jl:50`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L50)
+*Kind:* Struct · public: `LeafPhotosynthesis.CytochromeRates` · *Source:* [`src/cytochrome_photosynthesis.jl:52`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L52)
 
 ### `biochemical_rates`
 
@@ -191,7 +195,7 @@ biochemical-site `oxygen` partial pressure [Pa] without mutating `responses`.
 The two-argument form evaluates temperature-only responses; the three-argument
 form also passes `oxygen` to [`compensation_point`](#compensation_point) for `gamma_star`.
 
-*Kind:* Function · *Source:* [`src/temperature_response.jl:283`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L283)
+*Kind:* Function · public: `LeafPhotosynthesis.biochemical_rates` · *Source:* [`src/temperature_response.jl:235`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/temperature_response.jl#L235)
 
 ---
 
@@ -205,7 +209,7 @@ AbstractCompensationPoint
 
 Supertype for photorespiratory CO₂ compensation point (`Γ*` [Pa]) parameterizations.
 
-*Kind:* Abstract Type · *Source:* [`src/photorespiratory_compensation.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photorespiratory_compensation.jl#L1)
+*Kind:* Abstract Type · public: `LeafPhotosynthesis.AbstractCompensationPoint` · *Source:* [`src/photorespiratory_compensation.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photorespiratory_compensation.jl#L1)
 
 ### `PrescribedCompensationPoint`
 
@@ -219,7 +223,7 @@ The caller must supply an oxygen partial pressure compatible with `response`'s
 calibration; this component does not infer oxygen scaling and is distinct from
 the signed or clipped carbon-assimilation policy.
 
-*Kind:* Struct · *Source:* [`src/photorespiratory_compensation.jl:8`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photorespiratory_compensation.jl#L8)
+*Kind:* Struct · exported · *Source:* [`src/photorespiratory_compensation.jl:8`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photorespiratory_compensation.jl#L8)
 
 ### `OxygenScaledCompensationPoint`
 
@@ -235,7 +239,7 @@ partial pressure `reference_oxygen` [Pa]. No ambient O₂ default or stoichiomet
 recalibration is introduced, and evaluation without an explicit `oxygen` argument
 is unsupported. The scalar law returns exact zero at `oxygen == 0`.
 
-*Kind:* Struct · *Source:* [`src/photorespiratory_compensation.jl:21`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photorespiratory_compensation.jl#L21)
+*Kind:* Struct · exported · *Source:* [`src/photorespiratory_compensation.jl:21`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photorespiratory_compensation.jl#L21)
 
 ### `compensation_point`
 
@@ -249,4 +253,4 @@ Evaluate the photorespiratory CO₂ compensation point `Γ*` [Pa] at leaf
 Plain temperature laws delegate to [`temperature_response`](#temperature_response); implement a
 method on `compensation_point` when adding a new [`AbstractCompensationPoint`](#abstractcompensationpoint).
 
-*Kind:* Function · *Source:* [`src/photorespiratory_compensation.jl:46`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photorespiratory_compensation.jl#L46)
+*Kind:* Function · public: `LeafPhotosynthesis.compensation_point` · *Source:* [`src/photorespiratory_compensation.jl:47`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photorespiratory_compensation.jl#L47)

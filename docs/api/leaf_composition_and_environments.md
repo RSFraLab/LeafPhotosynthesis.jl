@@ -12,12 +12,26 @@ broadcasts, and `ForwardDiff.Dual` tangents.
 
 ## Contents
 
-- **Leaf Assembly & Prescribed-CO₂ Evaluation**: [`LeafModel`](#leafmodel), [`photosynthesize`](#photosynthesize)
+- **Leaf Assembly & Prescribed-CO₂ Evaluation**: [`AbstractLeafScalar`](#abstractleafscalar), [`LeafModel`](#leafmodel), [`photosynthesize`](#photosynthesize)
 - **Scalar Forcing Environments**: [`LeafEnvironment`](#leafenvironment), [`GasExchangeEnvironment`](#gasexchangeenvironment)
 
 ---
 
 ## Leaf Assembly & Prescribed-CO₂ Evaluation
+
+### `AbstractLeafScalar`
+
+```julia
+AbstractLeafScalar
+```
+
+Supertype of every component, parameter, input and result struct of LeafPhotosynthesis.
+
+Its subtypes are immutable values that broadcast as scalars, so
+`photosynthesize.(leaf, environments)` needs no `Ref(leaf)`. A new struct gets this by
+subtyping `AbstractLeafScalar` or one of the package's abstract component types.
+
+*Kind:* Abstract Type · public: `LeafPhotosynthesis.AbstractLeafScalar` · *Source:* [`src/LeafPhotosynthesis.jl:69`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/LeafPhotosynthesis.jl#L69)
 
 ### `LeafModel`
 
@@ -33,13 +47,13 @@ components into an immutable leaf model.
 Explicit no-op defaults (`NoStomatalDynamics()`, `NoOxygenExchange()`) disable
 optional processes without introducing hidden scientific parameter values.
 
-*Kind:* Struct · *Source:* [`src/leaf_model.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/leaf_model.jl#L1)
+*Kind:* Struct · exported · *Source:* [`src/leaf_model.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/leaf_model.jl#L1)
 
 ### `photosynthesize`
 
 ```julia
-photosynthesize(photosynthesis, environment[, excitation])
-photosynthesize(leaf, environment[, excitation])
+photosynthesize(photosynthesis, environment, excitation=BroadbandExcitation())
+photosynthesize(leaf, environment, excitation=BroadbandExcitation())
 ```
 
 Evaluate leaf photosynthetic carbon assimilation and available electron supply
@@ -54,7 +68,7 @@ and `psi_to_psii_ratio`. Inputs outside the physical domain (non-finite or negat
 light, CO₂ or O₂, non-positive temperature, invalid excitation or model domain)
 give `NaN` in every field.
 
-*Kind:* Function · *Source:* [`src/photosynthesis.jl:140`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photosynthesis.jl#L140)
+*Kind:* Function · exported · *Source:* [`src/photosynthesis.jl:125`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photosynthesis.jl#L125)
 
 ---
 
@@ -70,7 +84,7 @@ LeafEnvironment(temperature, absorbed_par, co2, oxygen)
 Represent prescribed leaf `temperature` [K], `absorbed_par` [μmol photons m⁻² leaf s⁻¹],
 and biochemical-site `co2` and `oxygen` partial pressures [Pa].
 
-*Kind:* Struct · *Source:* [`src/photosynthesis.jl:62`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photosynthesis.jl#L62)
+*Kind:* Struct · exported · *Source:* [`src/photosynthesis.jl:62`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photosynthesis.jl#L62)
 
 ### `GasExchangeEnvironment`
 
@@ -85,4 +99,4 @@ Represent prescribed leaf `temperature` [K], `absorbed_par` [μmol photons m⁻�
 ambient `co2` [Pa], biochemical-site `oxygen` [Pa], total `pressure` [Pa], and
 leaf-surface `relative_humidity` (`∈ [0, 1]`) and `vpd` [Pa].
 
-*Kind:* Struct · *Source:* [`src/gas_diffusion.jl:56`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/gas_diffusion.jl#L56)
+*Kind:* Struct · exported · *Source:* [`src/gas_diffusion.jl:32`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/gas_diffusion.jl#L32)

@@ -7,34 +7,21 @@ denominator ``e_c (C_c + c_o Γ^*)``.
 
 Both parameters must be supplied explicitly from parameter files.
 """
-Base.@kwdef struct C3Stoichiometry{FT<:Real}
+Base.@kwdef struct C3Stoichiometry{FT<:Real} <: AbstractLeafScalar
     electrons_per_carboxylation::FT
     oxygenation_cost::FT
-    function C3Stoichiometry{FT}(electrons_per_carboxylation, oxygenation_cost) where {FT<:Real}
-        require_continuous_scalar(
-            FT, C3Stoichiometry{FT}, (electrons_per_carboxylation, oxygenation_cost),
-        )
-        return new{FT}(electrons_per_carboxylation, oxygenation_cost)
-    end
-    function C3Stoichiometry(
-        electrons_per_carboxylation::FT,
-        oxygenation_cost::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT, C3Stoichiometry, (electrons_per_carboxylation, oxygenation_cost),
-        )
-        return new{FT}(electrons_per_carboxylation, oxygenation_cost)
-    end
+    C3Stoichiometry{FT}(fields::Vararg{Any,2}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, C3Stoichiometry{FT}, fields)...)
 end
-C3Stoichiometry(ec::Real, oc::Real) =
-    C3Stoichiometry(promote_compatible(C3Stoichiometry, ec, oc)...)
+C3Stoichiometry(fields::Vararg{Real,2}) =
+    C3Stoichiometry{scalar_type(C3Stoichiometry, fields...)}(fields...)
 
 """
     SignedAssimilation()
 
 Retain signed CO₂ exchange below the photorespiratory compensation point `Γ*`.
 """
-struct SignedAssimilation end
+struct SignedAssimilation <: AbstractLeafScalar end
 
 """
     NonnegativeAssimilation()
@@ -42,7 +29,7 @@ struct SignedAssimilation end
 Clip pre-respiration CO₂ assimilation at zero below `Γ*`, as in Bonan
 supplemental program 11.1.
 """
-struct NonnegativeAssimilation end
+struct NonnegativeAssimilation <: AbstractLeafScalar end
 
 @inline function invalid_carbon(::Type{FT}) where {FT}
     n = FT(NaN)
@@ -102,8 +89,8 @@ end
 
 """
     biochemical_turnover(rates, co2, oxygen, electrons, stoichiometry, limitation, SignedAssimilation())
-    biochemical_turnover(photosynthesis, environment[, excitation])
-    biochemical_turnover(leaf, environment[, excitation])
+    biochemical_turnover(photosynthesis, environment, excitation=BroadbandExcitation())
+    biochemical_turnover(leaf, environment, excitation=BroadbandExcitation())
 
 Compute realized C3 gross biochemical turnover prior to cancellation between
 Rubisco carboxylation and photorespiratory CO₂ release.
@@ -111,8 +98,8 @@ Rubisco carboxylation and photorespiratory CO₂ release.
 Return `(; carboxylation, photorespiratory_co2, respiration, linear_electron_flow)`,
 with carbon fluxes in μmol CO₂ m⁻² leaf s⁻¹ and electron fluxes in μmol electrons
 m⁻² leaf s⁻¹. [`CytochromePhotosynthesis`](@ref) adds the realized `psi_electron_flow`
-and `cyclic_electron_flow`. Environment entry points append the available
-`electron_supply` and, for [`CytochromePhotosynthesis`](@ref), `psi_electron_supply`,
+and `cyclic_electron_flow`. Environment entry points append the available linear
+`electron_transport` and, for [`CytochromePhotosynthesis`](@ref), `psi_electron_supply`,
 `psii_open_fraction` and `psi_to_psii_ratio`, as [`photosynthesize`](@ref) does; input
 outside the physical domain gives `NaN` in every field. Only
 [`SignedAssimilation`](@ref) defines this turnover contract.

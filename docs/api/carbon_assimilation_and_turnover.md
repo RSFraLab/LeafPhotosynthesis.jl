@@ -30,7 +30,7 @@ AbstractPhotosynthesis
 
 Supertype for leaf photosynthetic biochemistry components implementing [`photosynthesize`](leaf_composition_and_environments.md#photosynthesize).
 
-*Kind:* Abstract Type · *Source:* [`src/photosynthesis.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photosynthesis.jl#L1)
+*Kind:* Abstract Type · public: `LeafPhotosynthesis.AbstractPhotosynthesis` · *Source:* [`src/photosynthesis.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photosynthesis.jl#L1)
 
 ### `AbstractC3Photosynthesis`
 
@@ -70,7 +70,7 @@ A subtype has the fields `temperature`, `electron_transport`, `stoichiometry`,
 - `turnover_electron_flows(p, turnover)`: realized electron flows beyond
   `linear_electron_flow` that [`oxygen_exchange`](stomata_diffusion_and_equilibrium.md#oxygen_exchange) reports.
 
-*Kind:* Abstract Type · *Source:* [`src/photosynthesis.jl:8`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photosynthesis.jl#L8)
+*Kind:* Abstract Type · public: `LeafPhotosynthesis.AbstractC3Photosynthesis` · *Source:* [`src/photosynthesis.jl:8`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photosynthesis.jl#L8)
 
 ### `C3Photosynthesis`
 
@@ -84,7 +84,7 @@ Compose Farquhar–von Caemmerer–Berry C3 biochemistry from concrete `temperat
 `C3Photosynthesis` holds immutable parameters only, with no per-leaf arrays,
 scratch buffers, or hidden empirical defaults.
 
-*Kind:* Struct · *Source:* [`src/photosynthesis.jl:45`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photosynthesis.jl#L45)
+*Kind:* Struct · exported · *Source:* [`src/photosynthesis.jl:45`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/photosynthesis.jl#L45)
 
 ### `CytochromePhotosynthesis`
 
@@ -97,7 +97,7 @@ Compose steady-state C3 photosynthesis governed by Cytochrome b₆f plastoquinol
 oxidation, PSI photochemistry, and coupled linear/cyclic ATP–NADPH stoichiometry
 (Johnson & Berry 2021) from immutable component structs.
 
-*Kind:* Struct · *Source:* [`src/cytochrome_photosynthesis.jl:375`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L375)
+*Kind:* Struct · exported · *Source:* [`src/cytochrome_photosynthesis.jl:254`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L254)
 
 ---
 
@@ -111,7 +111,7 @@ MinimumLimitation()
 
 Select the exact minimum `min(a, b)` of two competing biochemical capacities.
 
-*Kind:* Struct · *Source:* [`src/rate_limitation.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/rate_limitation.jl#L1)
+*Kind:* Struct · exported · *Source:* [`src/rate_limitation.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/rate_limitation.jl#L1)
 
 ### `SerialLimitation`
 
@@ -123,7 +123,7 @@ Select first-order series rate co-limitation (`a * b / (a + b)` for `a, b ≥ 0`
 and zero when both capacities vanish), corresponding to the `θ → 0` rectangular
 hyperbola used by Johnson & Berry (2021) for Cytochrome b₆f and PSI in series.
 
-*Kind:* Struct · *Source:* [`src/rate_limitation.jl:8`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/rate_limitation.jl#L8)
+*Kind:* Struct · exported · *Source:* [`src/rate_limitation.jl:8`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/rate_limitation.jl#L8)
 
 ### `QuadraticLimitation`
 
@@ -136,7 +136,7 @@ Select the lower root of $θ r^2 - (a + b) r + a b = 0$ for empirical curvature
 
 Throws `ArgumentError` if `curvature` lies outside `(0, 1]`.
 
-*Kind:* Struct · *Source:* [`src/rate_limitation.jl:17`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/rate_limitation.jl#L17)
+*Kind:* Struct · exported · *Source:* [`src/rate_limitation.jl:17`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/rate_limitation.jl#L17)
 
 ### `colimit`
 
@@ -149,6 +149,8 @@ Combine competing rates `a` and `b` using `limitation` ([`MinimumLimitation`](#m
 
 #### Examples
 ```julia
+julia> using LeafPhotosynthesis: colimit
+
 julia> colimit(12.0, 20.0, MinimumLimitation())
 12.0
 
@@ -156,7 +158,7 @@ julia> colimit(6.0, 3.0, SerialLimitation())
 2.0
 ```
 
-*Kind:* Function · *Source:* [`src/rate_limitation.jl:36`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/rate_limitation.jl#L36)
+*Kind:* Function · public: `LeafPhotosynthesis.colimit` · *Source:* [`src/rate_limitation.jl:38`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/rate_limitation.jl#L38)
 
 ### `SignedAssimilation`
 
@@ -166,7 +168,7 @@ SignedAssimilation()
 
 Retain signed CO₂ exchange below the photorespiratory compensation point `Γ*`.
 
-*Kind:* Struct · *Source:* [`src/carbon_assimilation.jl:32`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/carbon_assimilation.jl#L32)
+*Kind:* Struct · exported · *Source:* [`src/carbon_assimilation.jl:19`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/carbon_assimilation.jl#L19)
 
 ### `NonnegativeAssimilation`
 
@@ -177,7 +179,7 @@ NonnegativeAssimilation()
 Clip pre-respiration CO₂ assimilation at zero below `Γ*`, as in Bonan
 supplemental program 11.1.
 
-*Kind:* Struct · *Source:* [`src/carbon_assimilation.jl:39`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/carbon_assimilation.jl#L39)
+*Kind:* Struct · exported · *Source:* [`src/carbon_assimilation.jl:26`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/carbon_assimilation.jl#L26)
 
 ---
 
@@ -205,14 +207,14 @@ mitochondrial `respiration`. Co-limitation acts on nonnegative biochemical
 capacities before multiplying by CO₂ excess so realized turnover remains
 well-defined across `Γ*`.
 
-*Kind:* Function · *Source:* [`src/carbon_assimilation.jl:69`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/carbon_assimilation.jl#L69)
+*Kind:* Function · public: `LeafPhotosynthesis.carbon_assimilation` · *Source:* [`src/carbon_assimilation.jl:56`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/carbon_assimilation.jl#L56)
 
 ### `biochemical_turnover`
 
 ```julia
 biochemical_turnover(rates, co2, oxygen, electrons, stoichiometry, limitation, SignedAssimilation())
-biochemical_turnover(photosynthesis, environment[, excitation])
-biochemical_turnover(leaf, environment[, excitation])
+biochemical_turnover(photosynthesis, environment, excitation=BroadbandExcitation())
+biochemical_turnover(leaf, environment, excitation=BroadbandExcitation())
 ```
 
 Compute realized C3 gross biochemical turnover prior to cancellation between
@@ -221,10 +223,10 @@ Rubisco carboxylation and photorespiratory CO₂ release.
 Return `(; carboxylation, photorespiratory_co2, respiration, linear_electron_flow)`,
 with carbon fluxes in μmol CO₂ m⁻² leaf s⁻¹ and electron fluxes in μmol electrons
 m⁻² leaf s⁻¹. [`CytochromePhotosynthesis`](#cytochromephotosynthesis) adds the realized `psi_electron_flow`
-and `cyclic_electron_flow`. Environment entry points append the available
-`electron_supply` and, for [`CytochromePhotosynthesis`](#cytochromephotosynthesis), `psi_electron_supply`,
+and `cyclic_electron_flow`. Environment entry points append the available linear
+`electron_transport` and, for [`CytochromePhotosynthesis`](#cytochromephotosynthesis), `psi_electron_supply`,
 `psii_open_fraction` and `psi_to_psii_ratio`, as [`photosynthesize`](leaf_composition_and_environments.md#photosynthesize) does; input
 outside the physical domain gives `NaN` in every field. Only
 [`SignedAssimilation`](#signedassimilation) defines this turnover contract.
 
-*Kind:* Function · *Source:* [`src/carbon_assimilation.jl:103`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/carbon_assimilation.jl#L103)
+*Kind:* Function · exported · *Source:* [`src/carbon_assimilation.jl:90`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/carbon_assimilation.jl#L90)

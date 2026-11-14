@@ -1,4 +1,9 @@
 using LeafPhotosynthesis
+using LeafPhotosynthesis: temperature_response, C3Rates, CytochromeRates,
+    cytochrome_electron_supply, colimit, StomatalDrivers, target_conductance,
+    stomatal_tendency, OxygenFluxInputs, EquilibriumSolution, EquilibriumConverged,
+    PSIIFluxInputs, CoupledPhotosystemInputs, RateCompetitionResult,
+    CytochromeFluorescenceResult, PAMFluorescenceResult, FluorescenceLit, quenching_rate
 using Test
 
 const _HAS_EXTENDED_QA_DEPS = all(
@@ -14,6 +19,11 @@ if _HAS_EXTENDED_QA_DEPS
     using ExplicitImports
     using ForwardDiff
     using OffsetArrays
+end
+
+# A struct outside the package that broadcasts as a scalar by its supertype alone.
+struct ScalarBroadcastProbe <: LeafPhotosynthesis.AbstractLeafScalar
+    value::Float64
 end
 
 function _bigfloat_deriv(f, x::Float64; h::BigFloat = BigFloat(10)^(-24))
@@ -205,6 +215,18 @@ end
         @test isbitstype(LeafEnvironment{Float32}) && sizeof(LeafEnvironment{Float32}) == 16
         @test isbitstype(GasExchangeEnvironment{Float64}) && sizeof(GasExchangeEnvironment{Float64}) == 56
         @test isbitstype(GasExchangeEnvironment{Float32}) && sizeof(GasExchangeEnvironment{Float32}) == 28
+
+        # Every package struct, and any struct that subtypes AbstractLeafScalar, broadcasts as a scalar
+        package_types = filter(names(LeafPhotosynthesis; all = true)) do name
+            T = getfield(LeafPhotosynthesis, name)
+            !startswith(string(name), "#") && (T isa DataType || T isa UnionAll) &&
+                !(T <: Union{Enum,Function}) && parentmodule(T) === LeafPhotosynthesis &&
+                T !== LeafPhotosynthesis.AbstractLeafScalar
+        end
+        @test length(package_types) >= 55
+        @test all(name -> getfield(LeafPhotosynthesis, name) <: LeafPhotosynthesis.AbstractLeafScalar, package_types)
+        @test identity.(ScalarBroadcastProbe(1.0)) === ScalarBroadcastProbe(1.0)
+        @test (p -> p.value).(ScalarBroadcastProbe(2.0)) === 2.0
 
         # Direct scalar broadcasting without Ref(...) on standard Arrays & @view slices
         lp_root = dirname(@__DIR__)

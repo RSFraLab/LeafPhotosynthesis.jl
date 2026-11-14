@@ -76,7 +76,8 @@ environment = bonan_environment(FT, p;
 result = photosynthesize(leaf, environment)
 result.net_assimilation              # μmol CO₂ m⁻² leaf s⁻¹
 
-# Inspect the individual processes with the same parameters:
+# Inspect the individual processes with the same parameters (public, not exported):
+using LeafPhotosynthesis: biochemical_rates, electron_transport, carbon_assimilation
 component = leaf.photosynthesis
 rates = biochemical_rates(component.temperature, environment.temperature)
 electrons = electron_transport(component.electron_transport,
@@ -89,7 +90,7 @@ carbon = carbon_assimilation(rates, environment.co2, environment.oxygen,
 
 | Question | File |
 | --- | --- |
-| Where is the structured API Reference for all exported types and functions? | [docs/api/README.md](docs/api/README.md) |
+| Where is the structured API Reference for all exported and public types and functions? | [docs/api/README.md](docs/api/README.md) |
 | How are leaf components assembled? | [src/leaf_model.jl](src/leaf_model.jl), [API: Leaf Composition](docs/api/leaf_composition_and_environments.md) |
 | What is a complete C3 calculation? | [src/photosynthesis.jl](src/photosynthesis.jl) |
 | How do biochemical rates depend on temperature? | [src/temperature_response.jl](src/temperature_response.jl) |

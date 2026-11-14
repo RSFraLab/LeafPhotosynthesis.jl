@@ -3,7 +3,7 @@
 
 Select the exact minimum `min(a, b)` of two competing biochemical capacities.
 """
-struct MinimumLimitation end
+struct MinimumLimitation <: AbstractLeafScalar end
 
 """
     SerialLimitation()
@@ -12,7 +12,7 @@ Select first-order series rate co-limitation (`a * b / (a + b)` for `a, b ≥ 0`
 and zero when both capacities vanish), corresponding to the `θ → 0` rectangular
 hyperbola used by Johnson & Berry (2021) for Cytochrome b₆f and PSI in series.
 """
-struct SerialLimitation end
+struct SerialLimitation <: AbstractLeafScalar end
 
 """
     QuadraticLimitation(curvature)
@@ -22,16 +22,18 @@ Select the lower root of ``θ r^2 - (a + b) r + a b = 0`` for empirical curvatur
 
 Throws `ArgumentError` if `curvature` lies outside `(0, 1]`.
 """
-struct QuadraticLimitation{FT<:Real}
+Base.@kwdef struct QuadraticLimitation{FT<:Real} <: AbstractLeafScalar
     curvature::FT
-    function QuadraticLimitation(curvature::FT) where {FT<:Real}
-        require_continuous_scalar(FT, QuadraticLimitation, (curvature,))
-        cp = primal_scalar(curvature)
+    function QuadraticLimitation{FT}(fields::Vararg{Any,1}) where {FT<:Real}
+        p = new{FT}(continuous_fields(FT, QuadraticLimitation{FT}, fields)...)
+        cp = primal_scalar(p.curvature)
         isfinite(cp) && zero(cp) < cp <= one(cp) ||
             throw(ArgumentError("curvature must lie in (0, 1]"))
-        return new{FT}(curvature)
+        return p
     end
 end
+QuadraticLimitation(fields::Vararg{Real,1}) =
+    QuadraticLimitation{scalar_type(QuadraticLimitation, fields...)}(fields...)
 
 """
     colimit(a, b, limitation)
@@ -41,6 +43,8 @@ Combine competing rates `a` and `b` using `limitation` ([`MinimumLimitation`](@r
 
 # Examples
 ```jldoctest
+julia> using LeafPhotosynthesis: colimit
+
 julia> colimit(12.0, 20.0, MinimumLimitation())
 12.0
 

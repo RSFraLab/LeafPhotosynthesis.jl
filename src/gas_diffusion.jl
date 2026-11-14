@@ -4,7 +4,7 @@
 Supertype for leaf gas-diffusion parameterizations, kept separate from
 biochemical demand and stomatal conductance state.
 """
-abstract type AbstractLeafDiffusion end
+abstract type AbstractLeafDiffusion <: AbstractLeafScalar end
 
 """
     SeriesDiffusion{FT}(; boundary_co2, mesophyll_co2, diffusivity_ratio, mole_to_micromole)
@@ -23,35 +23,11 @@ Base.@kwdef struct SeriesDiffusion{FT<:Real} <: AbstractLeafDiffusion
     mesophyll_co2::FT
     diffusivity_ratio::FT
     mole_to_micromole::FT
-    function SeriesDiffusion{FT}(
-        boundary_co2,
-        mesophyll_co2,
-        diffusivity_ratio,
-        mole_to_micromole,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            SeriesDiffusion{FT},
-            (boundary_co2, mesophyll_co2, diffusivity_ratio, mole_to_micromole),
-        )
-        return new{FT}(boundary_co2, mesophyll_co2, diffusivity_ratio, mole_to_micromole)
-    end
-    function SeriesDiffusion(
-        boundary_co2::FT,
-        mesophyll_co2::FT,
-        diffusivity_ratio::FT,
-        mole_to_micromole::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            SeriesDiffusion,
-            (boundary_co2, mesophyll_co2, diffusivity_ratio, mole_to_micromole),
-        )
-        return new{FT}(boundary_co2, mesophyll_co2, diffusivity_ratio, mole_to_micromole)
-    end
+    SeriesDiffusion{FT}(fields::Vararg{Any,4}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, SeriesDiffusion{FT}, fields)...)
 end
-SeriesDiffusion(gb::Real, gm::Real, r::Real, conv::Real) =
-    SeriesDiffusion(promote_compatible(SeriesDiffusion, gb, gm, r, conv)...)
+SeriesDiffusion(fields::Vararg{Real,4}) =
+    SeriesDiffusion{scalar_type(SeriesDiffusion, fields...)}(fields...)
 
 """
     GasExchangeEnvironment{FT}(; temperature, absorbed_par, co2, oxygen, pressure,
@@ -63,7 +39,7 @@ Represent prescribed leaf `temperature` [K], `absorbed_par` [μmol photons m⁻�
 ambient `co2` [Pa], biochemical-site `oxygen` [Pa], total `pressure` [Pa], and
 leaf-surface `relative_humidity` (`∈ [0, 1]`) and `vpd` [Pa].
 """
-Base.@kwdef struct GasExchangeEnvironment{FT<:Real}
+Base.@kwdef struct GasExchangeEnvironment{FT<:Real} <: AbstractLeafScalar
     temperature::FT
     absorbed_par::FT
     co2::FT
@@ -71,44 +47,11 @@ Base.@kwdef struct GasExchangeEnvironment{FT<:Real}
     pressure::FT
     relative_humidity::FT
     vpd::FT
-    function GasExchangeEnvironment{FT}(
-        temperature,
-        absorbed_par,
-        co2,
-        oxygen,
-        pressure,
-        relative_humidity,
-        vpd,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            GasExchangeEnvironment{FT},
-            (temperature, absorbed_par, co2, oxygen, pressure, relative_humidity, vpd),
-        )
-        return new{FT}(temperature, absorbed_par, co2, oxygen, pressure, relative_humidity, vpd)
-    end
-    function GasExchangeEnvironment(
-        temperature::FT,
-        absorbed_par::FT,
-        co2::FT,
-        oxygen::FT,
-        pressure::FT,
-        relative_humidity::FT,
-        vpd::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            GasExchangeEnvironment,
-            (temperature, absorbed_par, co2, oxygen, pressure, relative_humidity, vpd),
-        )
-        return new{FT}(temperature, absorbed_par, co2, oxygen, pressure, relative_humidity, vpd)
-    end
+    GasExchangeEnvironment{FT}(fields::Vararg{Any,7}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, GasExchangeEnvironment{FT}, fields)...)
 end
-GasExchangeEnvironment(
-    t::Real, par::Real, co2::Real, o2::Real, p::Real, rh::Real, vpd::Real,
-) = GasExchangeEnvironment(
-    promote_compatible(GasExchangeEnvironment, t, par, co2, o2, p, rh, vpd)...,
-)
+GasExchangeEnvironment(fields::Vararg{Real,7}) =
+    GasExchangeEnvironment{scalar_type(GasExchangeEnvironment, fields...)}(fields...)
 
 # Solve m * (C - gamma) / (C + k) - Rd = g * (Ca - C), where g is μmol m⁻² s⁻¹ Pa⁻¹.
 # Choose the nonnegative root without subtractive cancellation; exact zero m is darkness,
@@ -135,8 +78,9 @@ GasExchangeEnvironment(
 end
 
 """
-    gas_exchange(photosynthesis, environment, state, diffusion[, excitation])
-    gas_exchange(leaf, environment, state, diffusion[, excitation])
+    gas_exchange(photosynthesis, environment, state, diffusion,
+        excitation=BroadbandExcitation())
+    gas_exchange(leaf, environment, state, diffusion, excitation=BroadbandExcitation())
 
 Solve analytical steady-state CO₂ diffusion and C3 assimilation at prescribed
 positive stomatal conductance `state` (Liu et al. 2024, Eqs. 1–2).

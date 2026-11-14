@@ -1,3 +1,4 @@
+using LeafPhotosynthesis: psi_maximum_photochemical_yield, dark_balanced_psii_partition
 isdefined(@__MODULE__, :read_bonan_parameters) || include(joinpath(@__DIR__, "read_parameters.jl"))
 isdefined(@__MODULE__, :write_tables) || include(joinpath(@__DIR__, "write_tables.jl"))
 

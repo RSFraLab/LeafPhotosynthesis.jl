@@ -12,34 +12,26 @@ the PSII absorbed-photon fraction `β = Q₂ / Q_abs` that balances linear and
 cyclic electron transport at `K_N = 0`, freezing `β` at its light-saturation
 crossover value `β_sat` above `J_P700,j ≥ J_P700,c`.
 """
-struct StateTransitionRule{FT<:Real}
+struct StateTransitionRule{FT<:Real} <: AbstractLeafScalar
     minimum_psii_fraction::FT
     maximum_psii_fraction::FT
-    function StateTransitionRule(
-        minimum_psii_fraction::FT,
-        maximum_psii_fraction::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT, StateTransitionRule, (minimum_psii_fraction, maximum_psii_fraction),
-        )
-        lo_p = primal_scalar(minimum_psii_fraction)
-        hi_p = primal_scalar(maximum_psii_fraction)
+    function StateTransitionRule{FT}(fields::Vararg{Any,2}) where {FT<:Real}
+        r = new{FT}(continuous_fields(FT, StateTransitionRule{FT}, fields)...)
+        lo_p = primal_scalar(r.minimum_psii_fraction)
+        hi_p = primal_scalar(r.maximum_psii_fraction)
         isfinite(lo_p) && isfinite(hi_p) &&
             zero(lo_p) <= lo_p < hi_p <= one(hi_p) ||
             throw(ArgumentError("StateTransitionRule requires finite bounds 0 ≤ minimum_psii_fraction < maximum_psii_fraction ≤ 1"))
-        return new{FT}(minimum_psii_fraction, maximum_psii_fraction)
+        return r
     end
 end
-
-StateTransitionRule(minimum_psii_fraction::Real, maximum_psii_fraction::Real) =
-    StateTransitionRule(
-        promote_compatible(StateTransitionRule, minimum_psii_fraction, maximum_psii_fraction)...,
-    )
+StateTransitionRule(fields::Vararg{Real,2}) =
+    StateTransitionRule{scalar_type(StateTransitionRule, fields...)}(fields...)
 
 StateTransitionRule{FT}(;
     minimum_psii_fraction::Real = zero(FT),
     maximum_psii_fraction::Real = one(FT),
-) where {FT<:Real} = StateTransitionRule(FT(minimum_psii_fraction), FT(maximum_psii_fraction))
+) where {FT<:Real} = StateTransitionRule{FT}(minimum_psii_fraction, maximum_psii_fraction)
 
 StateTransitionRule(; minimum_psii_fraction, maximum_psii_fraction) =
     StateTransitionRule(minimum_psii_fraction, maximum_psii_fraction)

@@ -1,4 +1,5 @@
 # Keep loading and experiment assembly out of the biophysical workflow.
+using LeafPhotosynthesis: biochemical_rates
 isdefined(@__MODULE__, :core_leaf) || include(joinpath(@__DIR__, "..", "core_exchange.jl"))
 
 function turnover_experiment(::Type{FT}) where {FT}

@@ -4,7 +4,7 @@
 Supertype for numerical root-finding methods used by [`EquilibriumSolver`](@ref),
 kept independent of stomatal target physics.
 """
-abstract type AbstractEquilibriumMethod end
+abstract type AbstractEquilibriumMethod <: AbstractLeafScalar end
 
 """
     Bisection()
@@ -40,31 +40,24 @@ Configure numerical tolerances and iteration limits for [`equilibrium_gas_exchan
 `flux_rtol` [-] must be finite and nonnegative with at least one positive
 CO₂ tolerance and one positive flux tolerance; `max_iterations` must be positive.
 """
-struct EquilibriumSolver{FT<:Real,M<:AbstractEquilibriumMethod}
+Base.@kwdef struct EquilibriumSolver{FT<:Real,M<:AbstractEquilibriumMethod} <: AbstractLeafScalar
     method::M
     co2_atol::FT
     co2_rtol::FT
     flux_atol::FT
     flux_rtol::FT
     max_iterations::Int
-    function EquilibriumSolver(
-        method::M,
-        co2_atol::FT,
-        co2_rtol::FT,
-        flux_atol::FT,
-        flux_rtol::FT,
-        max_iterations::Int,
+    function EquilibriumSolver{FT,M}(
+        fields::Vararg{Any,6},
     ) where {FT<:Real,M<:AbstractEquilibriumMethod}
-        require_continuous_scalar(
-            FT, EquilibriumSolver, (method, co2_atol, co2_rtol, flux_atol, flux_rtol, max_iterations),
-        )
-        tols_p = map(primal_scalar, (co2_atol, co2_rtol, flux_atol, flux_rtol))
+        s = new{FT,M}(continuous_fields(FT, EquilibriumSolver{FT,M}, fields)...)
+        tols_p = map(primal_scalar, (s.co2_atol, s.co2_rtol, s.flux_atol, s.flux_rtol))
         all(x -> isfinite(x) && x >= zero(x), tols_p) ||
             throw(ArgumentError("tolerances must be nonnegative and finite"))
         max(tols_p[1], tols_p[2]) > zero(tols_p[1]) && max(tols_p[3], tols_p[4]) > zero(tols_p[3]) ||
             throw(ArgumentError("each residual needs a positive tolerance"))
-        max_iterations > 0 || throw(ArgumentError("max_iterations must be positive"))
-        return new{FT,M}(method, co2_atol, co2_rtol, flux_atol, flux_rtol, max_iterations)
+        s.max_iterations > 0 || throw(ArgumentError("max_iterations must be positive"))
+        return s
     end
 end
 EquilibriumSolver(
@@ -74,13 +67,9 @@ EquilibriumSolver(
     flux_atol::Real,
     flux_rtol::Real,
     max_iterations::Int,
-) = EquilibriumSolver(
-    method,
-    promote_compatible(EquilibriumSolver, co2_atol, co2_rtol, flux_atol, flux_rtol)...,
-    max_iterations,
-)
-EquilibriumSolver(; method, co2_atol, co2_rtol, flux_atol, flux_rtol, max_iterations::Int) =
-    EquilibriumSolver(method, co2_atol, co2_rtol, flux_atol, flux_rtol, max_iterations)
+) = EquilibriumSolver{
+    scalar_type(EquilibriumSolver, co2_atol, co2_rtol, flux_atol, flux_rtol),typeof(method),
+}(method, co2_atol, co2_rtol, flux_atol, flux_rtol, max_iterations)
 
 """
     EquilibriumStatus
@@ -138,128 +127,53 @@ straddle a valid sign change.
 """
     EquilibriumSolution{FT,C}
 
-Store allocation-free diagnostics from [`equilibrium_gas_exchange`](@ref),
-including `carbon` fluxes, `electron_transport`, `biochemical_co2`,
-`intercellular_co2`, `surface_co2` [Pa], `stomatal_conductance` [mol H₂O m⁻² leaf s⁻¹],
-total CO₂ `conductance` [mol CO₂ m⁻² leaf s⁻¹], `co2_residual` [Pa],
-`diffusion_residual` [μmol CO₂ m⁻² leaf s⁻¹], `bracket_width` [Pa],
-`iterations`, `status`, and `converged`.
+Store allocation-free diagnostics from [`equilibrium_gas_exchange`](@ref).
+
+The first fields are those of a [`gas_exchange`](@ref) result in the same order: `carbon`
+fluxes, `electron_transport`, `surface_co2`, `intercellular_co2`, `biochemical_co2` [Pa],
+total CO₂ `conductance` [mol CO₂ m⁻² leaf s⁻¹] and `diffusion_residual`
+[μmol CO₂ m⁻² leaf s⁻¹]; the solver adds the solved `stomatal_conductance`
+[mol H₂O m⁻² leaf s⁻¹], `co2_residual` [Pa], `bracket_width` [Pa], `iterations`, `status`
+and `converged`. Model-specific electron diagnostics of [`CytochromePhotosynthesis`](@ref)
+are not stored; evaluate [`gas_exchange`](@ref) at `StomatalState(stomatal_conductance)`
+for them.
 """
-struct EquilibriumSolution{FT<:Real,C}
+struct EquilibriumSolution{FT<:Real,C} <: AbstractLeafScalar
     carbon::C
     electron_transport::FT
-    biochemical_co2::FT
-    intercellular_co2::FT
     surface_co2::FT
-    stomatal_conductance::FT
+    intercellular_co2::FT
+    biochemical_co2::FT
     conductance::FT
-    co2_residual::FT
     diffusion_residual::FT
+    stomatal_conductance::FT
+    co2_residual::FT
     bracket_width::FT
     iterations::Int
     status::EquilibriumStatus
     converged::Bool
-    function EquilibriumSolution{FT,C}(
-        carbon::C,
-        electron_transport,
-        biochemical_co2,
-        intercellular_co2,
-        surface_co2,
-        stomatal_conductance,
-        conductance,
-        co2_residual,
-        diffusion_residual,
-        bracket_width,
-        iterations::Int,
-        status::EquilibriumStatus,
-        converged::Bool,
-    ) where {FT<:Real,C}
-        require_continuous_scalar(
-            FT,
-            EquilibriumSolution{FT,C},
-            (
-                carbon,
-                electron_transport,
-                biochemical_co2,
-                intercellular_co2,
-                surface_co2,
-                stomatal_conductance,
-                conductance,
-                co2_residual,
-                diffusion_residual,
-                bracket_width,
-                iterations,
-                status,
-                converged,
-            ),
-        )
-        return new{FT,C}(
-            carbon,
-            electron_transport,
-            biochemical_co2,
-            intercellular_co2,
-            surface_co2,
-            stomatal_conductance,
-            conductance,
-            co2_residual,
-            diffusion_residual,
-            bracket_width,
-            iterations,
-            status,
-            converged,
-        )
-    end
-    function EquilibriumSolution(
-        carbon::C,
-        electron_transport::FT,
-        biochemical_co2::FT,
-        intercellular_co2::FT,
-        surface_co2::FT,
-        stomatal_conductance::FT,
-        conductance::FT,
-        co2_residual::FT,
-        diffusion_residual::FT,
-        bracket_width::FT,
-        iterations::Int,
-        status::EquilibriumStatus,
-        converged::Bool,
-    ) where {FT<:Real,C}
-        require_continuous_scalar(
-            FT,
-            EquilibriumSolution,
-            (
-                carbon,
-                electron_transport,
-                biochemical_co2,
-                intercellular_co2,
-                surface_co2,
-                stomatal_conductance,
-                conductance,
-                co2_residual,
-                diffusion_residual,
-                bracket_width,
-                iterations,
-                status,
-                converged,
-            ),
-        )
-        return new{FT,C}(
-            carbon,
-            electron_transport,
-            biochemical_co2,
-            intercellular_co2,
-            surface_co2,
-            stomatal_conductance,
-            conductance,
-            co2_residual,
-            diffusion_residual,
-            bracket_width,
-            iterations,
-            status,
-            converged,
-        )
-    end
+    EquilibriumSolution{FT,C}(fields::Vararg{Any,13}) where {FT<:Real,C} =
+        new{FT,C}(continuous_fields(FT, EquilibriumSolution{FT,C}, fields)...)
 end
+EquilibriumSolution(
+    carbon,
+    electron_transport::FT,
+    surface_co2::FT,
+    intercellular_co2::FT,
+    biochemical_co2::FT,
+    conductance::FT,
+    diffusion_residual::FT,
+    stomatal_conductance::FT,
+    co2_residual::FT,
+    bracket_width::FT,
+    iterations::Int,
+    status::EquilibriumStatus,
+    converged::Bool,
+) where {FT<:Real} = EquilibriumSolution{FT,typeof(carbon)}(
+    carbon, electron_transport, surface_co2, intercellular_co2, biochemical_co2,
+    conductance, diffusion_residual, stomatal_conductance, co2_residual, bracket_width,
+    iterations, status, converged,
+)
 
 # These two target laws have g_sw = g0 + gain * max(A,0) / Cs. More general
 # optimality laws must provide their own residual/closure, not pretend to be linear.
@@ -378,8 +292,8 @@ end
     intercellular = co2_s + carbon.net_assimilation * env.pressure / (d.mole_to_micromole * d.mesophyll_co2)
     # The solution constructor converts every scalar field to OutFT.
     return EquilibriumSolution{OutFT,typeof(carbon)}(
-        carbon, transport, co2_s, intercellular, e.surface, e.gs,
-        conductance, e.residual, flux_residual, width, iterations, status, status == EquilibriumConverged,
+        carbon, transport, e.surface, intercellular, co2_s, conductance, flux_residual,
+        e.gs, e.residual, width, iterations, status, status == EquilibriumConverged,
     )
 end
 
@@ -393,9 +307,9 @@ end
 
 """
     equilibrium_gas_exchange(photosynthesis, SteadyStateStomata(target), environment,
-        diffusion, solver[, excitation]; initial_co2=nothing)
-    equilibrium_gas_exchange(leaf, environment, diffusion, solver[, excitation];
-        initial_co2=nothing)
+        diffusion, solver, excitation=BroadbandExcitation(); initial_co2=nothing)
+    equilibrium_gas_exchange(leaf, environment, diffusion, solver,
+        excitation=BroadbandExcitation(); initial_co2=nothing)
 
 Solve coupled steady-state C3 assimilation ([`C3Photosynthesis`](@ref) or
 [`CytochromePhotosynthesis`](@ref)), series CO₂ diffusion, and Ball–Berry or Medlyn

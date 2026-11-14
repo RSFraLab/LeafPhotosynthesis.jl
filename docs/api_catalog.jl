@@ -1,6 +1,6 @@
 # Canonical biophysical-process organization of the LeafPhotosynthesis public API.
 # Consumed by both `docs/build_api_docs.jl` (GitHub/Pages Markdown under `docs/api/`)
-# and `docs/make.jl` (local Documenter.jl HTML build with `checkdocs = :exports`).
+# and `docs/make.jl` (local Documenter.jl HTML build). Lists every exported and public name.
 
 const API_PAGES = [
     (
@@ -21,6 +21,7 @@ const API_PAGES = [
         """,
         sections = [
             "Leaf Assembly & Prescribed-CO₂ Evaluation" => [
+                :AbstractLeafScalar,
                 :LeafModel,
                 :photosynthesize,
             ],

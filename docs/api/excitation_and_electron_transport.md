@@ -30,7 +30,7 @@ AbstractExcitation
 Supertype for leaf photosystem light-allocation conventions, kept separate from
 the leaf gas and temperature environment.
 
-*Kind:* Abstract Type · *Source:* [`src/excitation.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/excitation.jl#L1)
+*Kind:* Abstract Type · public: `LeafPhotosynthesis.AbstractExcitation` · *Source:* [`src/excitation.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/excitation.jl#L1)
 
 ### `BroadbandExcitation`
 
@@ -43,11 +43,13 @@ Partition total absorbed PAR using the electron-transport component's broadband
 
 #### Examples
 ```julia
+julia> using LeafPhotosynthesis: valid_excitation
+
 julia> valid_excitation(BroadbandExcitation(), 800.0)
 true
 ```
 
-*Kind:* Struct · *Source:* [`src/excitation.jl:9`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/excitation.jl#L9)
+*Kind:* Struct · exported · *Source:* [`src/excitation.jl:9`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/excitation.jl#L9)
 
 ### `PrescribedPSIIExcitation`
 
@@ -65,7 +67,7 @@ is not applied again. Invalid values are stored without throwing for GPU
 compatibility; [`valid_excitation`](#valid_excitation) rejects non-finite or negative values,
 `photons > absorbed_par`, or incompatible scalar precision.
 
-*Kind:* Struct · *Source:* [`src/excitation.jl:23`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/excitation.jl#L23)
+*Kind:* Struct · exported · *Source:* [`src/excitation.jl:25`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/excitation.jl#L25)
 
 ### `PrescribedDualExcitation`
 
@@ -83,7 +85,7 @@ PAR spectral interval as `LeafEnvironment.absorbed_par`.
 (permitting non-photosynthetic pigment absorption when strict inequality holds),
 and compatible continuous scalar precision.
 
-*Kind:* Struct · *Source:* [`src/excitation.jl:48`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/excitation.jl#L48)
+*Kind:* Struct · exported · *Source:* [`src/excitation.jl:46`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/excitation.jl#L46)
 
 ### `valid_excitation`
 
@@ -95,7 +97,7 @@ Return `true` if `excitation` and `total_absorbed_par` satisfy the non-throwing
 domain and precision contract shared across photosynthesis, turnover, diffusion,
 oxygen, and fluorescence entry points.
 
-*Kind:* Function · *Source:* [`src/excitation.jl:82`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/excitation.jl#L82)
+*Kind:* Function · public: `LeafPhotosynthesis.valid_excitation` · *Source:* [`src/excitation.jl:68`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/excitation.jl#L68)
 
 ### `psii_excitation`
 
@@ -107,7 +109,7 @@ Return the PSII photon flux [μmol photons m⁻² leaf s⁻¹] delivered to PSII
 centers prior to multiplication by photochemical yield, or typed `NaN` when
 [`valid_excitation`](#valid_excitation) fails.
 
-*Kind:* Function · *Source:* [`src/electron_transport.jl:90`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/electron_transport.jl#L90)
+*Kind:* Function · public: `LeafPhotosynthesis.psii_excitation` · *Source:* [`src/electron_transport.jl:84`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/electron_transport.jl#L84)
 
 ### `psi_excitation`
 
@@ -122,7 +124,7 @@ centers prior to multiplication by PSI photochemical yield, or typed `NaN` when
 `PrescribedPSIIExcitation` intentionally has no `psi_excitation` method because
 non-photosynthetic pigment absorption prevents inferring PSI photons as `PAR - Q₂`.
 
-*Kind:* Function · *Source:* [`src/electron_transport.jl:121`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/electron_transport.jl#L121)
+*Kind:* Function · public: `LeafPhotosynthesis.psi_excitation` · *Source:* [`src/electron_transport.jl:115`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/electron_transport.jl#L115)
 
 ---
 
@@ -142,22 +144,22 @@ rate co-limitation model `limitation`.
 Leaf absorptance belongs to optics and is not included in `psii_fraction`.
 Throws `ArgumentError` if `psii_fraction` or `psii_yield` is outside `[0, 1]`.
 
-*Kind:* Struct · *Source:* [`src/electron_transport.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/electron_transport.jl#L1)
+*Kind:* Struct · exported · *Source:* [`src/electron_transport.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/electron_transport.jl#L1)
 
 ### `electron_transport`
 
 ```julia
-electron_transport(parameters, absorbed_par, jmax[, excitation])
+electron_transport(parameters, absorbed_par, jmax, excitation=BroadbandExcitation())
 ```
 
 Compute available linear electron transport [μmol electrons m⁻² leaf s⁻¹] from
 absorbed PAR [μmol photons m⁻² leaf s⁻¹] and capacity `jmax` [μmol electrons m⁻² leaf s⁻¹].
 
-`BroadbandExcitation()` delegates to the three-argument method; prescribed
-excitation conventions bypass broadband `psii_fraction` and return typed `NaN`
-when [`valid_excitation`](#valid_excitation) is `false`.
+`BroadbandExcitation()` delivers the fraction `psii_fraction` of `absorbed_par` to PSII;
+prescribed excitation conventions bypass broadband `psii_fraction`. Every convention
+returns typed `NaN` when [`valid_excitation`](#valid_excitation) is `false`.
 
-*Kind:* Function · *Source:* [`src/electron_transport.jl:39`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/electron_transport.jl#L39)
+*Kind:* Function · public: `LeafPhotosynthesis.electron_transport` · *Source:* [`src/electron_transport.jl:32`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/electron_transport.jl#L32)
 
 ### `CytochromeElectronParameters`
 
@@ -171,12 +173,13 @@ open-center PSI maximum photochemical yield `psi_maximum_yield` (`Φ_P1,max ∈ 
 and rate co-limitation model `limitation` ([`SerialLimitation`](carbon_assimilation_and_turnover.md#seriallimitation) for
 Johnson & Berry 2021, Eq. 20).
 
-*Kind:* Struct · *Source:* [`src/cytochrome_photosynthesis.jl:292`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L292)
+*Kind:* Struct · exported · *Source:* [`src/cytochrome_photosynthesis.jl:179`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L179)
 
 ### `cytochrome_electron_supply`
 
 ```julia
-cytochrome_electron_supply(parameters, total_absorbed_par, vqmax[, excitation])
+cytochrome_electron_supply(parameters, total_absorbed_par, vqmax,
+    excitation=BroadbandExcitation())
 ```
 
 Evaluate potential PSI electron supply `psi_electron_supply` [μmol e⁻ m⁻² leaf s⁻¹]
@@ -187,7 +190,7 @@ open PSII reaction-center fraction `psii_open_fraction` (`q₂`, Johnson & Berry
 Single-photosystem illumination (`iszero(Q₂) != iszero(Q₁)`) lies outside the
 coupled Z-scheme steady-state domain and returns `NaN` fields.
 
-*Kind:* Function · *Source:* [`src/cytochrome_photosynthesis.jl:328`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L328)
+*Kind:* Function · public: `LeafPhotosynthesis.cytochrome_electron_supply` · *Source:* [`src/cytochrome_photosynthesis.jl:206`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L206)
 
 ---
 
@@ -205,7 +208,7 @@ denominator $e_c (C_c + c_o Γ^*)$.
 
 Both parameters must be supplied explicitly from parameter files.
 
-*Kind:* Struct · *Source:* [`src/carbon_assimilation.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/carbon_assimilation.jl#L1)
+*Kind:* Struct · exported · *Source:* [`src/carbon_assimilation.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/carbon_assimilation.jl#L1)
 
 ### `CytochromeStoichiometry`
 
@@ -221,7 +224,7 @@ CytochromeStoichiometry(electrons_per_carboxylation,
 Specify C3 Calvin–Benson and photorespiratory linear-electron and ATP demands
 per CO₂ event (classically `4, 8, 3, 7` in Johnson & Berry 2021, Eq. 24).
 
-*Kind:* Struct · *Source:* [`src/cytochrome_photosynthesis.jl:171`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L171)
+*Kind:* Struct · exported · *Source:* [`src/cytochrome_photosynthesis.jl:102`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L102)
 
 ### `cytochrome_cyclic_coefficients`
 
@@ -234,7 +237,7 @@ Compute cyclic PSI electron requirements per carboxylation and per
 photorespiratory CO₂ release directly from the ATP deficit prior to adding
 linear electron demand so `a_c == η_L * e_c` evaluates to exact zero in `Float32`.
 
-*Kind:* Function · *Source:* [`src/cytochrome_photosynthesis.jl:237`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L237)
+*Kind:* Function · public: `LeafPhotosynthesis.cytochrome_cyclic_coefficients` · *Source:* [`src/cytochrome_photosynthesis.jl:124`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L124)
 
 ### `cytochrome_carbon_coefficients`
 
@@ -246,7 +249,7 @@ cytochrome_carbon_coefficients(rates::CytochromeRates,
 Compute effective PSI electron costs `(c1, c2)` multiplying `Cc` and `Γ*` in
 $J_{P700} = (c_1 C_c + c_2 Γ^*) V_c / C_c$.
 
-*Kind:* Function · *Source:* [`src/cytochrome_photosynthesis.jl:259`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L259)
+*Kind:* Function · public: `LeafPhotosynthesis.cytochrome_carbon_coefficients` · *Source:* [`src/cytochrome_photosynthesis.jl:146`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L146)
 
 ### `psi_to_psii_electron_ratio`
 
@@ -260,4 +263,4 @@ $η = J_{P700} / J_{P680} = 1 + J_{\mathrm{CEF}} / J_{P680}$ required to
 balance Calvin–Benson and photorespiratory ATP/NADPH stoichiometry at
 biochemical-site `co2` [Pa].
 
-*Kind:* Function · *Source:* [`src/cytochrome_photosynthesis.jl:274`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L274)
+*Kind:* Function · public: `LeafPhotosynthesis.psi_to_psii_electron_ratio` · *Source:* [`src/cytochrome_photosynthesis.jl:161`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_photosynthesis.jl#L161)

@@ -1,3 +1,5 @@
+using LeafPhotosynthesis: psi_maximum_photochemical_yield, dark_balanced_psii_partition,
+    state_transition_partition, dark_pam_levels
 isdefined(@__MODULE__, :read_bonan_parameters) || include(joinpath(@__DIR__, "read_parameters.jl"))
 isdefined(@__MODULE__, :write_tables) || include(joinpath(@__DIR__, "write_tables.jl"))
 isdefined(@__MODULE__, :exact_dual_excitation) || include(joinpath(@__DIR__, "johnson_berry_2021.jl"))

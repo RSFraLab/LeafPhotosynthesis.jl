@@ -1,6 +1,13 @@
 using Test
 using CUDA
 using LeafPhotosynthesis
+using LeafPhotosynthesis: AbstractPhotosynthesis, AbstractExcitation, AbstractOxygenExchange,
+    biochemical_rates, valid_excitation, colimit, carbon_assimilation, EquilibriumConverged,
+    EquilibriumInvalidInput, PSIIFluxInputs, CoupledPhotosystemInputs,
+    RateCompetitionResult, CytochromeFluorescenceResult, PAMFluorescenceResult,
+    maximum_photochemical_yield, psi_maximum_photochemical_yield,
+    psii_maximum_photochemical_yield, dark_balanced_psii_partition,
+    state_transition_partition
 include("../../examples/core_exchange.jl")
 include("../device_checks.jl")
 include("../../examples/setup/oxygen_response.jl")

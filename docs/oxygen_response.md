@@ -36,9 +36,10 @@ a separate component named `compensation`.
 
 Call `biochemical_rates(responses, T, O)` when oxygen affects Γ*. All production
 environment-aware calculations use this interface: prescribed-CO₂ photosynthesis,
-turnover, diffusion, equilibrium and fixed-O₂ sensitivities. The old two-argument
-form remains valid for prescribed temperature responses, including custom user
-extensions. It deliberately has no oxygen-dependent fallback. Disabling oxygen
+turnover, diffusion, equilibrium and fixed-O₂ sensitivities. The two-argument
+form `biochemical_rates(responses, T)` remains valid for prescribed temperature
+responses, including custom user extensions. It deliberately has no oxygen-dependent
+fallback. Disabling oxygen
 diagnostics with `NoOxygenExchange` does **not** disable environmental O₂ in carbon
 biochemistry or stomatal responses.
 

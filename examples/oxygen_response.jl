@@ -1,4 +1,5 @@
 # Change O2 while keeping its reference compensation-point calibration explicit.
+using LeafPhotosynthesis: biochemical_rates
 include("setup/oxygen_response.jl")
 
 function oxygen_response(::Type{FT}) where {FT}

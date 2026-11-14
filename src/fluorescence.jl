@@ -3,7 +3,7 @@
 
 Supertype for replaceable leaf chlorophyll fluorescence source models.
 """
-abstract type AbstractFluorescence end
+abstract type AbstractFluorescence <: AbstractLeafScalar end
 
 """
     NoFluorescence()
@@ -19,7 +19,7 @@ struct NoFluorescence <: AbstractFluorescence end
 Supertype for relative-rate non-photochemical quenching laws implementing
 [`quenching_rate`](@ref).
 """
-abstract type AbstractQuenching{FT} end
+abstract type AbstractQuenching{FT} <: AbstractLeafScalar end
 
 """
     ConstantQuenching(rate)
@@ -28,16 +28,17 @@ abstract type AbstractQuenching{FT} end
 Represent a constant, nonnegative, dimensionless regulated heat-dissipation rate
 `rate` (`K_N ≥ 0`) sharing the normalization of `K_F` and `K_D`.
 """
-struct ConstantQuenching{FT<:Real} <: AbstractQuenching{FT}
+Base.@kwdef struct ConstantQuenching{FT<:Real} <: AbstractQuenching{FT}
     rate::FT
-    function ConstantQuenching(rate::FT) where {FT<:Real}
-        require_continuous_scalar(FT, ConstantQuenching, (rate,))
-        rp = primal_scalar(rate)
+    function ConstantQuenching{FT}(fields::Vararg{Any,1}) where {FT<:Real}
+        q = new{FT}(continuous_fields(FT, ConstantQuenching{FT}, fields)...)
+        rp = primal_scalar(q.rate)
         isfinite(rp) && rp >= zero(rp) || throw(ArgumentError("Invalid quenching rate"))
-        return new{FT}(rate)
+        return q
     end
 end
-ConstantQuenching(; rate) = ConstantQuenching(rate)
+ConstantQuenching(fields::Vararg{Real,1}) =
+    ConstantQuenching{scalar_type(ConstantQuenching, fields...)}(fields...)
 
 """
     quenching_rate(law, saturation)
@@ -56,21 +57,13 @@ Parameterize instantaneous empirical feedback quenching (van der Tol et al. 2014
 ``K_N(x) = K_{N,\\max} (1 + β) x^α / (β + x^α)``, with `maximum_rate ≥ 0`,
 `exponent` (`α > 0`), and `half_saturation` (`β > 0`).
 """
-struct SaturationQuenching{FT<:Real} <: AbstractQuenching{FT}
+Base.@kwdef struct SaturationQuenching{FT<:Real} <: AbstractQuenching{FT}
     maximum_rate::FT
     exponent::FT
     half_saturation::FT
-    function SaturationQuenching(
-        maximum_rate::FT,
-        exponent::FT,
-        half_saturation::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT, SaturationQuenching, (maximum_rate, exponent, half_saturation),
-        )
-        mp = primal_scalar(maximum_rate)
-        ep = primal_scalar(exponent)
-        hp = primal_scalar(half_saturation)
+    function SaturationQuenching{FT}(fields::Vararg{Any,3}) where {FT<:Real}
+        q = new{FT}(continuous_fields(FT, SaturationQuenching{FT}, fields)...)
+        mp, ep, hp = map(primal_scalar, (q.maximum_rate, q.exponent, q.half_saturation))
         isfinite(mp) &&
         mp >= zero(mp) &&
         isfinite(ep) &&
@@ -78,15 +71,11 @@ struct SaturationQuenching{FT<:Real} <: AbstractQuenching{FT}
         isfinite(hp) &&
         hp > zero(hp) ||
             throw(ArgumentError("Invalid saturation-quenching parameters"))
-        return new{FT}(maximum_rate, exponent, half_saturation)
+        return q
     end
 end
-SaturationQuenching(maximum_rate::Real, exponent::Real, half_saturation::Real) =
-    SaturationQuenching(
-        promote_compatible(SaturationQuenching, maximum_rate, exponent, half_saturation)...,
-    )
-SaturationQuenching(; maximum_rate, exponent, half_saturation) =
-    SaturationQuenching(maximum_rate, exponent, half_saturation)
+SaturationQuenching(fields::Vararg{Real,3}) =
+    SaturationQuenching{scalar_type(SaturationQuenching, fields...)}(fields...)
 
 @inline function quenching_rate(q::SaturationQuenching, saturation)
     T = promote_type(typeof(q.maximum_rate), typeof(saturation))
@@ -120,29 +109,21 @@ and roundoff allowance `yield_tolerance` (`≥ 0`).
 Consumes realized linear electron flow and PSII excitation; PSI emission and
 within-leaf spectral escape are modeled separately.
 """
-struct RateCompetitionFluorescence{FT<:Real,Q<:AbstractQuenching{FT}} <:
+Base.@kwdef struct RateCompetitionFluorescence{FT<:Real,Q<:AbstractQuenching{FT}} <:
        AbstractFluorescence
     fluorescence_rate::FT
     constitutive_heat_rate::FT
     maximum_photochemical_rate::FT
     quenching::Q
     yield_tolerance::FT
-    function RateCompetitionFluorescence(
-        fluorescence_rate::FT,
-        constitutive_heat_rate::FT,
-        maximum_photochemical_rate::FT,
-        quenching::Q,
-        yield_tolerance::FT,
+    function RateCompetitionFluorescence{FT,Q}(
+        fields::Vararg{Any,5},
     ) where {FT<:Real,Q<:AbstractQuenching{FT}}
-        require_continuous_scalar(
-            FT,
-            RateCompetitionFluorescence,
-            (fluorescence_rate, constitutive_heat_rate, maximum_photochemical_rate, quenching, yield_tolerance),
-        )
-        kf, kd, kp = fluorescence_rate, constitutive_heat_rate, maximum_photochemical_rate
+        p = new{FT,Q}(continuous_fields(FT, RateCompetitionFluorescence{FT,Q}, fields)...)
+        kf, kd, kp = p.fluorescence_rate, p.constitutive_heat_rate, p.maximum_photochemical_rate
         total = kf + kd + kp
         maximum_yield = kp / total
-        kfp, kdp, kpp, myp, ytp = map(primal_scalar, (kf, kd, kp, maximum_yield, yield_tolerance))
+        kfp, kdp, kpp, myp, ytp = map(primal_scalar, (kf, kd, kp, maximum_yield, p.yield_tolerance))
         isfinite(kfp) &&
         kfp > zero(kfp) &&
         isfinite(kdp) &&
@@ -154,7 +135,7 @@ struct RateCompetitionFluorescence{FT<:Real,Q<:AbstractQuenching{FT}} <:
             throw(ArgumentError("Invalid or unrepresentable fluorescence rates"))
         isfinite(ytp) && zero(ytp) <= ytp < one(myp) - myp ||
             throw(ArgumentError("Invalid fluorescence yield tolerance"))
-        return new{FT,Q}(kf, kd, kp, quenching, yield_tolerance)
+        return p
     end
 end
 function RateCompetitionFluorescence(
@@ -164,7 +145,7 @@ function RateCompetitionFluorescence(
     quenching::AbstractQuenching{FTQ},
     yield_tolerance::Real,
 ) where {FTQ<:Real}
-    kf, kd, kp, _, yt = promote_compatible(
+    FT = scalar_type(
         RateCompetitionFluorescence,
         fluorescence_rate,
         constitutive_heat_rate,
@@ -172,22 +153,11 @@ function RateCompetitionFluorescence(
         zero(FTQ),
         yield_tolerance,
     )
-    FT = typeof(kf)
-    return RateCompetitionFluorescence(kf, kd, kp, _convert_quenching(FT, quenching), yt)
+    q = _convert_quenching(FT, quenching)
+    return RateCompetitionFluorescence{FT,typeof(q)}(
+        fluorescence_rate, constitutive_heat_rate, maximum_photochemical_rate, q, yield_tolerance,
+    )
 end
-RateCompetitionFluorescence(;
-    fluorescence_rate,
-    constitutive_heat_rate,
-    maximum_photochemical_rate,
-    quenching,
-    yield_tolerance,
-) = RateCompetitionFluorescence(
-    fluorescence_rate,
-    constitutive_heat_rate,
-    maximum_photochemical_rate,
-    quenching,
-    yield_tolerance,
-)
 
 """
     maximum_photochemical_yield(model::RateCompetitionFluorescence)
@@ -200,26 +170,20 @@ Compute the unquenched maximum PSII photochemical yield
     (p.fluorescence_rate + p.constitutive_heat_rate + p.maximum_photochemical_rate)
 
 """
-    PSIIFluxInputs(excitation, linear_electron_flow)
-    PSIIFluxInputs(; excitation, linear_electron_flow)
+    PSIIFluxInputs(psii_excitation, linear_electron_flow)
+    PSIIFluxInputs(; psii_excitation, linear_electron_flow)
 
-Store PSII-delivered photon flux `excitation` and realized `linear_electron_flow`
+Store PSII-delivered photon flux `psii_excitation` and realized `linear_electron_flow`
 [μmol m⁻² one-sided leaf s⁻¹] for [`RateCompetitionFluorescence`](@ref).
 """
-struct PSIIFluxInputs{FT<:Real}
-    excitation::FT
+Base.@kwdef struct PSIIFluxInputs{FT<:Real} <: AbstractLeafScalar
+    psii_excitation::FT
     linear_electron_flow::FT
-    function PSIIFluxInputs{FT}(excitation::FT, linear_electron_flow::FT) where {FT<:Real}
-        require_continuous_scalar(FT, PSIIFluxInputs, (excitation, linear_electron_flow))
-        return new{FT}(excitation, linear_electron_flow)
-    end
+    PSIIFluxInputs{FT}(fields::Vararg{Any,2}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, PSIIFluxInputs{FT}, fields)...)
 end
-PSIIFluxInputs(excitation::FT, linear_electron_flow::FT) where {FT<:Real} =
-    PSIIFluxInputs{FT}(excitation, linear_electron_flow)
-PSIIFluxInputs(excitation::Real, linear_electron_flow::Real) =
-    PSIIFluxInputs(promote_compatible(PSIIFluxInputs, excitation, linear_electron_flow)...)
-PSIIFluxInputs(; excitation, linear_electron_flow) =
-    PSIIFluxInputs(excitation, linear_electron_flow)
+PSIIFluxInputs(fields::Vararg{Real,2}) =
+    PSIIFluxInputs{scalar_type(PSIIFluxInputs, fields...)}(fields...)
 
 """
     FluorescenceStatus
@@ -274,7 +238,7 @@ prior to within-leaf optical escape. Check [`fluorescence_valid`](@ref) before
 consuming outputs; `boundary_roundoff` flags tolerated roundoff above the
 maximum photochemical yield.
 """
-struct RateCompetitionResult{FT<:Real}
+struct RateCompetitionResult{FT<:Real} <: AbstractLeafScalar
     status::FluorescenceStatus
     boundary_roundoff::Bool
     photon_flux::FT
@@ -284,83 +248,13 @@ struct RateCompetitionResult{FT<:Real}
     regulated_heat_yield::FT
     photochemical_rate::FT
     quenching_rate::FT
-    function RateCompetitionResult{FT}(
-        status::FluorescenceStatus,
-        boundary_roundoff::Bool,
-        photon_flux,
-        photochemical_yield,
-        fluorescence_yield,
-        constitutive_heat_yield,
-        regulated_heat_yield,
-        photochemical_rate,
-        quenching_rate,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            RateCompetitionResult{FT},
-            (
-                status,
-                boundary_roundoff,
-                photon_flux,
-                photochemical_yield,
-                fluorescence_yield,
-                constitutive_heat_yield,
-                regulated_heat_yield,
-                photochemical_rate,
-                quenching_rate,
-            ),
-        )
-        return new{FT}(
-            status,
-            boundary_roundoff,
-            photon_flux,
-            photochemical_yield,
-            fluorescence_yield,
-            constitutive_heat_yield,
-            regulated_heat_yield,
-            photochemical_rate,
-            quenching_rate,
-        )
-    end
-    function RateCompetitionResult(
-        status::FluorescenceStatus,
-        boundary_roundoff::Bool,
-        photon_flux::FT,
-        photochemical_yield::FT,
-        fluorescence_yield::FT,
-        constitutive_heat_yield::FT,
-        regulated_heat_yield::FT,
-        photochemical_rate::FT,
-        quenching_rate::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            RateCompetitionResult,
-            (
-                status,
-                boundary_roundoff,
-                photon_flux,
-                photochemical_yield,
-                fluorescence_yield,
-                constitutive_heat_yield,
-                regulated_heat_yield,
-                photochemical_rate,
-                quenching_rate,
-            ),
-        )
-        return new{FT}(
-            status,
-            boundary_roundoff,
-            photon_flux,
-            photochemical_yield,
-            fluorescence_yield,
-            constitutive_heat_yield,
-            regulated_heat_yield,
-            photochemical_rate,
-            quenching_rate,
-        )
-    end
+    RateCompetitionResult{FT}(fields::Vararg{Any,9}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, RateCompetitionResult{FT}, fields)...)
 end
+RateCompetitionResult(status::FluorescenceStatus, boundary_roundoff::Bool, scalars::Vararg{Real,7}) =
+    RateCompetitionResult{scalar_type(RateCompetitionResult, scalars...)}(
+        status, boundary_roundoff, scalars...,
+    )
 
 """
     fluorescence_valid(result) -> Bool
@@ -389,7 +283,7 @@ returns `nothing`).
 ) where {FTP<:Real,FTX<:Real}
     compatible_scalar(FTP, FTX) || throw(MethodError(fluorescence, (p, x)))
     S = promote_type(FTP, FTX)
-    q, j = S(x.excitation), S(x.linear_electron_flow)
+    q, j = S(x.psii_excitation), S(x.linear_electron_flow)
     qp, jp = primal_scalar(q), primal_scalar(j)
     isfinite(qp) && isfinite(jp) && qp >= zero(qp) && jp >= zero(jp) ||
         return unavailable_fluorescence(S, FluorescenceInvalidInput)
@@ -424,7 +318,8 @@ returns `nothing`).
 end
 
 """
-    psii_flux_inputs(photosynthesis::C3Photosynthesis, site::LeafEnvironment[, excitation])
+    psii_flux_inputs(photosynthesis::C3Photosynthesis, site::LeafEnvironment,
+        excitation=BroadbandExcitation())
 
 Extract PSII photon excitation and realized linear electron flow from signed C3
 turnover at biochemical-site `site.co2` (`Cc`).

@@ -32,7 +32,7 @@ AbstractFluorescence
 
 Supertype for replaceable leaf chlorophyll fluorescence source models.
 
-*Kind:* Abstract Type · *Source:* [`src/fluorescence.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L1)
+*Kind:* Abstract Type · public: `LeafPhotosynthesis.AbstractFluorescence` · *Source:* [`src/fluorescence.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L1)
 
 ### `NoFluorescence`
 
@@ -42,7 +42,7 @@ NoFluorescence()
 
 Disable fluorescence calculations explicitly; [`fluorescence`](#fluorescence) returns `nothing`.
 
-*Kind:* Struct · *Source:* [`src/fluorescence.jl:8`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L8)
+*Kind:* Struct · exported · *Source:* [`src/fluorescence.jl:8`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L8)
 
 ### `RateCompetitionFluorescence`
 
@@ -61,7 +61,7 @@ and roundoff allowance `yield_tolerance` (`≥ 0`).
 Consumes realized linear electron flow and PSII excitation; PSI emission and
 within-leaf spectral escape are modeled separately.
 
-*Kind:* Struct · *Source:* [`src/fluorescence.jl:109`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L109)
+*Kind:* Struct · exported · *Source:* [`src/fluorescence.jl:98`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L98)
 
 ### `CytochromeFluorescence`
 
@@ -74,7 +74,7 @@ Parameterize the mechanistic steady-state PSII + PSI fluorescence model coupled
 through Cytochrome b₆f redox poise and energy-dependent feedback quenching `K_N`
 (Johnson & Berry 2021, Eqs. 7–30).
 
-*Kind:* Struct · *Source:* [`src/cytochrome_fluorescence.jl:180`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_fluorescence.jl#L180)
+*Kind:* Struct · exported · *Source:* [`src/cytochrome_fluorescence.jl:115`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_fluorescence.jl#L115)
 
 ### `AbstractQuenching`
 
@@ -85,7 +85,7 @@ AbstractQuenching{FT}
 Supertype for relative-rate non-photochemical quenching laws implementing
 [`quenching_rate`](#quenching_rate).
 
-*Kind:* Abstract Type · *Source:* [`src/fluorescence.jl:16`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L16)
+*Kind:* Abstract Type · public: `LeafPhotosynthesis.AbstractQuenching` · *Source:* [`src/fluorescence.jl:16`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L16)
 
 ### `ConstantQuenching`
 
@@ -97,7 +97,7 @@ ConstantQuenching(; rate)
 Represent a constant, nonnegative, dimensionless regulated heat-dissipation rate
 `rate` (`K_N ≥ 0`) sharing the normalization of `K_F` and `K_D`.
 
-*Kind:* Struct · *Source:* [`src/fluorescence.jl:24`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L24)
+*Kind:* Struct · exported · *Source:* [`src/fluorescence.jl:24`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L24)
 
 ### `SaturationQuenching`
 
@@ -110,7 +110,7 @@ Parameterize instantaneous empirical feedback quenching (van der Tol et al. 2014
 $K_N(x) = K_{N,\max} (1 + β) x^α / (β + x^α)$, with `maximum_rate ≥ 0`,
 `exponent` (`α > 0`), and `half_saturation` (`β > 0`).
 
-*Kind:* Struct · *Source:* [`src/fluorescence.jl:51`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L51)
+*Kind:* Struct · exported · *Source:* [`src/fluorescence.jl:52`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L52)
 
 ### `quenching_rate`
 
@@ -121,7 +121,7 @@ quenching_rate(law, saturation)
 Evaluate the dimensionless regulated non-photochemical quenching rate constant
 `K_N` at excitation `saturation` (`∈ [0, 1]`).
 
-*Kind:* Function · *Source:* [`src/fluorescence.jl:42`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L42)
+*Kind:* Function · public: `LeafPhotosynthesis.quenching_rate` · *Source:* [`src/fluorescence.jl:43`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L43)
 
 ---
 
@@ -145,7 +145,7 @@ sharing a common normalization (conventionally ns⁻¹, Johnson & Berry 2021, Ta
   `> 0` selects connected-units exciton sharing).
 - `sustained_quenching_rate` (`K_N,sus ≥ 0`; dark-sustained thermal dissipation).
 
-*Kind:* Struct · *Source:* [`src/cytochrome_fluorescence.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_fluorescence.jl#L1)
+*Kind:* Struct · exported · *Source:* [`src/cytochrome_fluorescence.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_fluorescence.jl#L1)
 
 ### `PSIRateParameters`
 
@@ -163,19 +163,19 @@ Specify first-order PSI excitation decay rate constants sharing one normalizatio
 - `maximum_photochemical_rate` (`K_P1 > 0` in open P700 centers).
 - `closed_quenching_rate` (`K_X1 > 0` radiationless decay in oxidized P700⁺ centers).
 
-*Kind:* Struct · *Source:* [`src/cytochrome_fluorescence.jl:88`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_fluorescence.jl#L88)
+*Kind:* Struct · exported · *Source:* [`src/cytochrome_fluorescence.jl:53`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_fluorescence.jl#L53)
 
 ### `PSIIFluxInputs`
 
 ```julia
-PSIIFluxInputs(excitation, linear_electron_flow)
-PSIIFluxInputs(; excitation, linear_electron_flow)
+PSIIFluxInputs(psii_excitation, linear_electron_flow)
+PSIIFluxInputs(; psii_excitation, linear_electron_flow)
 ```
 
-Store PSII-delivered photon flux `excitation` and realized `linear_electron_flow`
+Store PSII-delivered photon flux `psii_excitation` and realized `linear_electron_flow`
 [μmol m⁻² one-sided leaf s⁻¹] for [`RateCompetitionFluorescence`](#ratecompetitionfluorescence).
 
-*Kind:* Struct · *Source:* [`src/fluorescence.jl:202`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L202)
+*Kind:* Struct · public: `LeafPhotosynthesis.PSIIFluxInputs` · *Source:* [`src/fluorescence.jl:172`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L172)
 
 ### `CoupledPhotosystemInputs`
 
@@ -195,12 +195,13 @@ Bundle scalar inputs for [`CytochromeFluorescence`](#cytochromefluorescence):
 - `psi_electron_flow`: realized PSI electron flux `J_P700 = J_P680 + J_CEF` [μmol e⁻ m⁻² leaf s⁻¹].
 - `psii_open_fraction`: open PSII reaction-center fraction `q₂ ∈ [0, 1]`.
 
-*Kind:* Struct · *Source:* [`src/cytochrome_fluorescence.jl:258`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_fluorescence.jl#L258)
+*Kind:* Struct · public: `LeafPhotosynthesis.CoupledPhotosystemInputs` · *Source:* [`src/cytochrome_fluorescence.jl:186`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_fluorescence.jl#L186)
 
 ### `psii_flux_inputs`
 
 ```julia
-psii_flux_inputs(photosynthesis::C3Photosynthesis, site::LeafEnvironment[, excitation])
+psii_flux_inputs(photosynthesis::C3Photosynthesis, site::LeafEnvironment,
+    excitation=BroadbandExcitation())
 ```
 
 Extract PSII photon excitation and realized linear electron flow from signed C3
@@ -209,20 +210,20 @@ turnover at biochemical-site `site.co2` (`Cc`).
 After solving gas exchange, verify solver convergence first and pass a
 [`LeafEnvironment`](leaf_composition_and_environments.md#leafenvironment) constructed with `biochemical_co2`, never ambient CO₂.
 
-*Kind:* Function · *Source:* [`src/fluorescence.jl:426`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L426)
+*Kind:* Function · exported · *Source:* [`src/fluorescence.jl:320`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L320)
 
 ### `photosystem_flux_inputs`
 
 ```julia
 photosystem_flux_inputs(photosynthesis::CytochromePhotosynthesis,
-    site::LeafEnvironment[, excitation])
+    site::LeafEnvironment, excitation=BroadbandExcitation())
 ```
 
 Extract coupled PSII and PSI excitations, realized linear (`J_P680`) and PSI
 (`J_P700`) electron flows, and open PSII fraction (`q₂`) from signed Cytochrome
 turnover at biochemical-site `site.co2` (`Cc`).
 
-*Kind:* Function · *Source:* [`src/cytochrome_fluorescence.jl:629`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_fluorescence.jl#L629)
+*Kind:* Function · exported · *Source:* [`src/cytochrome_fluorescence.jl:415`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_fluorescence.jl#L415)
 
 ### `maximum_photochemical_yield`
 
@@ -233,7 +234,7 @@ maximum_photochemical_yield(model::RateCompetitionFluorescence)
 Compute the unquenched maximum PSII photochemical yield
 $K_{P,\max} / (K_F + K_D + K_{P,\max})$.
 
-*Kind:* Function · *Source:* [`src/fluorescence.jl:192`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L192)
+*Kind:* Function · public: `LeafPhotosynthesis.maximum_photochemical_yield` · *Source:* [`src/fluorescence.jl:162`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L162)
 
 ### `psii_maximum_photochemical_yield`
 
@@ -245,7 +246,7 @@ Compute the PSII photochemical quantum yield at zero dynamic feedback quenching
 (`K_N = 0`) and open reaction-center fraction `psii_open_fraction` (`∈ [0, 1]`),
 accounting for connected-units exciton sharing (`K_U2`) and sustained quenching (`K_N,sus`).
 
-*Kind:* Function · *Source:* [`src/cytochrome_fluorescence.jl:231`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_fluorescence.jl#L231)
+*Kind:* Function · public: `LeafPhotosynthesis.psii_maximum_photochemical_yield` · *Source:* [`src/cytochrome_fluorescence.jl:159`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_fluorescence.jl#L159)
 
 ### `psi_maximum_photochemical_yield`
 
@@ -256,7 +257,7 @@ psi_maximum_photochemical_yield(psi_or_model)
 Compute the open-center PSI maximum photochemical quantum yield
 $K_{P1} / (K_{F1} + K_{D1} + K_{P1})$.
 
-*Kind:* Function · *Source:* [`src/cytochrome_fluorescence.jl:219`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_fluorescence.jl#L219)
+*Kind:* Function · public: `LeafPhotosynthesis.psi_maximum_photochemical_yield` · *Source:* [`src/cytochrome_fluorescence.jl:147`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_fluorescence.jl#L147)
 
 ### `minimum_psii_partition`
 
@@ -271,7 +272,7 @@ Compute the minimum broadband PSII photon fraction `β_min` ensuring
 capacities, and CO₂ partial pressures under [`SerialLimitation`](carbon_assimilation_and_turnover.md#seriallimitation)
 (Johnson & Berry 2021, Eq. 20).
 
-*Kind:* Function · *Source:* [`src/cytochrome_fluorescence.jl:660`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_fluorescence.jl#L660)
+*Kind:* Function · public: `LeafPhotosynthesis.minimum_psii_partition` · *Source:* [`src/cytochrome_fluorescence.jl:446`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_fluorescence.jl#L446)
 
 ### `fluorescence_low_light_yield`
 
@@ -282,7 +283,7 @@ fluorescence_low_light_yield(model::RateCompetitionFluorescence)
 Return the low-light (`Q₂ → 0`) PSII photochemical yield implied by `model` and
 its selected [`AbstractQuenching`](#abstractquenching) law.
 
-*Kind:* Function · *Source:* [`src/fluorescence.jl:450`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L450)
+*Kind:* Function · public: `LeafPhotosynthesis.fluorescence_low_light_yield` · *Source:* [`src/fluorescence.jl:345`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L345)
 
 ### `validate_fluorescence_coupling`
 
@@ -298,7 +299,7 @@ Verify on the host that low-light photochemical yields and photosystem partition
 parameters of `electron_transport` (or `photosynthesis`) are consistent with
 `fluorescence_model` within `yield_tolerance`, throwing `ArgumentError` on mismatch.
 
-*Kind:* Function · *Source:* [`src/fluorescence.jl:470`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L470)
+*Kind:* Function · exported · *Source:* [`src/fluorescence.jl:365`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L365)
 
 ---
 
@@ -317,7 +318,7 @@ prior to within-leaf optical escape. Check [`fluorescence_valid`](#fluorescence_
 consuming outputs; `boundary_roundoff` flags tolerated roundoff above the
 maximum photochemical yield.
 
-*Kind:* Struct · *Source:* [`src/fluorescence.jl:267`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L267)
+*Kind:* Struct · public: `LeafPhotosynthesis.RateCompetitionResult` · *Source:* [`src/fluorescence.jl:231`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L231)
 
 ### `CytochromeFluorescenceResult`
 
@@ -334,7 +335,7 @@ internal leaf emission rates [μmol photons m⁻² one-sided leaf s⁻¹] prior 
 within-leaf optical escape and reabsorption. Check [`fluorescence_valid`](#fluorescence_valid)
 before consuming fluxes or yields.
 
-*Kind:* Struct · *Source:* [`src/cytochrome_fluorescence.jl:306`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_fluorescence.jl#L306)
+*Kind:* Struct · public: `LeafPhotosynthesis.CytochromeFluorescenceResult` · *Source:* [`src/cytochrome_fluorescence.jl:213`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_fluorescence.jl#L213)
 
 ### `FluorescenceStatus`
 
@@ -349,7 +350,7 @@ Enumerate non-throwing outcome codes returned by [`fluorescence`](#fluorescence)
 - [`FluorescenceInvalidInput`](#fluorescenceinvalidinput): non-finite, negative, or out-of-domain input values.
 - [`FluorescenceIncompatibleRates`](#fluorescenceincompatiblerates): realized electron flow outside the model's photochemical domain.
 
-*Kind:* Enum Type · *Source:* [`src/fluorescence.jl:224`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L224)
+*Kind:* Enum Type · public: `LeafPhotosynthesis.FluorescenceStatus` · *Source:* [`src/fluorescence.jl:188`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L188)
 
 ### `FluorescenceLit`
 
@@ -359,7 +360,7 @@ FluorescenceLit
 
 `FluorescenceStatus` value indicating valid illuminated fluorescence evaluation.
 
-*Kind:* Enum Value · *Source:* [`src/fluorescence.jl:241`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L241)
+*Kind:* Enum Value · public: `LeafPhotosynthesis.FluorescenceLit` · *Source:* [`src/fluorescence.jl:205`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L205)
 
 ### `FluorescenceDark`
 
@@ -370,7 +371,7 @@ FluorescenceDark
 `FluorescenceStatus` value indicating exact darkness (`0` excitation and `0`
 electron flow), with zero emitted photon flux and `NaN` flux-ratio yields.
 
-*Kind:* Enum Value · *Source:* [`src/fluorescence.jl:247`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L247)
+*Kind:* Enum Value · public: `LeafPhotosynthesis.FluorescenceDark` · *Source:* [`src/fluorescence.jl:211`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L211)
 
 ### `FluorescenceInvalidInput`
 
@@ -380,7 +381,7 @@ FluorescenceInvalidInput
 
 `FluorescenceStatus` value indicating non-finite, negative, or out-of-range inputs.
 
-*Kind:* Enum Value · *Source:* [`src/fluorescence.jl:254`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L254)
+*Kind:* Enum Value · public: `LeafPhotosynthesis.FluorescenceInvalidInput` · *Source:* [`src/fluorescence.jl:218`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L218)
 
 ### `FluorescenceIncompatibleRates`
 
@@ -391,7 +392,7 @@ FluorescenceIncompatibleRates
 `FluorescenceStatus` value indicating that realized electron transport exceeds
 the fluorescence model's maximum photochemical yield or Z-scheme domain.
 
-*Kind:* Enum Value · *Source:* [`src/fluorescence.jl:260`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L260)
+*Kind:* Enum Value · public: `LeafPhotosynthesis.FluorescenceIncompatibleRates` · *Source:* [`src/fluorescence.jl:224`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L224)
 
 ### `fluorescence`
 
@@ -403,7 +404,7 @@ Evaluate internal chlorophyll fluorescence yields, rate constants, and photon
 emission flux without throwing on out-of-domain device inputs (`NoFluorescence`
 returns `nothing`).
 
-*Kind:* Function · *Source:* [`src/fluorescence.jl:379`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L379)
+*Kind:* Function · exported · *Source:* [`src/fluorescence.jl:273`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L273)
 
 ### `fluorescence_valid`
 
@@ -413,7 +414,7 @@ fluorescence_valid(result) -> Bool
 
 Return `true` if `result.status` is [`FluorescenceLit`](#fluorescencelit) or [`FluorescenceDark`](#fluorescencedark).
 
-*Kind:* Function · *Source:* [`src/fluorescence.jl:365`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L365)
+*Kind:* Function · exported · *Source:* [`src/fluorescence.jl:259`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/fluorescence.jl#L259)
 
 ---
 
@@ -436,7 +437,7 @@ the PSII absorbed-photon fraction `β = Q₂ / Q_abs` that balances linear and
 cyclic electron transport at `K_N = 0`, freezing `β` at its light-saturation
 crossover value `β_sat` above `J_P700,j ≥ J_P700,c`.
 
-*Kind:* Struct · *Source:* [`src/cytochrome_state_transitions.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_state_transitions.jl#L1)
+*Kind:* Struct · exported · *Source:* [`src/cytochrome_state_transitions.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_state_transitions.jl#L1)
 
 ### `dark_balanced_psii_partition`
 
@@ -452,7 +453,7 @@ fraction $β_0 = Φ_{P1,\max} / (Φ_{P1,\max} + η(T, C_c, O_2) Φ_{P2,\max}(1))
 that balances open-center PSII and PSI photochemistry (Johnson & Berry 2021,
 Eqs. 28, 30, Table 2), returning `NaN` on invalid inputs without throwing.
 
-*Kind:* Function · *Source:* [`src/cytochrome_state_transitions.jl:47`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_state_transitions.jl#L47)
+*Kind:* Function · public: `LeafPhotosynthesis.dark_balanced_psii_partition` · *Source:* [`src/cytochrome_state_transitions.jl:39`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_state_transitions.jl#L39)
 
 ### `state_transition_partition`
 
@@ -466,7 +467,7 @@ Evaluate the pointwise, closed-form PSII absorbed-photon fraction `β ∈ (0, 1)
 under `rule` at `site` (Johnson & Berry 2021, Cases 10–12), returning `NaN` on
 invalid or incompatible inputs without throwing.
 
-*Kind:* Function · *Source:* [`src/cytochrome_state_transitions.jl:96`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_state_transitions.jl#L96)
+*Kind:* Function · public: `LeafPhotosynthesis.state_transition_partition` · *Source:* [`src/cytochrome_state_transitions.jl:88`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_state_transitions.jl#L88)
 
 ### `state_transition_excitation`
 
@@ -481,7 +482,7 @@ Berry (2021) dynamic state transitions (`qT`) at `site` via a Sterbenz-exact
 split of `site.absorbed_par` so `Q₂ + Q₁ == site.absorbed_par` holds identically
 across all IEEE-754 binades.
 
-*Kind:* Function · *Source:* [`src/cytochrome_state_transitions.jl:183`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_state_transitions.jl#L183)
+*Kind:* Function · exported · *Source:* [`src/cytochrome_state_transitions.jl:175`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/cytochrome_state_transitions.jl#L175)
 
 ---
 
@@ -499,7 +500,7 @@ Specify pulse-amplitude modulated (PAM) fluorometer detector weights
 PSII and PSI fluorescence yields to apparent detector levels `F / S`
 (Johnson & Berry 2021, Eqs. 38–42).
 
-*Kind:* Struct · *Source:* [`src/pam_fluorescence.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/pam_fluorescence.jl#L1)
+*Kind:* Struct · exported · *Source:* [`src/pam_fluorescence.jl:1`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/pam_fluorescence.jl#L1)
 
 ### `PAMFluorescenceResult`
 
@@ -515,7 +516,7 @@ pulse-ratio indices (`apparent_photochemical_yield`, `apparent_regulated_heat_yi
 Check [`pam_fluorescence_valid`](#pam_fluorescence_valid) before consuming fields; non-lit states
 carry `NaN` fields without throwing on GPU devices.
 
-*Kind:* Struct · *Source:* [`src/pam_fluorescence.jl:37`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/pam_fluorescence.jl#L37)
+*Kind:* Struct · public: `LeafPhotosynthesis.PAMFluorescenceResult` · *Source:* [`src/pam_fluorescence.jl:26`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/pam_fluorescence.jl#L26)
 
 ### `pam_fluorescence`
 
@@ -531,7 +532,7 @@ from coupled internal fluorescence `result`, light-adapted absorption
 cross-sections `(alpha_psii, alpha_psi)`, and dark-reference cross-sections
 `(alpha_psii_dark, alpha_psi_dark)` (defaulting to `(alpha_psii, alpha_psi)`).
 
-*Kind:* Function · *Source:* [`src/pam_fluorescence.jl:225`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/pam_fluorescence.jl#L225)
+*Kind:* Function · exported · *Source:* [`src/pam_fluorescence.jl:124`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/pam_fluorescence.jl#L124)
 
 ### `pam_fluorescence_valid`
 
@@ -541,7 +542,7 @@ pam_fluorescence_valid(result::PAMFluorescenceResult) -> Bool
 
 Return `true` if `result.status` is [`FluorescenceLit`](#fluorescencelit).
 
-*Kind:* Function · *Source:* [`src/pam_fluorescence.jl:157`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/pam_fluorescence.jl#L157)
+*Kind:* Function · exported · *Source:* [`src/pam_fluorescence.jl:56`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/pam_fluorescence.jl#L56)
 
 ### `dark_pam_levels`
 
@@ -555,4 +556,4 @@ Compute dark-adapted (`K_N = 0`) PAM reference levels `(; fo, fm, fv_fm)`
 (`F_o / S`, `F_m / S`, and `(F_m - F_o) / F_m`; Johnson & Berry 2021, Eqs. 39, 41),
 returning `NaN` fields on invalid cross-sections without throwing.
 
-*Kind:* Function · *Source:* [`src/pam_fluorescence.jl:173`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/pam_fluorescence.jl#L173)
+*Kind:* Function · public: `LeafPhotosynthesis.dark_pam_levels` · *Source:* [`src/pam_fluorescence.jl:72`](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/src/pam_fluorescence.jl#L72)

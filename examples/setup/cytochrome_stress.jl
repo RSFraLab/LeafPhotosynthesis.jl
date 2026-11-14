@@ -1,3 +1,4 @@
+using LeafPhotosynthesis: FluorescenceDark, psi_maximum_photochemical_yield
 isdefined(@__MODULE__, :core_leaf) || include(joinpath(@__DIR__, "..", "core_exchange.jl"))
 
 function scale_arrhenius_like(law::Arrhenius{FT}, factor::FT) where {FT}

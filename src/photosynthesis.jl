@@ -3,7 +3,7 @@
 
 Supertype for leaf photosynthetic biochemistry components implementing [`photosynthesize`](@ref).
 """
-abstract type AbstractPhotosynthesis end
+abstract type AbstractPhotosynthesis <: AbstractLeafScalar end
 
 """
     AbstractC3Photosynthesis{L,C} <: AbstractPhotosynthesis
@@ -66,31 +66,16 @@ end
 Represent prescribed leaf `temperature` [K], `absorbed_par` [μmol photons m⁻² leaf s⁻¹],
 and biochemical-site `co2` and `oxygen` partial pressures [Pa].
 """
-Base.@kwdef struct LeafEnvironment{FT<:Real}
+Base.@kwdef struct LeafEnvironment{FT<:Real} <: AbstractLeafScalar
     temperature::FT
     absorbed_par::FT
     co2::FT
     oxygen::FT
-    function LeafEnvironment{FT}(temperature, absorbed_par, co2, oxygen) where {FT<:Real}
-        require_continuous_scalar(
-            FT, LeafEnvironment{FT}, (temperature, absorbed_par, co2, oxygen),
-        )
-        return new{FT}(temperature, absorbed_par, co2, oxygen)
-    end
-    function LeafEnvironment(
-        temperature::FT,
-        absorbed_par::FT,
-        co2::FT,
-        oxygen::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT, LeafEnvironment, (temperature, absorbed_par, co2, oxygen),
-        )
-        return new{FT}(temperature, absorbed_par, co2, oxygen)
-    end
+    LeafEnvironment{FT}(fields::Vararg{Any,4}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, LeafEnvironment{FT}, fields)...)
 end
-LeafEnvironment(t::Real, par::Real, co2::Real, o2::Real) =
-    LeafEnvironment(promote_compatible(LeafEnvironment, t, par, co2, o2)...)
+LeafEnvironment(fields::Vararg{Real,4}) =
+    LeafEnvironment{scalar_type(LeafEnvironment, fields...)}(fields...)
 
 # Physical domain of a biochemical site: positive finite temperature [K] and finite,
 # nonnegative CO₂ and O₂ partial pressures [Pa]. Absorbed light is checked with the
@@ -138,8 +123,8 @@ end
     typeof(r.vcmax + p.stoichiometry.electrons_per_carboxylation + +(forcing...) + sum(supply))
 
 """
-    photosynthesize(photosynthesis, environment[, excitation])
-    photosynthesize(leaf, environment[, excitation])
+    photosynthesize(photosynthesis, environment, excitation=BroadbandExcitation())
+    photosynthesize(leaf, environment, excitation=BroadbandExcitation())
 
 Evaluate leaf photosynthetic carbon assimilation and available electron supply
 for `environment` using `BroadbandExcitation()` by default or an explicit
@@ -182,5 +167,5 @@ end
         p.stoichiometry, p.limitation, p.compensation,
     )
     valid = valid_co2 && valid_leaf(p, r, env, excitation)
-    return checked_result(OutFT, valid, (; turnover..., electron_supply = transport, extras...))
+    return checked_result(OutFT, valid, (; turnover..., electron_transport = transport, extras...))
 end

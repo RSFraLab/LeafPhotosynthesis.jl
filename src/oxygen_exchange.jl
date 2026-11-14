@@ -3,7 +3,7 @@
 
 Supertype for leaf oxygen-exchange components; positive net flux denotes O₂ release.
 """
-abstract type AbstractOxygenExchange end
+abstract type AbstractOxygenExchange <: AbstractLeafScalar end
 
 """
     NoOxygenExchange()
@@ -25,6 +25,8 @@ uptake (`respiratory_quotient` is CO₂ released per O₂ consumed).
 
 # Examples
 ```jldoctest
+julia> using LeafPhotosynthesis: OxygenFluxInputs
+
 julia> ox = CoreOxygenExchange(4.0, 1.5, 0.5, 1.0);
 
 julia> res = oxygen_exchange(ox, OxygenFluxInputs(80.0, 4.0, 1.0));
@@ -38,55 +40,11 @@ Base.@kwdef struct CoreOxygenExchange{FT<:Real} <: AbstractOxygenExchange
     oxygen_per_oxygenation::FT
     co2_per_oxygenation::FT
     respiratory_quotient::FT
-    function CoreOxygenExchange{FT}(
-        electrons_per_oxygen,
-        oxygen_per_oxygenation,
-        co2_per_oxygenation,
-        respiratory_quotient,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            CoreOxygenExchange{FT},
-            (
-                electrons_per_oxygen,
-                oxygen_per_oxygenation,
-                co2_per_oxygenation,
-                respiratory_quotient,
-            ),
-        )
-        return new{FT}(
-            electrons_per_oxygen,
-            oxygen_per_oxygenation,
-            co2_per_oxygenation,
-            respiratory_quotient,
-        )
-    end
-    function CoreOxygenExchange(
-        electrons_per_oxygen::FT,
-        oxygen_per_oxygenation::FT,
-        co2_per_oxygenation::FT,
-        respiratory_quotient::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            CoreOxygenExchange,
-            (
-                electrons_per_oxygen,
-                oxygen_per_oxygenation,
-                co2_per_oxygenation,
-                respiratory_quotient,
-            ),
-        )
-        return new{FT}(
-            electrons_per_oxygen,
-            oxygen_per_oxygenation,
-            co2_per_oxygenation,
-            respiratory_quotient,
-        )
-    end
+    CoreOxygenExchange{FT}(fields::Vararg{Any,4}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, CoreOxygenExchange{FT}, fields)...)
 end
-CoreOxygenExchange(epo::Real, opo::Real, cpo::Real, rq::Real) =
-    CoreOxygenExchange(promote_compatible(CoreOxygenExchange, epo, opo, cpo, rq)...)
+CoreOxygenExchange(fields::Vararg{Real,4}) =
+    CoreOxygenExchange{scalar_type(CoreOxygenExchange, fields...)}(fields...)
 
 """
     OxygenFluxInputs{FT}(; linear_electron_flow, rubisco_oxygenation, respiration)
@@ -96,42 +54,21 @@ Bundle realized `linear_electron_flow` [μmol electrons m⁻² leaf s⁻¹],
 `rubisco_oxygenation` [μmol reactions m⁻² leaf s⁻¹], and mitochondrial CO₂
 `respiration` [μmol CO₂ m⁻² leaf s⁻¹] for [`oxygen_exchange`](@ref).
 """
-Base.@kwdef struct OxygenFluxInputs{FT<:Real}
+Base.@kwdef struct OxygenFluxInputs{FT<:Real} <: AbstractLeafScalar
     linear_electron_flow::FT
     rubisco_oxygenation::FT
     respiration::FT
-    function OxygenFluxInputs{FT}(
-        linear_electron_flow,
-        rubisco_oxygenation,
-        respiration,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            OxygenFluxInputs{FT},
-            (linear_electron_flow, rubisco_oxygenation, respiration),
-        )
-        return new{FT}(linear_electron_flow, rubisco_oxygenation, respiration)
-    end
-    function OxygenFluxInputs(
-        linear_electron_flow::FT,
-        rubisco_oxygenation::FT,
-        respiration::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            OxygenFluxInputs,
-            (linear_electron_flow, rubisco_oxygenation, respiration),
-        )
-        return new{FT}(linear_electron_flow, rubisco_oxygenation, respiration)
-    end
+    OxygenFluxInputs{FT}(fields::Vararg{Any,3}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, OxygenFluxInputs{FT}, fields)...)
 end
-OxygenFluxInputs(lef::Real, vo::Real, rd::Real) =
-    OxygenFluxInputs(promote_compatible(OxygenFluxInputs, lef, vo, rd)...)
+OxygenFluxInputs(fields::Vararg{Real,3}) =
+    OxygenFluxInputs{scalar_type(OxygenFluxInputs, fields...)}(fields...)
 
 """
     oxygen_exchange(oxygen_model, inputs::OxygenFluxInputs)
-    oxygen_exchange(oxygen_model, photosynthesis, environment[, excitation])
-    oxygen_exchange(leaf, environment[, excitation])
+    oxygen_exchange(oxygen_model, photosynthesis, environment,
+        excitation=BroadbandExcitation())
+    oxygen_exchange(leaf, environment, excitation=BroadbandExcitation())
 
 Compute gross O₂ evolution, photorespiratory O₂ uptake, mitochondrial
 respiratory O₂ uptake, and net O₂ release [μmol O₂ m⁻² leaf s⁻¹] (`nothing` for

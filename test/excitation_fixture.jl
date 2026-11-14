@@ -66,20 +66,29 @@ function LeafPhotosynthesis.electron_transport(
     colimit(p.psii_yield*x.photons, jmax, p.limitation)
 end
 
-struct LegacyTestElectrons{FT}
+# Components that support only broadband light implement the excitation argument for
+# `BroadbandExcitation` alone; the default argument reaches them, other light fails dispatch.
+struct BroadbandOnlyElectrons{FT}
     gain::FT
     psii_fraction::FT
 end
-LeafPhotosynthesis.electron_transport(p::LegacyTestElectrons, par, jmax) =
+LeafPhotosynthesis.electron_transport(p::BroadbandOnlyElectrons, par, jmax, ::BroadbandExcitation) =
     min(p.gain*par, jmax)
-struct LegacyTestPhotosynthesis{FT} <: AbstractPhotosynthesis
+struct BroadbandOnlyPhotosynthesis{FT} <: AbstractPhotosynthesis
     gain::FT
 end
-LeafPhotosynthesis.photosynthesize(p::LegacyTestPhotosynthesis, env::LeafEnvironment) =
-    (; net_assimilation = p.gain*env.absorbed_par)
-struct LegacyTestOxygen <: AbstractOxygenExchange end
-LeafPhotosynthesis.oxygen_exchange(::LegacyTestOxygen, p, env::LeafEnvironment) =
-    (; legacy_value = env.oxygen)
+LeafPhotosynthesis.photosynthesize(
+    p::BroadbandOnlyPhotosynthesis,
+    env::LeafEnvironment,
+    ::BroadbandExcitation,
+) = (; net_assimilation = p.gain*env.absorbed_par)
+struct BroadbandOnlyOxygen <: AbstractOxygenExchange end
+LeafPhotosynthesis.oxygen_exchange(
+    ::BroadbandOnlyOxygen,
+    p,
+    env::LeafEnvironment,
+    ::BroadbandExcitation,
+) = (; test_value = env.oxygen)
 
 function with_test_electrons(p, electrons)
     C3Photosynthesis(;

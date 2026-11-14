@@ -140,8 +140,8 @@ function check_excitation_batches(to_device, synchronize)
             df,
             Ref(case.state),
             Ref(case.diffusion),
-            actual,
             dx,
+            actual,
         )
         synchronize()
         for (a, b, c) in zip(
@@ -236,7 +236,7 @@ function check_excitation_batches(to_device, synchronize)
         )
         @test eltype(rejected_flux)===PSIIFluxInputs{FT}
         @test all(
-            row->isnan(row.excitation)&&isnan(row.linear_electron_flow),
+            row->isnan(row.psii_excitation)&&isnan(row.linear_electron_flow),
             Array(rejected_flux),
         )
         # A second explicit convention can be compiled without changing the core.

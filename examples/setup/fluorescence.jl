@@ -1,3 +1,4 @@
+using LeafPhotosynthesis: FluorescenceDark
 isdefined(@__MODULE__, :core_leaf) || include(joinpath(@__DIR__, "..", "core_exchange.jl"))
 
 function setup_fluorescence(::Type{FT}) where {FT}
@@ -53,7 +54,7 @@ function fluorescence_row(environment, carbon, inputs, unquenched, regulated)
         result.status == FluorescenceDark ? nothing : getproperty(result, key)
     return (;
         absorbed_par = environment.absorbed_par,
-        excitation = inputs.excitation,
+        excitation = inputs.psii_excitation,
         linear_electron_flow = inputs.linear_electron_flow,
         net_assimilation = carbon.net_assimilation,
         photochemical_yield = yield_value(regulated, :photochemical_yield),

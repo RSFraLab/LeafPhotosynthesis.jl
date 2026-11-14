@@ -7,19 +7,21 @@ site density `site_density` [μmol sites m⁻² leaf] and catalytic turnover law
 `turnover_rate` [mol e⁻ mol⁻¹ sites s⁻¹] (Johnson & Berry 2021):
 ``V_{q\\max}(T) = B \\cdot k_q(T)`` [μmol e⁻ m⁻² leaf s⁻¹].
 """
-struct CytochromeCapacity{FT<:Real,K}
+Base.@kwdef struct CytochromeCapacity{FT<:Real,K} <: AbstractLeafScalar
     site_density::FT
     turnover_rate::K
-    function CytochromeCapacity(site_density::FT, turnover_rate::K) where {FT<:Real,K}
-        require_continuous_scalar(FT, CytochromeCapacity, (site_density, turnover_rate))
-        sp = primal_scalar(site_density)
+    function CytochromeCapacity{FT,K}(fields::Vararg{Any,2}) where {FT<:Real,K}
+        c = new{FT,K}(continuous_fields(FT, CytochromeCapacity{FT,K}, fields)...)
+        sp = primal_scalar(c.site_density)
         isfinite(sp) && sp >= zero(sp) ||
             throw(ArgumentError("Cytochrome b6f site_density must be finite and nonnegative"))
-        return new{FT,K}(site_density, turnover_rate)
+        return c
     end
 end
-CytochromeCapacity(; site_density, turnover_rate) =
-    CytochromeCapacity(site_density, turnover_rate)
+CytochromeCapacity(site_density::Real, turnover_rate) =
+    CytochromeCapacity{scalar_type(CytochromeCapacity, site_density),typeof(turnover_rate)}(
+        site_density, turnover_rate,
+    )
 
 @inline temperature_response(c::CytochromeCapacity, temperature) =
     c.site_density * temperature_response(c.turnover_rate, temperature)
@@ -36,7 +38,7 @@ returning μmol e⁻ m⁻² leaf s⁻¹; `gamma_star` may be a temperature law o
 [`AbstractCompensationPoint`](@ref); `linear_atp_per_electron` (`η_L`) and
 `cyclic_atp_per_electron` (`η_C`) use [`ConstantResponse`](@ref) or temperature laws.
 """
-Base.@kwdef struct CytochromeTemperatureResponse{V,Q,R,C,O,G,NL,NC}
+Base.@kwdef struct CytochromeTemperatureResponse{V,Q,R,C,O,G,NL,NC} <: AbstractLeafScalar
     vcmax::V
     vqmax::Q
     respiration::R
@@ -60,7 +62,7 @@ at leaf temperature [K] and biochemical-site O₂ [Pa]:
 - `kc`, `ko`, `gamma_star`: Pa.
 - `linear_atp_per_electron` (`η_L`), `cyclic_atp_per_electron` (`η_C`): mol ATP (mol e⁻)⁻¹.
 """
-Base.@kwdef struct CytochromeRates{FT<:Real}
+Base.@kwdef struct CytochromeRates{FT<:Real} <: AbstractLeafScalar
     vcmax::FT
     vqmax::FT
     respiration::FT
@@ -69,82 +71,11 @@ Base.@kwdef struct CytochromeRates{FT<:Real}
     gamma_star::FT
     linear_atp_per_electron::FT
     cyclic_atp_per_electron::FT
-    function CytochromeRates{FT}(
-        vcmax,
-        vqmax,
-        respiration,
-        kc,
-        ko,
-        gamma_star,
-        linear_atp_per_electron,
-        cyclic_atp_per_electron,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            CytochromeRates{FT},
-            (
-                vcmax,
-                vqmax,
-                respiration,
-                kc,
-                ko,
-                gamma_star,
-                linear_atp_per_electron,
-                cyclic_atp_per_electron,
-            ),
-        )
-        return new{FT}(
-            vcmax,
-            vqmax,
-            respiration,
-            kc,
-            ko,
-            gamma_star,
-            linear_atp_per_electron,
-            cyclic_atp_per_electron,
-        )
-    end
-    function CytochromeRates(
-        vcmax::FT,
-        vqmax::FT,
-        respiration::FT,
-        kc::FT,
-        ko::FT,
-        gamma_star::FT,
-        linear_atp_per_electron::FT,
-        cyclic_atp_per_electron::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            CytochromeRates,
-            (
-                vcmax,
-                vqmax,
-                respiration,
-                kc,
-                ko,
-                gamma_star,
-                linear_atp_per_electron,
-                cyclic_atp_per_electron,
-            ),
-        )
-        return new{FT}(
-            vcmax,
-            vqmax,
-            respiration,
-            kc,
-            ko,
-            gamma_star,
-            linear_atp_per_electron,
-            cyclic_atp_per_electron,
-        )
-    end
+    CytochromeRates{FT}(fields::Vararg{Any,8}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, CytochromeRates{FT}, fields)...)
 end
-CytochromeRates(
-    vc::Real, vq::Real, rd::Real, kc::Real, ko::Real, gs::Real, nl::Real, nc::Real,
-) = CytochromeRates(
-    promote_compatible(CytochromeRates, vc, vq, rd, kc, ko, gs, nl, nc)...,
-)
+CytochromeRates(fields::Vararg{Real,8}) =
+    CytochromeRates{scalar_type(CytochromeRates, fields...)}(fields...)
 
 @inline biochemical_rates(p::CytochromeTemperatureResponse, temperature) = CytochromeRates(
     temperature_response(p.vcmax, temperature),
@@ -179,60 +110,16 @@ CytochromeRates(
 Specify C3 Calvin–Benson and photorespiratory linear-electron and ATP demands
 per CO₂ event (classically `4, 8, 3, 7` in Johnson & Berry 2021, Eq. 24).
 """
-Base.@kwdef struct CytochromeStoichiometry{FT<:Real}
+Base.@kwdef struct CytochromeStoichiometry{FT<:Real} <: AbstractLeafScalar
     electrons_per_carboxylation::FT
     electrons_per_photorespiratory_co2::FT
     atp_per_carboxylation::FT
     atp_per_photorespiratory_co2::FT
-    function CytochromeStoichiometry{FT}(
-        electrons_per_carboxylation,
-        electrons_per_photorespiratory_co2,
-        atp_per_carboxylation,
-        atp_per_photorespiratory_co2,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            CytochromeStoichiometry{FT},
-            (
-                electrons_per_carboxylation,
-                electrons_per_photorespiratory_co2,
-                atp_per_carboxylation,
-                atp_per_photorespiratory_co2,
-            ),
-        )
-        return new{FT}(
-            electrons_per_carboxylation,
-            electrons_per_photorespiratory_co2,
-            atp_per_carboxylation,
-            atp_per_photorespiratory_co2,
-        )
-    end
-    function CytochromeStoichiometry(
-        electrons_per_carboxylation::FT,
-        electrons_per_photorespiratory_co2::FT,
-        atp_per_carboxylation::FT,
-        atp_per_photorespiratory_co2::FT,
-    ) where {FT<:Real}
-        require_continuous_scalar(
-            FT,
-            CytochromeStoichiometry,
-            (
-                electrons_per_carboxylation,
-                electrons_per_photorespiratory_co2,
-                atp_per_carboxylation,
-                atp_per_photorespiratory_co2,
-            ),
-        )
-        return new{FT}(
-            electrons_per_carboxylation,
-            electrons_per_photorespiratory_co2,
-            atp_per_carboxylation,
-            atp_per_photorespiratory_co2,
-        )
-    end
+    CytochromeStoichiometry{FT}(fields::Vararg{Any,4}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, CytochromeStoichiometry{FT}, fields)...)
 end
-CytochromeStoichiometry(ec::Real, eg::Real, ac::Real, ag::Real) =
-    CytochromeStoichiometry(promote_compatible(CytochromeStoichiometry, ec, eg, ac, ag)...)
+CytochromeStoichiometry(fields::Vararg{Real,4}) =
+    CytochromeStoichiometry{scalar_type(CytochromeStoichiometry, fields...)}(fields...)
 
 """
     cytochrome_cyclic_coefficients(linear_atp_per_electron, cyclic_atp_per_electron,
@@ -298,35 +185,27 @@ open-center PSI maximum photochemical yield `psi_maximum_yield` (`Φ_P1,max ∈ 
 and rate co-limitation model `limitation` ([`SerialLimitation`](@ref) for
 Johnson & Berry 2021, Eq. 20).
 """
-struct CytochromeElectronParameters{FT<:Real,L}
+Base.@kwdef struct CytochromeElectronParameters{FT<:Real,L} <: AbstractLeafScalar
     psii_fraction::FT
     psi_maximum_yield::FT
     limitation::L
-    function CytochromeElectronParameters(
-        psii_fraction::FT,
-        psi_maximum_yield::FT,
-        limitation::L,
-    ) where {FT<:Real,L}
-        require_continuous_scalar(
-            FT, CytochromeElectronParameters, (psii_fraction, psi_maximum_yield, limitation),
-        )
-        isfinite(psii_fraction) && zero(FT) < psii_fraction < one(FT) ||
+    function CytochromeElectronParameters{FT,L}(fields::Vararg{Any,3}) where {FT<:Real,L}
+        p = new{FT,L}(continuous_fields(FT, CytochromeElectronParameters{FT,L}, fields)...)
+        isfinite(p.psii_fraction) && zero(FT) < p.psii_fraction < one(FT) ||
             throw(ArgumentError("invalid PSII fraction: coupled Z-scheme transport requires 0 < psii_fraction < 1"))
-        isfinite(psi_maximum_yield) && zero(FT) < psi_maximum_yield < one(FT) ||
+        isfinite(p.psi_maximum_yield) && zero(FT) < p.psi_maximum_yield < one(FT) ||
             throw(ArgumentError("invalid PSI maximum photochemical yield"))
-        return new{FT,L}(psii_fraction, psi_maximum_yield, limitation)
+        return p
     end
 end
 CytochromeElectronParameters(psii_fraction::Real, psi_maximum_yield::Real, limitation) =
-    CytochromeElectronParameters(
-        promote_compatible(CytochromeElectronParameters, psii_fraction, psi_maximum_yield)...,
-        limitation,
-    )
-CytochromeElectronParameters(; psii_fraction, psi_maximum_yield, limitation) =
-    CytochromeElectronParameters(psii_fraction, psi_maximum_yield, limitation)
+    CytochromeElectronParameters{
+        scalar_type(CytochromeElectronParameters, psii_fraction, psi_maximum_yield),typeof(limitation),
+    }(psii_fraction, psi_maximum_yield, limitation)
 
 """
-    cytochrome_electron_supply(parameters, total_absorbed_par, vqmax[, excitation])
+    cytochrome_electron_supply(parameters, total_absorbed_par, vqmax,
+        excitation=BroadbandExcitation())
 
 Evaluate potential PSI electron supply `psi_electron_supply` [μmol e⁻ m⁻² leaf s⁻¹]
 co-limited by Cytochrome b₆f capacity `vqmax`, together with the steady-state
