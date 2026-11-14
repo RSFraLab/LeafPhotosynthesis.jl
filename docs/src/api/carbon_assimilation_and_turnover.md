@@ -29,10 +29,12 @@ CytochromePhotosynthesis
 ## Rate Colimitation & Sign Policies
 
 ```@docs
+LeafPhotosynthesis.AbstractColimitation
 MinimumLimitation
 SerialLimitation
 QuadraticLimitation
 LeafPhotosynthesis.colimit
+LeafPhotosynthesis.AbstractAssimilationSign
 SignedAssimilation
 NonnegativeAssimilation
 ```

@@ -1,9 +1,9 @@
 # Custom extension fixtures exercise both existing public extension styles.
-struct ConstantGammaResponse{FT}
+struct ConstantGammaResponse{FT} <: LeafPhotosynthesis.AbstractTemperatureResponse
     value::FT
 end
 LeafPhotosynthesis.temperature_response(p::ConstantGammaResponse, T) = p.value
-struct CustomWholeRates{R}
+struct CustomWholeRates{R} <: LeafPhotosynthesis.AbstractLeafScalar
     responses::R
 end
 LeafPhotosynthesis.biochemical_rates(p::CustomWholeRates, T) =
@@ -58,7 +58,7 @@ end
                     case.legacy.photosynthesis.electron_transport,
                     case.legacy.photosynthesis.stoichiometry,
                     case.legacy.photosynthesis.limitation,
-                    case.legacy.photosynthesis.compensation,
+                    case.legacy.photosynthesis.assimilation_sign,
                 ),
             )
             custom_env = LeafEnvironment(
@@ -145,7 +145,7 @@ end
                 state = StomatalState(FT(x["conductance_mol_m2_s"]))
                 raw = @inferred leaf_tendencies(case.scaled, env, state, case.diffusion)
                 @test abs(raw.gas_exchange.diffusion_residual) <=
-                      atol + rtol * abs(raw.gas_exchange.carbon.net_assimilation)
+                      atol + rtol * abs(raw.gas_exchange.net_assimilation)
                 @test oxygen_response_allocations(
                     case.scaled,
                     env,
@@ -172,10 +172,10 @@ end
                     case.diffusion,
                     case.solver,
                 )
-                @test solution.converged
-                @test abs(solution.diffusion_residual) <=
+                @test is_valid(solution)
+                @test abs(solution.exchange.diffusion_residual) <=
                       case.solver.flux_atol +
-                      case.solver.flux_rtol * abs(solution.carbon.net_assimilation)
+                      case.solver.flux_rtol * abs(solution.exchange.net_assimilation)
                 step = FT(v[key*"_derivative_step"])
                 analytical = assimilation_sensitivity(p, env, state, case.diffusion)
                 plus = gas_exchange(
@@ -183,13 +183,13 @@ end
                     env,
                     StomatalState(state.conductance + step),
                     case.diffusion,
-                ).carbon.net_assimilation
+                ).net_assimilation
                 minus = gas_exchange(
                     p,
                     env,
                     StomatalState(state.conductance - step),
                     case.diffusion,
-                ).carbon.net_assimilation
+                ).net_assimilation
                 numerical = (plus-minus) / (step+step)
                 @test isapprox(
                     analytical.dnet_assimilation_dgs,

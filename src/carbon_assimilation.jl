@@ -23,11 +23,20 @@ C3Stoichiometry(fields::Vararg{Real,2}) =
     C3Stoichiometry{scalar_type(C3Stoichiometry, fields...)}(fields...)
 
 """
+    AbstractAssimilationSign
+
+Supertype of the treatments of CO₂ assimilation below the photorespiratory compensation
+point `Γ*`: [`SignedAssimilation`](@ref) keeps its sign, [`NonnegativeAssimilation`](@ref)
+clips it at zero.
+"""
+abstract type AbstractAssimilationSign <: AbstractLeafScalar end
+
+"""
     SignedAssimilation()
 
 Retain signed CO₂ exchange below the photorespiratory compensation point `Γ*`.
 """
-struct SignedAssimilation <: AbstractLeafScalar end
+struct SignedAssimilation <: AbstractAssimilationSign end
 
 """
     NonnegativeAssimilation()
@@ -35,7 +44,7 @@ struct SignedAssimilation <: AbstractLeafScalar end
 Clip pre-respiration CO₂ assimilation at zero below `Γ*`, as in Bonan
 supplemental program 11.1.
 """
-struct NonnegativeAssimilation <: AbstractLeafScalar end
+struct NonnegativeAssimilation <: AbstractAssimilationSign end
 
 @inline function invalid_carbon(::Type{FT}) where {FT}
     n = FT(NaN)
@@ -60,7 +69,7 @@ end
 end
 
 """
-    carbon_assimilation(rates, co2, oxygen, electrons, stoichiometry, limitation, compensation)
+    carbon_assimilation(rates, co2, oxygen, electrons, stoichiometry, limitation, assimilation_sign)
 
 Compute C3 carbon assimilation fluxes [μmol CO₂ m⁻² leaf s⁻¹] at prescribed
 biochemical-site `co2` and `oxygen` partial pressures [Pa] and available
@@ -78,9 +87,9 @@ mitochondrial `respiration`. Co-limitation acts on nonnegative biochemical
 capacities before multiplying by CO₂ excess so realized turnover remains
 well-defined across `Γ*`.
 """
-@inline function carbon_assimilation(r, co2, oxygen, electrons, s, limitation, compensation)
+@inline function carbon_assimilation(r, co2, oxygen, electrons, s, limitation, assimilation_sign)
     require_compatible(carbon_assimilation, r, co2, oxygen, electrons, s, limitation)
-    excess = co2_excess(co2, r.gamma_star, compensation)
+    excess = co2_excess(co2, r.gamma_star, assimilation_sign)
     rubisco = r.vcmax * excess / (co2 + r.kc * (one(oxygen) + oxygen / r.ko))
     light = electrons * excess / electron_demand(r, co2, s)
     assimilation = assimilation_capacity(r, co2, oxygen, electrons, s, limitation) * excess

@@ -51,22 +51,22 @@ function cytochrome_stress_curves(::Type{FT}) where {FT}
         sol_jb_vq = equilibrium_gas_exchange(thylakoid_case.cyto_leaf, gas_env, thylakoid_case.diffusion, thylakoid_case.solver)
         sol_vdt_vc = equilibrium_gas_exchange(rubisco_case.fvcb_leaf, gas_env, rubisco_case.diffusion, rubisco_case.solver)
         sol_vdt_jm = equilibrium_gas_exchange(thylakoid_case.fvcb_leaf, gas_env, thylakoid_case.diffusion, thylakoid_case.solver)
-        all(s -> s.converged, (sol_jb_vc, sol_jb_vq, sol_vdt_vc, sol_vdt_jm)) ||
+        all(is_valid, (sol_jb_vc, sol_jb_vq, sol_vdt_vc, sol_vdt_jm)) ||
             error("Equilibrium stress solve failed at capacity_fraction = $factor")
 
         fl_jb_vc = fluorescence(rubisco_case.jb_connected,
-            photosystem_flux_inputs(rubisco_case.cyto_leaf.photosynthesis,
-                LeafEnvironment(T, gas_env.absorbed_par, sol_jb_vc.biochemical_co2, O2)))
+            fluorescence_inputs(rubisco_case.cyto_leaf.photosynthesis,
+                LeafEnvironment(T, gas_env.absorbed_par, sol_jb_vc.exchange.biochemical_co2, O2)))
         fl_jb_vq = fluorescence(thylakoid_case.jb_connected,
-            photosystem_flux_inputs(thylakoid_case.cyto_leaf.photosynthesis,
-                LeafEnvironment(T, gas_env.absorbed_par, sol_jb_vq.biochemical_co2, O2)))
+            fluorescence_inputs(thylakoid_case.cyto_leaf.photosynthesis,
+                LeafEnvironment(T, gas_env.absorbed_par, sol_jb_vq.exchange.biochemical_co2, O2)))
         fl_vdt_vc = fluorescence(rubisco_case.cotton_fl,
-            psii_flux_inputs(rubisco_case.fvcb_leaf.photosynthesis,
-                LeafEnvironment(T, gas_env.absorbed_par, sol_vdt_vc.biochemical_co2, O2)))
+            fluorescence_inputs(rubisco_case.fvcb_leaf.photosynthesis,
+                LeafEnvironment(T, gas_env.absorbed_par, sol_vdt_vc.exchange.biochemical_co2, O2)))
         fl_vdt_jm = fluorescence(thylakoid_case.cotton_fl,
-            psii_flux_inputs(thylakoid_case.fvcb_leaf.photosynthesis,
-                LeafEnvironment(T, gas_env.absorbed_par, sol_vdt_jm.biochemical_co2, O2)))
-        all(fluorescence_valid, (fl_jb_vc, fl_jb_vq, fl_vdt_vc, fl_vdt_jm)) ||
+            fluorescence_inputs(thylakoid_case.fvcb_leaf.photosynthesis,
+                LeafEnvironment(T, gas_env.absorbed_par, sol_vdt_jm.exchange.biochemical_co2, O2)))
+        all(is_valid, (fl_jb_vc, fl_jb_vq, fl_vdt_vc, fl_vdt_jm)) ||
             error("Fluorescence invalid at capacity_fraction = $factor")
 
         (;

@@ -65,7 +65,7 @@ end
 
 # Components that support only broadband light implement the excitation argument for
 # `BroadbandExcitation` alone; the default argument reaches them, other light fails dispatch.
-struct BroadbandOnlyElectrons{FT}
+struct BroadbandOnlyElectrons{FT} <: LeafPhotosynthesis.AbstractLeafScalar
     gain::FT
     psii_fraction::FT
 end
@@ -92,7 +92,7 @@ function with_test_electrons(p, electrons)
         p.temperature,
         p.stoichiometry,
         p.limitation,
-        p.compensation,
+        p.assimilation_sign,
         electron_transport = electrons,
     )
 end
@@ -101,7 +101,7 @@ function excitation_allocations(case, site, input)
     p=case.leaf.photosynthesis
     photosynthesize(p, site, input)
     biochemical_turnover(p, site, input)
-    psii_flux_inputs(p, site, input)
+    fluorescence_inputs(p, site, input)
     gas_exchange(case.leaf, case.environment, case.state, case.diffusion, input)
     equilibrium_gas_exchange(
         case.steady,
@@ -113,7 +113,7 @@ function excitation_allocations(case, site, input)
     return @allocated begin
         photosynthesize(p, site, input)
         biochemical_turnover(p, site, input)
-        psii_flux_inputs(p, site, input)
+        fluorescence_inputs(p, site, input)
         gas_exchange(case.leaf, case.environment, case.state, case.diffusion, input)
         equilibrium_gas_exchange(
             case.steady,

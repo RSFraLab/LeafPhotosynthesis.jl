@@ -97,7 +97,7 @@ end
                 ),
                 stoichiometry = photo.stoichiometry,
                 limitation = MinimumLimitation(),
-                compensation = SignedAssimilation(),
+                assimilation_sign = SignedAssimilation(),
             )
             fl_ku10 = CytochromeFluorescence(;
                 psii = PSIIRateParameters(FT(0.05), FT(0.55), FT(4.5), FT(10), zero(FT)),
@@ -125,7 +125,7 @@ end
             dark_exc = @inferred state_transition_excitation(rule, fl_conn, jb_photo, dark_site)
             @test iszero(dark_exc.psii_photons) && iszero(dark_exc.psi_photons)
             @test valid_excitation(dark_exc, zero(FT))
-            @test fluorescence(fl_conn, photosystem_flux_inputs(jb_photo, dark_site, dark_exc)).status === FluorescenceDark
+            @test fluorescence(fl_conn, fluorescence_inputs(jb_photo, dark_site, dark_exc)).status === FluorescenceDark
 
             # Puddle (K_U2 = 0) has 0% state transition; K_U2 = 2 gives 17.1%; K_U2 = 10 gives 21.8% (Johnson & Berry 2021, p. 126).
             bsat_pud = state_transition_partition(rule, fl_pud, jb_photo, sat_site)
@@ -155,8 +155,8 @@ end
                 @test exc.psii_photons + exc.psi_photons === q_abs
                 @test valid_excitation(exc, q_abs)
                 c_out = photosynthesize(jb_photo, s, exc)
-                f_out = fluorescence(fl_ku10, photosystem_flux_inputs(jb_photo, s, exc))
-                @test fluorescence_valid(f_out)
+                f_out = fluorescence(fl_ku10, fluorescence_inputs(jb_photo, s, exc))
+                @test is_valid(f_out)
                 if c_out.electron_limited < c_out.rubisco_limited - FT(1e-4)
                     # Light-limited regime: dynamic K_N vanishes to numerical precision, and BigFloat balance holds.
                     @test f_out.psii_quenching_rate <= 64 * eps(FT) * FT(15)
@@ -190,36 +190,36 @@ end
             s_mid = LeafEnvironment(FT(298.15), FT(300), FT(20), FT(20900))
             floor_rule = StateTransitionRule(FT(0.49), FT(0.60))
             @test state_transition_partition(floor_rule, fl_ku10, jb_photo, s_mid) == FT(0.49)
-            @test fluorescence_valid(fluorescence(fl_ku10,
-                photosystem_flux_inputs(jb_photo, s_mid, state_transition_excitation(floor_rule, fl_ku10, jb_photo, s_mid))))
+            @test is_valid(fluorescence(fl_ku10,
+                fluorescence_inputs(jb_photo, s_mid, state_transition_excitation(floor_rule, fl_ku10, jb_photo, s_mid))))
             s_low = LeafEnvironment(FT(298.15), FT(10), FT(20), FT(20900))
             # Mild PSII starvation (Φ_P2,max < Φ_P2 < 1): valid Z-scheme turnover, incompatible K_N >= 0 inversion.
             mild_starve_rule = StateTransitionRule(FT(0.49), FT(0.50))
             @test fluorescence(fl_ku10,
-                photosystem_flux_inputs(jb_photo, s_low, state_transition_excitation(mild_starve_rule, fl_ku10, jb_photo, s_low))).status ===
+                fluorescence_inputs(jb_photo, s_low, state_transition_excitation(mild_starve_rule, fl_ku10, jb_photo, s_low))).status ===
                 FluorescenceIncompatibleRates
             # Severe PSII starvation (Φ_P2 > 1): violates Z-scheme electron-per-photon conservation -> NaN inputs -> InvalidInput.
             severe_starve_rule = StateTransitionRule(FT(0.25), FT(0.45))
             @test fluorescence(fl_ku10,
-                photosystem_flux_inputs(jb_photo, s_low, state_transition_excitation(severe_starve_rule, fl_ku10, jb_photo, s_low))).status ===
+                fluorescence_inputs(jb_photo, s_low, state_transition_excitation(severe_starve_rule, fl_ku10, jb_photo, s_low))).status ===
                 FluorescenceInvalidInput
 
             # Huge Vcmax (J_P700,c > Vqmax): leaf never Rubisco-saturates, K_N remains ~0 even at high light.
             high_vc = setup_cytochrome_stress(FT; vcmax_factor = FT(5))
             s_hi = LeafEnvironment(T_K, FT(1800), FT(28), O2_Pa)
             exc_hi = state_transition_excitation(rule, high_vc.jb_connected, high_vc.cyto_leaf, s_hi)
-            fl_hi = fluorescence(high_vc.jb_connected, photosystem_flux_inputs(high_vc.cyto_leaf.photosynthesis, s_hi, exc_hi))
-            @test fluorescence_valid(fl_hi) && fl_hi.psii_quenching_rate <= 64 * eps(FT) * FT(15)
+            fl_hi = fluorescence(high_vc.jb_connected, fluorescence_inputs(high_vc.cyto_leaf.photosynthesis, s_hi, exc_hi))
+            @test is_valid(fl_hi) && fl_hi.psii_quenching_rate <= 64 * eps(FT) * FT(15)
 
             # Concave colimitations (QuadraticLimitation & SerialLimitation) remain K_N >= 0 compatible.
             for lim in (QuadraticLimitation(FT(0.92)), SerialLimitation())
                 colim_photo = CytochromePhotosynthesis(;
                     jb_photo.temperature, jb_photo.electron_transport,
-                    jb_photo.stoichiometry, limitation = lim, jb_photo.compensation)
+                    jb_photo.stoichiometry, limitation = lim, jb_photo.assimilation_sign)
                 for q_val in FT.((25, 550, 1500))
                     sc = LeafEnvironment(FT(298.15), q_val, FT(20), FT(20900))
                     ec = state_transition_excitation(rule, fl_conn, colim_photo, sc)
-                    @test fluorescence_valid(fluorescence(fl_conn, photosystem_flux_inputs(colim_photo, sc, ec)))
+                    @test is_valid(fluorescence(fl_conn, fluorescence_inputs(colim_photo, sc, ec)))
                 end
             end
 
@@ -237,13 +237,17 @@ end
             bad_et_photo = CytochromePhotosynthesis(;
                 photo.temperature,
                 electron_transport = CytochromeElectronParameters(FT(0.525), FT(0.80), SerialLimitation()),
-                photo.stoichiometry, photo.limitation, photo.compensation)
+                photo.stoichiometry, photo.limitation, photo.assimilation_sign)
             min_et_photo = CytochromePhotosynthesis(;
                 photo.temperature,
                 electron_transport = CytochromeElectronParameters(FT(0.525), photo.electron_transport.psi_maximum_yield, MinimumLimitation()),
-                photo.stoichiometry, photo.limitation, photo.compensation)
+                photo.stoichiometry, photo.limitation, photo.assimilation_sign)
             @test isnan(state_transition_partition(rule, fl_conn, bad_et_photo, s_hi))
-            @test isnan(state_transition_partition(rule, fl_conn, min_et_photo, s_hi))
+            # The closed forms need SerialLimitation in the electron transport (R3b, W5): another
+            # co-limitation is a MethodError, not NaN.
+            @test_throws MethodError state_transition_partition(rule, fl_conn, min_et_photo, s_hi)
+            @test_throws MethodError dark_balanced_psii_partition(fl_conn, min_et_photo, s_hi)
+            @test_throws MethodError state_transition_excitation(rule, fl_conn, min_et_photo, s_hi)
             # Precision rule (R3a, M2): another binary precision is a MethodError, not NaN.
             @test_throws MethodError state_transition_partition(rule, fl_conn, photo, LeafEnvironment(other_ft(298.15), other_ft(500), other_ft(28), other_ft(21000)))
             for bad_s in (
@@ -323,7 +327,7 @@ end
                         cyclic_atp_per_electron = Arrhenius{CytoTestDual{Float64}}(
                             CytoTestDual(tr0.cyclic_atp_per_electron.value), CytoTestDual(0.0), CytoTestDual(298.15), CytoTestDual(8.314)),
                     ),
-                    photo.electron_transport, photo.stoichiometry, photo.limitation, photo.compensation,
+                    photo.electron_transport, photo.stoichiometry, photo.limitation, photo.assimilation_sign,
                 )
                 s900 = LeafEnvironment(T_K, 900.0, 28.0, O2_Pa)
                 db_dvc = @inferred state_transition_partition(rule, fl_conn, dual_vc_photo, s900)
@@ -351,15 +355,15 @@ end
 
             for q_abs in FT.((10, 250, 900, 1800))
                 s = LeafEnvironment(T_K, q_abs, FT(28), O2_Pa)
-                res_conn = fluorescence(fl_conn, photosystem_flux_inputs(photo, s))
-                res_pud = fluorescence(fl_pud, photosystem_flux_inputs(photo, s))
+                res_conn = fluorescence(fl_conn, fluorescence_inputs(photo, s))
+                res_pud = fluorescence(fl_pud, fluorescence_inputs(photo, s))
                 a2_s = FT(0.85) * photo.electron_transport.psii_fraction
                 a1_s = FT(0.85) * (one(FT) - photo.electron_transport.psii_fraction)
 
                 # Ideal PSII-only detector recovers internal PSII yields & puddle open fraction q₂.
                 p_ideal = @inferred pam_fluorescence(obs_ideal, fl_conn, res_conn, a2_s, a1_s)
                 p_pud = @inferred pam_fluorescence(obs_ideal, fl_pud, res_pud, a2_s, a1_s)
-                @test pam_fluorescence_valid(p_ideal) && pam_fluorescence_valid(p_pud)
+                @test is_valid(p_ideal) && is_valid(p_pud)
                 @test isapprox(p_ideal.apparent_photochemical_yield, res_conn.psii_photochemical_yield; rtol)
                 @test isapprox(p_ideal.apparent_npq, res_conn.npq; rtol, atol)
                 @test isapprox(p_pud.qp, res_pud.psii_open_fraction; rtol)
@@ -386,7 +390,7 @@ end
                     # Common absorptance scaling invariance of all 6 dimensionless PAM ratios (including extreme Float32 binades).
                     for a_scale in (FT(1e-30), FT(37), FT(1e30))
                         pe_scaled = pam_fluorescence(obs_e, fl_conn, res_conn, a_scale * a2_s, a_scale * a1_s)
-                        @test pam_fluorescence_valid(pe_scaled)
+                        @test is_valid(pe_scaled)
                         for f in (:apparent_photochemical_yield, :apparent_regulated_heat_yield,
                                   :apparent_residual_yield, :apparent_npq, :qp, :ql)
                             @test isapprox(getproperty(pe, f), getproperty(pe_scaled, f); rtol)
@@ -398,7 +402,7 @@ end
                 s_jb = LeafEnvironment(FT(298.15), FT(250), FT(20), FT(20900))
                 b_qt = state_transition_partition(rule, fl_conn, jb_photo, s_jb)
                 exc_qt = state_transition_excitation(rule, fl_conn, jb_photo, s_jb)
-                res_qt = fluorescence(fl_conn, photosystem_flux_inputs(jb_photo, s_jb, exc_qt))
+                res_qt = fluorescence(fl_conn, fluorescence_inputs(jb_photo, s_jb, exc_qt))
                 p_qt = pam_fluorescence(obs_pam, fl_conn, res_qt, FT(0.85) * b_qt, FT(0.85) * (one(FT) - b_qt), a2_dark, a1_dark)
                 bf_qt = pam_bigfloat_oracle(obs_pam, fl_conn, res_qt, FT(0.85) * b_qt, FT(0.85) * (one(FT) - b_qt), a2_dark, a1_dark)
                 @test res_qt.psii_quenching_rate <= 64 * eps(FT) * FT(15)
@@ -409,7 +413,7 @@ end
             # Float32 extreme PSI-background & rate-scale cancellation/overflow stress test.
             s_low_kn0 = LeafEnvironment(FT(298.15), FT(50), FT(20), FT(20900))
             exc_kn0 = state_transition_excitation(rule, fl_conn, jb_photo, s_low_kn0)
-            res_kn0 = fluorescence(fl_conn, photosystem_flux_inputs(jb_photo, s_low_kn0, exc_kn0))
+            res_kn0 = fluorescence(fl_conn, fluorescence_inputs(jb_photo, s_low_kn0, exc_kn0))
             b_kn0 = state_transition_partition(rule, fl_conn, jb_photo, s_low_kn0)
             obs_huge = PAMFluorescenceObserver(one(FT), FT(1000))
             p_huge = pam_fluorescence(obs_huge, fl_conn, res_kn0, b_kn0, one(FT) - b_kn0)
@@ -422,7 +426,7 @@ end
 
             # Huge rate scales (including near floatmax(FT) where s2_closed_light + kp2 overflows without normalization).
             s_sat_pam = LeafEnvironment(FT(298.15), FT(1800), FT(20), FT(20900))
-            p_ref = pam_fluorescence(obs_pam, fl_conn, fluorescence(fl_conn, photosystem_flux_inputs(jb_photo, s_sat_pam)), a2_dark, a1_dark)
+            p_ref = pam_fluorescence(obs_pam, fl_conn, fluorescence(fl_conn, fluorescence_inputs(jb_photo, s_sat_pam)), a2_dark, a1_dark)
             for big_scale in (FT(1e20), floatmax(FT) / FT(40))
                 p2, p1 = fl_conn.psii, fl_conn.psi
                 fl_big = CytochromeFluorescence(
@@ -435,18 +439,18 @@ end
                 )
                 @test isapprox(state_transition_partition(rule, fl_big, jb_photo, s_mid),
                     state_transition_partition(rule, fl_conn, jb_photo, s_mid); rtol)
-                res_big = fluorescence(fl_big, photosystem_flux_inputs(jb_photo, s_sat_pam))
+                res_big = fluorescence(fl_big, fluorescence_inputs(jb_photo, s_sat_pam))
                 p_big = pam_fluorescence(obs_pam, fl_big, res_big, a2_dark, a1_dark)
-                @test pam_fluorescence_valid(p_big)
+                @test is_valid(p_big)
                 @test isapprox(p_big.apparent_photochemical_yield, p_ref.apparent_photochemical_yield; rtol)
                 @test isapprox(p_big.qp, p_ref.qp; rtol)
                 @test isapprox(p_big.ql, p_ref.ql; rtol)
             end
 
             # Non-lit & invalid PAM status propagation (zero throws).
-            res_dark = fluorescence(fl_conn, photosystem_flux_inputs(jb_photo, dark_site, dark_exc))
+            res_dark = fluorescence(fl_conn, fluorescence_inputs(jb_photo, dark_site, dark_exc))
             p_dark = @inferred pam_fluorescence(obs_pam, fl_conn, res_dark, a2_dark, a1_dark)
-            @test !pam_fluorescence_valid(p_dark) && p_dark.status === FluorescenceDark && isnan(p_dark.fs)
+            @test !is_valid(p_dark) && p_dark.status === FluorescenceDark && isnan(p_dark.fs)
             for (ba2, ba1) in ((zero(FT), a1_dark), (-one(FT), a1_dark), (a2_dark, -one(FT)), (FT(NaN), a1_dark))
                 @test isnan(dark_pam_levels(obs_pam, fl_conn, ba2, ba1).fo)
                 @test pam_fluorescence(obs_pam, fl_conn, res_kn0, ba2, ba1).status === FluorescenceInvalidInput
@@ -454,7 +458,7 @@ end
 
             # 7. Zero heap allocations across all new scalar entry points.
             s_alloc = LeafEnvironment(T_K, FT(600), FT(28), O2_Pa)
-            r_alloc = fluorescence(fl_conn, photosystem_flux_inputs(photo, s_alloc))
+            r_alloc = fluorescence(fl_conn, fluorescence_inputs(photo, s_alloc))
             @test additions_allocations(rule, obs_pam, fl_conn, photo, case.cyto_leaf, s_alloc, r_alloc, a2_dark, a1_dark) == 0
         end
     end

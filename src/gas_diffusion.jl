@@ -35,19 +35,38 @@ SeriesDiffusion(fields::Vararg{Real,4}) =
     SeriesDiffusion{scalar_type(SeriesDiffusion, fields...)}(fields...)
 
 """
-    GasExchangeEnvironment{FT}(; temperature, absorbed_par, co2, oxygen, pressure,
+    WaterVaporDiffusion(boundary_water)
+    WaterVaporDiffusion{FT}(boundary_water)
+    WaterVaporDiffusion(; boundary_water)
+
+Specify leaf boundary-layer H₂O conductance `boundary_water` [mol H₂O m⁻² leaf s⁻¹]
+(`> 0`; `Inf` removes boundary resistance), kept distinct from CO₂ boundary conductance.
+Like the other diffusion conductances it may vary from leaf to leaf, so any value is stored
+without throwing; [`transpiration_sensitivity`](@ref) returns `NaN` for an invalid one.
+"""
+Base.@kwdef struct WaterVaporDiffusion{FT<:Real} <: AbstractLeafDiffusion
+    boundary_water::FT
+    WaterVaporDiffusion{FT}(fields::Vararg{Any,1}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, WaterVaporDiffusion{FT}, fields)...)
+end
+WaterVaporDiffusion(fields::Vararg{Real,1}) =
+    WaterVaporDiffusion{scalar_type(WaterVaporDiffusion, fields...)}(fields...)
+
+"""
+    GasExchangeEnvironment{FT}(; temperature, absorbed_par, ambient_co2, oxygen, pressure,
         relative_humidity, vpd)
-    GasExchangeEnvironment(temperature, absorbed_par, co2, oxygen, pressure,
+    GasExchangeEnvironment(temperature, absorbed_par, ambient_co2, oxygen, pressure,
         relative_humidity, vpd)
 
 Represent prescribed leaf `temperature` [K], `absorbed_par` [μmol photons m⁻² leaf s⁻¹],
-ambient `co2` [Pa], biochemical-site `oxygen` [Pa], total `pressure` [Pa], and
-leaf-surface `relative_humidity` (`∈ [0, 1]`) and `vpd` [Pa].
+the ambient CO₂ partial pressure outside the boundary layer (`ambient_co2`, `Ca` [Pa]),
+biochemical-site `oxygen` [Pa], total `pressure` [Pa], and leaf-surface
+`relative_humidity` (`∈ [0, 1]`) and `vpd` [Pa].
 """
 Base.@kwdef struct GasExchangeEnvironment{FT<:Real} <: AbstractLeafScalar
     temperature::FT
     absorbed_par::FT
-    co2::FT
+    ambient_co2::FT
     oxygen::FT
     pressure::FT
     relative_humidity::FT
@@ -94,11 +113,13 @@ Supports [`MinimumLimitation`](@ref) with [`SignedAssimilation`](@ref) (for both
 [`C3Photosynthesis`](@ref) and [`CytochromePhotosynthesis`](@ref)) without A–Ci
 iteration: each limiting branch ``A = m (C_c - Γ^*)/(C_c + k) - R_d`` meets the supply
 ``g (C_a - C_c)`` at the root of a quadratic, and the binding branch is the larger
-root above the compensation point and the smaller one below it. Return `carbon`
-diagnostics, `electron_transport` (followed by the model's extra electron diagnostics,
-as in [`photosynthesize`](@ref)), `surface_co2`, `intercellular_co2`, `biochemical_co2`
-[Pa], total CO₂ `conductance` [mol m⁻² leaf s⁻¹], and `diffusion_residual`
-[μmol CO₂ m⁻² leaf s⁻¹]. Invalid excitation or forcing gives `NaN` in every field.
+root above the compensation point and the smaller one below it. Return the fields of
+[`photosynthesize`](@ref) (the carbon fluxes of [`carbon_assimilation`](@ref),
+`electron_transport` and the model's extra electron diagnostics) at the solved
+`biochemical_co2`, followed by `surface_co2`, `intercellular_co2`, `biochemical_co2` [Pa],
+total CO₂ `conductance` [mol m⁻² leaf s⁻¹] and `diffusion_residual`
+[μmol CO₂ m⁻² leaf s⁻¹]. Invalid excitation or forcing gives `NaN` in every field
+(see [`is_valid`](@ref)).
 
 Closed stomata (`state.conductance = 0`): the total conductance `g` is zero and each branch's
 quadratic reduces to ``(m - R_d) C_c = m Γ^* + R_d k``. When ``m > R_d`` for both branches,
@@ -122,36 +143,43 @@ in the sealed leaf without bound, and every field is `NaN`.
     g = conductance * d.mole_to_micromole / env.pressure
     r, electrons, supply = light_supply(p, env, excitation)
     km = r.kc * (one(env.oxygen) + env.oxygen / r.ko)
-    rubisco_co2 = diffusion_co2_root(r.vcmax, km, r.gamma_star, r.respiration, env.co2, g)
+    rubisco_co2 = diffusion_co2_root(r.vcmax, km, r.gamma_star, r.respiration, env.ambient_co2, g)
     m, k = light_limited_kinetics(p, r, electrons)
-    light_co2 = diffusion_co2_root(m, k, r.gamma_star, r.respiration, env.co2, g)
+    light_co2 = diffusion_co2_root(m, k, r.gamma_star, r.respiration, env.ambient_co2, g)
     # Both roots lie on the same side of gamma_star. Below it, the smaller
     # positive capacity produces the less negative pre-respiration assimilation.
-    above_compensation = is_at_most(zero(g), g * (env.co2 - r.gamma_star) + r.respiration)
+    above_compensation = is_at_most(zero(g), g * (env.ambient_co2 - r.gamma_star) + r.respiration)
     co2 = above_compensation ? primal_max(rubisco_co2, light_co2) : primal_min(rubisco_co2, light_co2)
     valid_co2, transport, extras = electron_state(p, r, supply, co2)
     carbon = carbon_assimilation(
-        r, co2, env.oxygen, electrons, p.stoichiometry, p.limitation, p.compensation,
+        r, co2, env.oxygen, electrons, p.stoichiometry, p.limitation, p.assimilation_sign,
     )
     pressure_flux = carbon.net_assimilation * env.pressure / d.mole_to_micromole
     valid = valid_co2 && isfinite(co2) && valid_excitation(excitation, env.absorbed_par) &&
         valid_diffusion(d) && valid_exchange_inputs(env, state, g) && valid_biochemistry(p, r)
-    return checked_result(valid, (;
-        carbon,
-        electron_transport = transport,
-        extras...,
-        surface_co2 = env.co2 - pressure_flux / d.boundary_co2,
-        intercellular_co2 = co2 + pressure_flux / d.mesophyll_co2,
-        biochemical_co2 = co2,
+    return checked_result(valid, exchange_result(
+        carbon, transport, extras,
+        env.ambient_co2 - pressure_flux / d.boundary_co2,
+        co2 + pressure_flux / d.mesophyll_co2,
+        co2,
         conductance,
-        diffusion_residual = g * (env.co2 - co2) - carbon.net_assimilation,
+        g * (env.ambient_co2 - co2) - carbon.net_assimilation,
     ))
 end
+
+# The fields of a gas-exchange result, shared by `gas_exchange` and the `exchange` of an
+# `EquilibriumSolution`.
+@inline exchange_result(carbon, transport, extras, surface, intercellular, co2, conductance, residual) =
+    (; carbon..., electron_transport = transport, extras..., surface_co2 = surface,
+        intercellular_co2 = intercellular, biochemical_co2 = co2, conductance,
+        diffusion_residual = residual)
 
 # Domain of gas exchange at prescribed conductance: a valid site (`valid_site`),
 # positive finite total pressure [Pa], finite nonnegative stomatal conductance
 # [mol H₂O m⁻² s⁻¹] and CO₂ supply conductance `g` [μmol CO₂ m⁻² s⁻¹ Pa⁻¹]; the diffusion
 # parameters are checked by `valid_diffusion`.
+@inline valid_site(env::GasExchangeEnvironment) = valid_site(env.temperature, env.ambient_co2, env.oxygen)
+
 @inline valid_exchange_inputs(env, state, g) =
     valid_site(env) && is_positive(env.pressure) && is_nonnegative(state.conductance) &&
     is_nonnegative(g)

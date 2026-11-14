@@ -16,11 +16,11 @@ end
             (one(FT)-p["experiment"]["reflectance"]-p["experiment"]["transmittance"])
         for limitation in (MinimumLimitation(),QuadraticLimitation(p["carbon_assimilation"]["curvature"]))
             model = C3Photosynthesis(;temperature=base.temperature,electron_transport=base.electron_transport,
-                stoichiometry=base.stoichiometry,limitation,compensation=SignedAssimilation())
+                stoichiometry=base.stoichiometry,limitation,assimilation_sign=SignedAssimilation())
             disabled = LeafModel(;photosynthesis=model,oxygen=NoOxygenExchange())
             enabled = LeafModel(;photosynthesis=model,oxygen=leaf.oxygen)
             for co2 in (zero(FT),r.gamma_star/FT(2),prevfloat(r.gamma_star),r.gamma_star,
-                    nextfloat(r.gamma_star),env.co2), light in (zero(FT),low_light,env.absorbed_par)
+                    nextfloat(r.gamma_star),env.ambient_co2), light in (zero(FT),low_light,env.absorbed_par)
                 site = LeafEnvironment(env.temperature,light,co2,env.oxygen)
                 t = @inferred biochemical_turnover(disabled,site)
                 @test all(x->x isa FT,values(t))
@@ -63,15 +63,15 @@ end
                     @test carbon.net_assimilation==-t.respiration
                 end
             end
-            lit = LeafEnvironment(env.temperature,env.absorbed_par,env.co2,env.oxygen)
-            dark = LeafEnvironment(env.temperature,zero(FT),env.co2,env.oxygen)
+            lit = LeafEnvironment(env.temperature,env.absorbed_par,env.ambient_co2,env.oxygen)
+            dark = LeafEnvironment(env.temperature,zero(FT),env.ambient_co2,env.oxygen)
             population = [dark,lit,dark]
             batch = biochemical_turnover.(Ref(disabled),population)
             @test batch[2]==biochemical_turnover(disabled,lit)
             @test batch[[2,3,1]]==biochemical_turnover.(Ref(disabled),population[[2,3,1]])
             @test isempty(biochemical_turnover.(Ref(disabled),LeafEnvironment{FT}[]))
         end
-        site = LeafEnvironment(env.temperature,env.absorbed_par,env.co2,env.oxygen)
+        site = LeafEnvironment(env.temperature,env.absorbed_par,env.ambient_co2,env.oxygen)
         @test_throws MethodError biochemical_turnover(bonan_leaf(FT,p),site)
     end
 end

@@ -5,6 +5,9 @@ Supertype for photorespiratory CO₂ compensation point (`Γ*` [Pa]) parameteriz
 """
 abstract type AbstractCompensationPoint <: AbstractLeafScalar end
 
+# A Γ* field of the rate bundles holds a temperature law or a compensation-point component.
+const GammaStarLaw = Union{AbstractTemperatureResponse,AbstractCompensationPoint}
+
 """
     PrescribedCompensationPoint(response)
     PrescribedCompensationPoint(; response)
@@ -15,7 +18,7 @@ The caller must supply an oxygen partial pressure compatible with `response`'s
 calibration; this component does not infer oxygen scaling and is distinct from
 the signed or clipped carbon-assimilation policy.
 """
-Base.@kwdef struct PrescribedCompensationPoint{R} <: AbstractCompensationPoint
+Base.@kwdef struct PrescribedCompensationPoint{R<:AbstractTemperatureResponse} <: AbstractCompensationPoint
     response::R
 end
 
@@ -31,17 +34,20 @@ partial pressure `reference_oxygen` [Pa]. No ambient O₂ default or stoichiomet
 recalibration is introduced, and evaluation without an explicit `oxygen` argument
 is unsupported. The scalar law returns exact zero at `oxygen == 0`.
 """
-Base.@kwdef struct OxygenScaledCompensationPoint{R,FT<:Real} <: AbstractCompensationPoint
+Base.@kwdef struct OxygenScaledCompensationPoint{R<:AbstractTemperatureResponse,FT<:Real} <:
+       AbstractCompensationPoint
     response::R
     reference_oxygen::FT
-    function OxygenScaledCompensationPoint{R,FT}(fields::Vararg{Any,2}) where {R,FT<:Real}
+    function OxygenScaledCompensationPoint{R,FT}(
+        fields::Vararg{Any,2},
+    ) where {R<:AbstractTemperatureResponse,FT<:Real}
         p = new{R,FT}(continuous_fields(FT, OxygenScaledCompensationPoint{R,FT}, fields)...)
         is_positive(p.reference_oxygen) ||
             throw(ArgumentError("reference oxygen must be finite and positive [Pa]"))
         return p
     end
 end
-OxygenScaledCompensationPoint(response, reference_oxygen::Real) =
+OxygenScaledCompensationPoint(response::AbstractTemperatureResponse, reference_oxygen::Real) =
     OxygenScaledCompensationPoint{
         typeof(response),scalar_type(OxygenScaledCompensationPoint, reference_oxygen),
     }(response, reference_oxygen)

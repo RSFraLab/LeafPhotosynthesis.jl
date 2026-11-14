@@ -34,7 +34,7 @@ function cytochrome_oracle(photo::CytochromePhotosynthesis, fl::CytochromeFluore
     site::LeafEnvironment, excitation::AbstractExcitation = BroadbandExcitation())
     T = BigFloat(site.temperature)
     par = BigFloat(site.absorbed_par)
-    co2 = BigFloat(site.co2)
+    co2 = BigFloat(site.biochemical_co2)
     o2 = BigFloat(site.oxygen)
 
     eval_tr(p::ConstantResponse) = BigFloat(p.value)
@@ -155,13 +155,13 @@ end
 function cytochrome_allocations(photo, fl, site, gas_env, state, diff, solver, leaf)
     photosynthesize(photo, site)
     biochemical_turnover(photo, site)
-    inputs = photosystem_flux_inputs(photo, site)
+    inputs = fluorescence_inputs(photo, site)
     fluorescence(fl, inputs)
     gas_exchange(photo, gas_env, state, diff)
     equilibrium_gas_exchange(leaf, gas_env, diff, solver)
     return @allocated(photosynthesize(photo, site)) +
            @allocated(biochemical_turnover(photo, site)) +
-           @allocated(photosystem_flux_inputs(photo, site)) +
+           @allocated(fluorescence_inputs(photo, site)) +
            @allocated(fluorescence(fl, inputs)) +
            @allocated(gas_exchange(photo, gas_env, state, diff)) +
            @allocated(equilibrium_gas_exchange(leaf, gas_env, diff, solver))
@@ -256,9 +256,9 @@ end
         # Even if constructed without setup validation, runtime rejects super-maximal PSII yield (never negative KN).
         bad_photo = CytochromePhotosynthesis(;
             photo.temperature, electron_transport = bad_beta_et,
-            photo.stoichiometry, photo.limitation, photo.compensation)
+            photo.stoichiometry, photo.limitation, photo.assimilation_sign)
         low_light_site = LeafEnvironment(T, FT(5), FT(35), O2)
-        bad_res = fluorescence(case.jb_connected, photosystem_flux_inputs(bad_photo, low_light_site))
+        bad_res = fluorescence(case.jb_connected, fluorescence_inputs(bad_photo, low_light_site))
         @test bad_res.status === FluorescenceIncompatibleRates
         @test isnan(bad_res.psii_photon_flux) && isnan(bad_res.psii_quenching_rate)
 
@@ -276,7 +276,7 @@ end
         bad_cef_photo = CytochromePhotosynthesis(;
             temperature = bad_cef_tr, electron_transport = photo.electron_transport,
             stoichiometry = photo.stoichiometry, limitation = photo.limitation,
-            compensation = photo.compensation)
+            assimilation_sign = photo.assimilation_sign)
         probe_site = LeafEnvironment(T, FT(800), FT(28), O2)
         probe_gas = GasExchangeEnvironment(T, FT(800), FT(41), O2, FT(101325), FT(0.55), FT(1500))
         probe_state = StomatalState(FT(0.18))
@@ -309,7 +309,7 @@ end
             c_out = @inferred photosynthesize(photo, site)
             t_out = @inferred biochemical_turnover(photo, site)
             o_out = @inferred oxygen_exchange(case.cyto_leaf, site)
-            inputs = @inferred photosystem_flux_inputs(photo, site)
+            inputs = @inferred fluorescence_inputs(photo, site)
 
             # Gross O2 comes strictly from water-splitting linear electron flow, not cyclic PSI flow.
             @test isapprox(o_out.gross_production, t_out.linear_electron_flow / FT(4); rtol, atol)
@@ -327,7 +327,7 @@ end
                     @test res.total_photon_flux === zero(FT)
                     @test all(isnan, (res.psii_fluorescence_yield, res.psi_fluorescence_yield,
                         res.total_fluorescence_yield, res.psii_quenching_rate, res.npq))
-                elseif fl_model === sustained_fl && !fluorescence_valid(res)
+                elseif fl_model === sustained_fl && !is_valid(res)
                     @test res.status === FluorescenceIncompatibleRates
                 else
                     @test res.status === FluorescenceLit
@@ -388,22 +388,22 @@ end
             max_iterations = 120,
         )
         eq_bisect = @inferred equilibrium_gas_exchange(case.cyto_leaf, gas_env, case.diffusion, bisect_solver)
-        @test eq_newton.converged && eq_bisect.converged
-        tol_c = case.solver.co2_atol + case.solver.co2_rtol * max(abs(gas_env.co2), abs(eq_newton.biochemical_co2))
-        tol_a = case.solver.flux_atol + case.solver.flux_rtol * abs(eq_newton.carbon.net_assimilation)
-        @test isapprox(eq_newton.biochemical_co2, eq_bisect.biochemical_co2; atol = 8 * tol_c, rtol = 64 * eps(FT))
-        @test isapprox(eq_newton.carbon.net_assimilation, eq_bisect.carbon.net_assimilation; atol = 8 * tol_a, rtol = 64 * eps(FT))
+        @test is_valid(eq_newton) && is_valid(eq_bisect)
+        tol_c = case.solver.co2_atol + case.solver.co2_rtol * max(abs(gas_env.ambient_co2), abs(eq_newton.exchange.biochemical_co2))
+        tol_a = case.solver.flux_atol + case.solver.flux_rtol * abs(eq_newton.exchange.net_assimilation)
+        @test isapprox(eq_newton.exchange.biochemical_co2, eq_bisect.exchange.biochemical_co2; atol = 8 * tol_c, rtol = 64 * eps(FT))
+        @test isapprox(eq_newton.exchange.net_assimilation, eq_bisect.exchange.net_assimilation; atol = 8 * tol_a, rtol = 64 * eps(FT))
 
         # Smooth carbon co-limitation (SerialLimitation & QuadraticLimitation) in equilibrium.
         for lim in (SerialLimitation(), QuadraticLimitation(FT(0.95)))
             smooth_photo = CytochromePhotosynthesis(;
                 photo.temperature, photo.electron_transport,
-                photo.stoichiometry, limitation = lim, photo.compensation)
+                photo.stoichiometry, limitation = lim, photo.assimilation_sign)
             s_newt = equilibrium_gas_exchange(smooth_photo, case.cyto_leaf.stomata, gas_env, case.diffusion, case.solver)
             s_bis = equilibrium_gas_exchange(smooth_photo, case.cyto_leaf.stomata, gas_env, case.diffusion, bisect_solver)
-            @test s_newt.converged && s_bis.converged
-            sc_tol = case.solver.co2_atol + case.solver.co2_rtol * max(abs(gas_env.co2), abs(s_newt.biochemical_co2))
-            @test isapprox(s_newt.biochemical_co2, s_bis.biochemical_co2; atol = 8 * sc_tol, rtol = 64 * eps(FT))
+            @test is_valid(s_newt) && is_valid(s_bis)
+            sc_tol = case.solver.co2_atol + case.solver.co2_rtol * max(abs(gas_env.ambient_co2), abs(s_newt.exchange.biochemical_co2))
+            @test isapprox(s_newt.exchange.biochemical_co2, s_bis.exchange.biochemical_co2; atol = 8 * sc_tol, rtol = 64 * eps(FT))
         end
 
         # Analytic assimilation_sensitivity vs 256-bit BigFloat central finite differences (including eta(Cc) derivative).
@@ -417,7 +417,7 @@ end
             ex_hi = gas_exchange(bf_case.cyto_leaf.photosynthesis, bf_env, StomatalState(gs0 + h), bf_case.diffusion)
             ex_lo = gas_exchange(bf_case.cyto_leaf.photosynthesis, bf_env, StomatalState(gs0 - h), bf_case.diffusion)
             fd_dco2 = (ex_hi.biochemical_co2 - ex_lo.biochemical_co2) / (2 * h)
-            fd_da = (ex_hi.carbon.net_assimilation - ex_lo.carbon.net_assimilation) / (2 * h)
+            fd_da = (ex_hi.net_assimilation - ex_lo.net_assimilation) / (2 * h)
             @test isapprox(sens.dco2_dgs, Float64(fd_dco2); rtol = 1e-11)
             @test isapprox(sens.dnet_assimilation_dgs, Float64(fd_da); rtol = 1e-11)
         end
@@ -447,14 +447,14 @@ end
             cp_photo = CytochromePhotosynthesis(;
                 temperature = cp_tr, electron_transport = photo.electron_transport,
                 stoichiometry = photo.stoichiometry, limitation = photo.limitation,
-                compensation = photo.compensation)
+                assimilation_sign = photo.assimilation_sign)
             for o2_val in (zero(FT), O2 / FT(2), O2, FT(35000))
                 cp_site = LeafEnvironment(T, FT(600), FT(28), o2_val)
                 cp_oracle = cytochrome_oracle(cp_photo, case.jb_connected, cp_site)
                 cp_c = @inferred photosynthesize(cp_photo, cp_site)
-                cp_fl = @inferred fluorescence(case.jb_connected, photosystem_flux_inputs(cp_photo, cp_site))
+                cp_fl = @inferred fluorescence(case.jb_connected, fluorescence_inputs(cp_photo, cp_site))
                 @test isapprox(cp_c.net_assimilation, FT(cp_oracle.anet); rtol, atol)
-                @test fluorescence_valid(cp_fl)
+                @test is_valid(cp_fl)
                 @test isapprox(cp_fl.psii_fluorescence_yield, FT(cp_oracle.phi_f2); rtol)
             end
         end
@@ -466,12 +466,12 @@ end
         )
         @test valid_excitation(dual, lit_site.absorbed_par)
         @test photosynthesize(photo, lit_site, dual) == photosynthesize(photo, lit_site)
-        @test fluorescence(case.jb_connected, photosystem_flux_inputs(photo, lit_site, dual)) ==
-              fluorescence(case.jb_connected, photosystem_flux_inputs(photo, lit_site))
+        @test fluorescence(case.jb_connected, fluorescence_inputs(photo, lit_site, dual)) ==
+              fluorescence(case.jb_connected, fluorescence_inputs(photo, lit_site))
         # Sub-unity sum (non-photosynthetic pigment absorption) is valid.
         sub_dual = PrescribedDualExcitation(FT(300), FT(280))
         @test valid_excitation(sub_dual, FT(800))
-        @test fluorescence_valid(fluorescence(case.jb_connected, photosystem_flux_inputs(photo, lit_site, sub_dual)))
+        @test is_valid(fluorescence(case.jb_connected, fluorescence_inputs(photo, lit_site, sub_dual)))
         # Also supported on FvCB ElectronTransportParameters.
         @test isfinite(photosynthesize(case.fvcb_leaf, lit_site, sub_dual).net_assimilation)
         # Super-PAR sum, wrong FT, non-finite, single-photosystem, and PSII-starved (Phi_P2 > 1) rejected across all entry points.
@@ -487,7 +487,7 @@ end
         @test_throws MethodError assimilation_sensitivity(photo, gas_env, state, case.diffusion, other_exc)
         @test_throws MethodError equilibrium_gas_exchange(photo, case.cyto_leaf.stomata,
             gas_env, case.diffusion, case.solver, other_exc)
-        @test_throws MethodError photosystem_flux_inputs(photo, lit_site, other_exc)
+        @test_throws MethodError fluorescence_inputs(photo, lit_site, other_exc)
         for bad_exc in (
             PrescribedDualExcitation(FT(500), FT(400)),
             PrescribedDualExcitation(-one(FT), FT(100)),
@@ -504,11 +504,11 @@ end
             @test isnan((@inferred assimilation_sensitivity(photo, gas_env, state, case.diffusion, bad_exc)).dco2_dgs)
             @test (@inferred equilibrium_gas_exchange(photo, case.cyto_leaf.stomata,
                 gas_env, case.diffusion, case.solver, bad_exc)).status === EquilibriumInvalidInput
-            bad_fl = @inferred fluorescence(case.jb_connected, photosystem_flux_inputs(photo, lit_site, bad_exc))
-            @test !fluorescence_valid(bad_fl)
+            bad_fl = @inferred fluorescence(case.jb_connected, fluorescence_inputs(photo, lit_site, bad_exc))
+            @test !is_valid(bad_fl)
         end
         @test_throws MethodError photosynthesize(photo, lit_site, PrescribedPSIIExcitation(FT(300)))
-        @test_throws MethodError photosystem_flux_inputs(photo, gas_env)
+        @test_throws MethodError fluorescence_inputs(photo, gas_env)
 
         for scale in (FT(7), FT(1e12))
             p2, p1 = case.jb_connected.psii, case.jb_connected.psi
@@ -520,7 +520,7 @@ end
                     p1.maximum_photochemical_rate * scale, p1.closed_quenching_rate * scale),
                 yield_tolerance = case.jb_connected.yield_tolerance,
             )
-            inp = photosystem_flux_inputs(photo, lit_site)
+            inp = fluorescence_inputs(photo, lit_site)
             r_base = fluorescence(case.jb_connected, inp)
             r_scaled = fluorescence(scaled_fl, inp)
             for f in (:psii_photon_flux, :psi_photon_flux, :total_photon_flux,
@@ -535,7 +535,7 @@ end
         phi2_max_half = psii_maximum_photochemical_yield(case.jb_connected, FT(0.5))
         b_inp = CoupledPhotosystemInputs(one(FT), one(FT), nextfloat(phi2_max_half), nextfloat(phi1_max), FT(0.5))
         b_res = fluorescence(case.jb_connected, b_inp)
-        @test fluorescence_valid(b_res) && b_res.boundary_roundoff && iszero(b_res.psii_quenching_rate)
+        @test is_valid(b_res) && b_res.boundary_roundoff && iszero(b_res.psii_quenching_rate)
         over_inp = CoupledPhotosystemInputs(one(FT), one(FT),
             nextfloat(phi2_max_half + case.jb_connected.yield_tolerance), phi1_max / FT(2), FT(0.5))
         @test fluorescence(case.jb_connected, over_inp).status === FluorescenceIncompatibleRates
@@ -564,20 +564,20 @@ end
         for p in (case.fvcb_leaf.photosynthesis, case.cyto_leaf.photosynthesis)
             @test all(isfinite, values(photosynthesize(p, site(t0, ca, o2))))
             exchange = gas_exchange(p, gas(t0, ca, o2, pa), state, case.diffusion)
-            @test all(isfinite, values(exchange.carbon))
+            @test all(isfinite, values(carbon_fluxes(exchange)))
             for bad in ((zero(FT), ca, o2), (FT(-5), ca, o2), (FT(Inf), ca, o2), (FT(NaN), ca, o2),
                     (t0, -one(FT), o2), (t0, FT(Inf), o2), (t0, ca, -one(FT)), (t0, ca, FT(NaN)))
                 @test allnan(photosynthesize(p, site(bad...)))
                 @test allnan(biochemical_turnover(p, site(bad...)))
                 @test allnan(oxygen_exchange(case.cyto_leaf.oxygen, p, site(bad...)))
                 bad_exchange = gas_exchange(p, gas(bad..., pa), state, case.diffusion)
-                @test allnan(bad_exchange.carbon) && isnan(bad_exchange.conductance)
+                @test allnan(carbon_fluxes(bad_exchange)) && isnan(bad_exchange.conductance)
                 @test allnan(assimilation_sensitivity(p, gas(bad..., pa), state, case.diffusion))
             end
             for (pressure, gs) in ((zero(FT), FT(0.2)), (-one(FT), FT(0.2)), (FT(NaN), FT(0.2)),
                     (pa, FT(-0.1)), (pa, FT(Inf)), (pa, FT(NaN)))
                 bad_exchange = gas_exchange(p, gas(t0, ca, o2, pressure), StomatalState(gs), case.diffusion)
-                @test allnan(bad_exchange.carbon) && isnan(bad_exchange.surface_co2)
+                @test allnan(carbon_fluxes(bad_exchange)) && isnan(bad_exchange.surface_co2)
                 @test allnan(assimilation_sensitivity(
                     p, gas(t0, ca, o2, pressure), StomatalState(gs), case.diffusion,
                 ))

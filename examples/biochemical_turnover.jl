@@ -9,7 +9,7 @@ function turnover_response(::Type{FT}) where {FT}
             ratio*gamma_star,forcing.oxygen)
         fluxes = biochemical_turnover(leaf,environment)
         carbon = photosynthesize(leaf,environment)
-        (;co2_gamma_ratio=ratio,co2=environment.co2,gamma_star,
+        (;co2_gamma_ratio=ratio,co2=environment.biochemical_co2,gamma_star,
             fluxes...,net_assimilation=carbon.net_assimilation)
     end
 end

@@ -14,7 +14,7 @@ function reference_demand(p, env)
             theta = BigFloat(p.limitation.curvature)
             (a + b - sqrt((a + b)^2 - 4theta*a*b)) / (2theta)
         end
-        excess = p.compensation isa SignedAssimilation ? c - gamma : max(c - gamma, 0)
+        excess = p.assimilation_sign isa SignedAssimilation ? c - gamma : max(c - gamma, 0)
         return capacity * excess - rd
     end
     return demand
@@ -22,7 +22,7 @@ end
 
 function reference_equilibrium(p, target, env, diffusion; fixed_gs = nothing)
     demand = reference_demand(p, env)
-    ca, pressure, conversion = BigFloat(env.co2), BigFloat(env.pressure), BigFloat(diffusion.mole_to_micromole)
+    ca, pressure, conversion = BigFloat(env.ambient_co2), BigFloat(env.pressure), BigFloat(diffusion.mole_to_micromole)
     rb, rm, ratio = inv(BigFloat(diffusion.boundary_co2)), inv(BigFloat(diffusion.mesophyll_co2)), BigFloat(diffusion.diffusivity_ratio)
     g0 = isnothing(fixed_gs) ? BigFloat(target.minimum_conductance) : BigFloat(fixed_gs)
     function residual(c)
@@ -78,9 +78,9 @@ end
         @test isbitstype(typeof(solver))
         @testset "$FT physical grid" begin
             for target in targets, limitation in (MinimumLimitation(), QuadraticLimitation(FT(0.95))),
-                compensation in (SignedAssimilation(), NonnegativeAssimilation())
+                assimilation_sign in (SignedAssimilation(), NonnegativeAssimilation())
                 model = C3Photosynthesis(; temperature = base.temperature, electron_transport = base.electron_transport,
-                    stoichiometry = base.stoichiometry, limitation, compensation)
+                    stoichiometry = base.stoichiometry, limitation, assimilation_sign)
                 for light in FT.((0, 1, 1500)), ca in FT.((0, 4, 40, 100)),
                     boundary in FT.((0.005, 1, Inf)), vpd in FT.((0, 1200, 10000))
                     forcing = GasExchangeEnvironment(env.temperature, light, ca, env.oxygen,
@@ -88,27 +88,27 @@ end
                     diffusion = SeriesDiffusion(boundary, d.mesophyll_co2, d.diffusivity_ratio, d.mole_to_micromole)
                     steady = SteadyStateStomata(target)
                     result = @inferred equilibrium_gas_exchange(model, steady, forcing, diffusion, solver)
-                    @test result.converged
+                    @test is_valid(result)
                     @test result.status == EquilibriumConverged
-                    @test result.biochemical_co2 isa FT
+                    @test result.exchange.biochemical_co2 isa FT
                     @test result.stomatal_conductance isa FT
-                    @test result.biochemical_co2 >= zero(FT)
-                    @test all(x -> x isa FT, values(result.carbon))
+                    @test result.exchange.biochemical_co2 >= zero(FT)
+                    @test all(x -> x isa FT, values(carbon_fluxes(result.exchange)))
                     cc, assimilation = reference_equilibrium(model, target, forcing, diffusion)
-                    tol_c = solver.co2_atol + solver.co2_rtol * max(abs(ca), abs(result.biochemical_co2))
-                    tol_a = solver.flux_atol + solver.flux_rtol * abs(result.carbon.net_assimilation)
-                    @test isapprox(result.biochemical_co2, cc; atol = 4tol_c, rtol = 64eps(FT))
-                    @test isapprox(result.carbon.net_assimilation, assimilation; atol = 4tol_a, rtol = 64eps(FT))
-                    @test abs(result.diffusion_residual) <= tol_a * FT(1.01)
-                    drivers = StomatalDrivers(result.carbon.net_assimilation, result.surface_co2,
+                    tol_c = solver.co2_atol + solver.co2_rtol * max(abs(ca), abs(result.exchange.biochemical_co2))
+                    tol_a = solver.flux_atol + solver.flux_rtol * abs(result.exchange.net_assimilation)
+                    @test isapprox(result.exchange.biochemical_co2, cc; atol = 4tol_c, rtol = 64eps(FT))
+                    @test isapprox(result.exchange.net_assimilation, assimilation; atol = 4tol_a, rtol = 64eps(FT))
+                    @test abs(result.exchange.diffusion_residual) <= tol_a * FT(1.01)
+                    drivers = StomatalDrivers(result.exchange.net_assimilation, result.exchange.surface_co2,
                         forcing.pressure, forcing.relative_humidity, forcing.vpd)
                     @test isapprox(result.stomatal_conductance, target_conductance(target, drivers); rtol = 16eps(FT))
                     b = equilibrium_gas_exchange(model, steady, forcing, diffusion, bisector)
-                    @test b.converged
-                    @test isapprox(result.biochemical_co2, b.biochemical_co2; atol = 8tol_c, rtol = 64eps(FT))
+                    @test is_valid(b)
+                    @test isapprox(result.exchange.biochemical_co2, b.exchange.biochemical_co2; atol = 8tol_c, rtol = 64eps(FT))
                     if iszero(light)
                         @test result.iterations == 0
-                        @test result.biochemical_co2 >= ca
+                        @test result.exchange.biochemical_co2 >= ca
                     end
                 end
             end
@@ -116,35 +116,35 @@ end
         @testset "$FT solver failures and warm starts" begin
             steady = SteadyStateStomata(first(targets))
             solution = equilibrium_gas_exchange(base, steady, env, d, solver)
-            warm = equilibrium_gas_exchange(base, steady, env, d, solver; initial_co2 = solution.biochemical_co2)
-            @test warm.converged && warm.iterations == 1
+            warm = equilibrium_gas_exchange(base, steady, env, d, solver, BroadbandExcitation(), solution.exchange.biochemical_co2)
+            @test is_valid(warm) && warm.iterations == 1
             for guess in FT.((NaN, -1, Inf, 1e9))
-                @test equilibrium_gas_exchange(base, steady, env, d, solver; initial_co2 = guess) == solution
+                @test equilibrium_gas_exchange(base, steady, env, d, solver, BroadbandExcitation(), guess) == solution
             end
             short = EquilibriumSolver(solver.method, solver.co2_atol, solver.co2_rtol,
                 solver.flux_atol, solver.flux_rtol, 1)
             failed = equilibrium_gas_exchange(base, steady, env, d, short)
-            @test !failed.converged && failed.status == EquilibriumIterationLimit
-            @test isfinite(failed.carbon.net_assimilation)
+            @test !is_valid(failed) && failed.status == EquilibriumIterationLimit
+            @test isfinite(failed.exchange.net_assimilation)
             tight = EquilibriumSolver(; method = Bisection(), co2_atol = floatmin(FT), co2_rtol = zero(FT),
                 flux_atol = floatmin(FT), flux_rtol = zero(FT), max_iterations = 200)
             # At an exactly representable residual zero, convergence is legitimate;
             # otherwise explicit precision failure is required, never tolerance relaxation.
             limited = equilibrium_gas_exchange(base, steady, env, d, tight)
             @test limited.status in (EquilibriumConverged, EquilibriumPrecisionLimit)
-            @test limited.converged == (limited.co2_residual == zero(FT))
+            @test is_valid(limited) == (limited.co2_residual == zero(FT))
             for ca in FT.((-1, NaN, Inf))
                 bad = GasExchangeEnvironment(env.temperature, env.absorbed_par, ca, env.oxygen,
                     env.pressure, env.relative_humidity, env.vpd)
                 result = equilibrium_gas_exchange(base, steady, bad, d, solver)
-                @test result.status == EquilibriumInvalidInput && !result.converged
-                @test isnan(result.carbon.net_assimilation)
+                @test result.status == EquilibriumInvalidInput && !is_valid(result)
+                @test isnan(result.exchange.net_assimilation)
             end
             # R3a (F4): a zero minimum conductance is valid; in light the solution is the open
             # root or the closed-stomata limit, never an invalid input.
             zero_target = BallBerry(zero(FT), first(targets).slope, first(targets).micromole_to_mole)
             zero_g0 = equilibrium_gas_exchange(base, SteadyStateStomata(zero_target), env, d, solver)
-            @test zero_g0.converged && zero_g0.status in (EquilibriumConverged, EquilibriumStomataClosed)
+            @test is_valid(zero_g0) && zero_g0.status in (EquilibriumConverged, EquilibriumStomataClosed)
             for target in targets
                 drivers = StomatalDrivers(zero(FT), zero(FT), env.pressure, env.relative_humidity, env.vpd)
                 @test target_conductance(target, drivers) == target.minimum_conductance
@@ -154,11 +154,11 @@ end
         @testset "$FT analytic derivatives" begin
             # Passing a converged exchange also supports smooth/clipped demand,
             # even though the no-exchange analytical shortcut is minimum/signed.
-            for compensation in (SignedAssimilation(), NonnegativeAssimilation())
+            for assimilation_sign in (SignedAssimilation(), NonnegativeAssimilation())
                 model = C3Photosynthesis(; temperature = base.temperature, electron_transport = base.electron_transport,
-                    stoichiometry = base.stoichiometry, limitation = QuadraticLimitation(FT(0.95)), compensation)
+                    stoichiometry = base.stoichiometry, limitation = QuadraticLimitation(FT(0.95)), assimilation_sign)
                 exchange = equilibrium_gas_exchange(model, SteadyStateStomata(first(targets)), env, d, solver)
-                @test exchange.converged
+                @test is_valid(exchange)
                 gs = exchange.stomatal_conductance
                 sensitivity = @inferred assimilation_sensitivity(model, env, StomatalState(gs), d, BroadbandExcitation(), exchange)
                 h = BigFloat(gs) * BigFloat("1e-12")
@@ -170,10 +170,10 @@ end
                     rtol = 16solver.co2_rtol, atol = 16solver.co2_atol)
             end
             for limitation in (MinimumLimitation(), QuadraticLimitation(FT(0.95)), QuadraticLimitation(one(FT))),
-                compensation in (SignedAssimilation(), NonnegativeAssimilation()), light in FT.((0, 1, 1500))
+                assimilation_sign in (SignedAssimilation(), NonnegativeAssimilation()), light in FT.((0, 1, 1500))
                 model = C3Photosynthesis(; temperature = base.temperature, electron_transport = base.electron_transport,
-                    stoichiometry = base.stoichiometry, limitation, compensation)
-                forcing = GasExchangeEnvironment(env.temperature, light, env.co2, env.oxygen,
+                    stoichiometry = base.stoichiometry, limitation, assimilation_sign)
+                forcing = GasExchangeEnvironment(env.temperature, light, env.ambient_co2, env.oxygen,
                     env.pressure, env.relative_humidity, env.vpd)
                 demand = reference_demand(model, forcing)
                 r = biochemical_rates(model.temperature, forcing.temperature)
@@ -182,7 +182,7 @@ end
                     h = BigFloat("1e-15")
                     expected = (demand(BigFloat(c) + h) - demand(BigFloat(c) - h)) / (2h)
                     derivative = @inferred carbon_assimilation_derivative(r, c, env.oxygen, j,
-                        model.stoichiometry, limitation, compensation)
+                        model.stoichiometry, limitation, assimilation_sign)
                     @test derivative isa FT
                     @test isapprox(derivative, expected; rtol = 64eps(FT), atol = 64eps(FT))
                 end
@@ -198,7 +198,8 @@ end
                 @test all(x -> x isa FT, values(sensitivity))
                 @test isapprox(sensitivity.dco2_dgs, (cp - cm) / (2h); rtol = 128eps(FT), atol = 128eps(FT))
                 @test isapprox(sensitivity.dnet_assimilation_dgs, (ap - am) / (2h); rtol = 128eps(FT), atol = 128eps(FT))
-                @test sensitivity.dassimilation_dgs == sensitivity.dnet_assimilation_dgs
+                # One derivative of assimilation: pre-respiration and net are equal at fixed T.
+                @test keys(sensitivity) == (:dco2_dgs, :dnet_assimilation_dgs)
                 iszero(light) && @test sensitivity.dnet_assimilation_dgs == zero(FT)
                 for boundary in FT.((0.01, 1.4, Inf)), vpd in FT.((-100, 0, 1400))
                     water = @inferred transpiration_sensitivity(WaterVaporDiffusion(boundary), state, vpd, env.pressure)

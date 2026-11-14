@@ -84,7 +84,7 @@ function setup_johnson_berry_2021(::Type{FT}; capacity_scale::FT = one(FT)) wher
         electron_transport = et,
         stoichiometry = stoich,
         limitation = MinimumLimitation(),
-        compensation = SignedAssimilation(),
+        assimilation_sign = SignedAssimilation(),
     )
 
     for fl in (fl_puddle, fl_ku2, fl_ku10)

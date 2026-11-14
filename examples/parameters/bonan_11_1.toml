@@ -41,7 +41,7 @@ electrons_per_carboxylation = 4.0 # electron / CO2 stoichiometry
 oxygenation_cost = 2.0           # coefficient multiplying gamma_star
 limitation = "quadratic"         # "minimum" is also supported by the example loader
 curvature = 0.98                 # dimensionless
-compensation = "nonnegative"     # reproduce Bonan clipping; "signed" is also supported
+assimilation_sign = "nonnegative"  # reproduce Bonan clipping; "signed" is also supported
 
 [experiment]
 atmospheric_co2 = 380.0        # micromol mol^-1

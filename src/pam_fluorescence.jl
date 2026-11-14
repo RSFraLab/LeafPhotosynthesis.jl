@@ -12,10 +12,7 @@ Base.@kwdef struct PAMFluorescenceObserver{FT<:Real} <: AbstractLeafScalar
     psi_sensitivity::FT
     function PAMFluorescenceObserver{FT}(fields::Vararg{Any,2}) where {FT<:Real}
         o = new{FT}(continuous_fields(FT, PAMFluorescenceObserver{FT}, fields)...)
-        e2p = primal_scalar(o.psii_sensitivity)
-        e1p = primal_scalar(o.psi_sensitivity)
-        isfinite(e2p) && isfinite(e1p) &&
-            e2p > zero(e2p) && e1p >= zero(e1p) ||
+        is_positive(o.psii_sensitivity) && is_nonnegative(o.psi_sensitivity) ||
             throw(ArgumentError("PAMFluorescenceObserver requires finite psii_sensitivity > 0 and psi_sensitivity ≥ 0"))
         return o
     end
@@ -31,8 +28,8 @@ Store apparent PAM fluorometer levels (`fs`, `fm_dark`, `fo_dark`, `fm_prime`,
 pulse-ratio indices (`apparent_photochemical_yield`, `apparent_regulated_heat_yield`,
 `apparent_residual_yield`, `apparent_npq`, `qp`, `ql`).
 
-Check [`pam_fluorescence_valid`](@ref) before consuming fields; non-lit states
-carry `NaN` fields without throwing on GPU devices.
+Check [`is_valid`](@ref) before consuming fields; non-lit states carry `NaN` fields without
+throwing on GPU devices.
 """
 Base.@kwdef struct PAMFluorescenceResult{FT<:Real} <: AbstractLeafScalar
     status::FluorescenceStatus
@@ -53,12 +50,7 @@ end
 PAMFluorescenceResult(status::FluorescenceStatus, scalars::Vararg{Real,11}) =
     PAMFluorescenceResult{scalar_type(PAMFluorescenceResult, scalars...)}(status, scalars...)
 
-"""
-    pam_fluorescence_valid(result::PAMFluorescenceResult) -> Bool
-
-Return `true` if `result.status` is [`FluorescenceLit`](@ref).
-"""
-@inline pam_fluorescence_valid(r::PAMFluorescenceResult) = r.status == FluorescenceLit
+@inline is_valid(r::PAMFluorescenceResult) = r.status == FluorescenceLit
 
 @inline function unavailable_pam_fluorescence(::Type{FT}, status::FluorescenceStatus) where {FT}
     nan = FT(NaN)
@@ -89,9 +81,7 @@ returning `NaN` fields on invalid cross-sections without throwing.
     )
     S = typeof(a2_d)
     nan = S(NaN)
-    a2d_p, a1d_p = primal_scalar(a2_d), primal_scalar(a1_d)
-    isfinite(a2d_p) && isfinite(a1d_p) &&
-        a2d_p > zero(a2d_p) && a1d_p >= zero(a1d_p) ||
+    is_positive(a2_d) && is_nonnegative(a1_d) ||
         return (; fo = nan, fm = nan, fv_fm = nan)
 
     psii = fl.psii
@@ -147,11 +137,7 @@ cross-sections `(alpha_psii, alpha_psi)`, and dark-reference cross-sections
         alpha_psii, alpha_psi, alpha_psii_dark, alpha_psi_dark,
     )
     S = typeof(a2)
-    a2_p, a1_p, a2d_p, a1d_p = map(primal_scalar, (a2, a1, a2_d, a1_d))
-    isfinite(a2_p) && isfinite(a1_p) &&
-        isfinite(a2d_p) && isfinite(a1d_p) &&
-        a2_p > zero(a2_p) && a1_p >= zero(a1_p) &&
-        a2d_p > zero(a2d_p) && a1d_p >= zero(a1d_p) ||
+    is_positive(a2) && is_nonnegative(a1) && is_positive(a2_d) && is_nonnegative(a1_d) ||
         return unavailable_pam_fluorescence(S, FluorescenceInvalidInput)
 
     result.status == FluorescenceLit ||

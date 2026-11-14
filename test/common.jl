@@ -37,3 +37,8 @@ include(joinpath(EXAMPLES, "flexas_2002.jl"))
 
 # Settings of Bonan's supplemental program 11.1, used by several groups.
 const parameter_path = joinpath(EXAMPLES, "parameters", "bonan_11_1.toml")
+
+# The carbon fluxes of a flat result (`photosynthesize`, `gas_exchange` or the `exchange` of
+# an `EquilibriumSolution`), in the order of `carbon_assimilation`.
+carbon_fluxes(x) = NamedTuple{(:rubisco_limited, :electron_limited, :assimilation,
+    :respiration, :net_assimilation)}(x)

@@ -59,12 +59,12 @@ function write_gallery_data(dir)
         flexas_2002 = flexas_2002_curves(FT)
         turnover_settings = read_bonan_parameters(FT, joinpath(parameter_dir, "turnover.toml"))
         result = equilibrium_example(FT, biochemistry, settings)
-        result.exchange.converged || error("Nonconverged equilibrium in the $FT gallery example")
+        is_valid(result.exchange) || error("Nonconverged equilibrium in the $FT gallery example")
         equilibrium = (; conductance = result.exchange.stomatal_conductance,
-            net_assimilation = result.exchange.carbon.net_assimilation,
+            net_assimilation = result.exchange.exchange.net_assimilation,
             net_oxygen = result.oxygen.net_release, transpiration = result.water.transpiration,
             dA_dgs = result.carbon.dnet_assimilation_dgs, dE_dgs = result.water.dtranspiration_dgs,
-            iterations = result.exchange.iterations, converged = result.exchange.converged)
+            iterations = result.exchange.iterations, converged = is_valid(result.exchange))
         data[string(FT)] = (; curves, stomata, turnover, turnover_settings, oxygen_response = oxygen_response_rows,
             fluorescence = fluorescence_rows, cytochrome_stress, johnson_berry, flexas_2002, equilibrium, biochemistry, settings)
         tables = Dict{String,Any}(name => rows for (name, rows) in curves)

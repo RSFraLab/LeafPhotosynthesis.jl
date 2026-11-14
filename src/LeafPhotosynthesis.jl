@@ -33,9 +33,8 @@ export NoFluorescence, RateCompetitionFluorescence, ConstantQuenching, Saturatio
 
 export photosynthesize, biochemical_turnover, oxygen_exchange, gas_exchange,
     leaf_tendencies, equilibrium_gas_exchange, assimilation_sensitivity,
-    transpiration_sensitivity, psii_flux_inputs, photosystem_flux_inputs, fluorescence,
-    fluorescence_valid, validate_fluorescence_coupling, state_transition_excitation,
-    pam_fluorescence, pam_fluorescence_valid
+    transpiration_sensitivity, fluorescence_inputs, fluorescence,
+    validate_fluorescence_coupling, state_transition_excitation, pam_fluorescence, is_valid
 
 # Supported API that is rarely typed: abstract types for new components, component-level
 # functions, rate and input bundles, result types and status values. Qualify these as
@@ -44,6 +43,7 @@ export photosynthesize, biochemical_turnover, oxygen_exchange, gas_exchange,
 @static if VERSION >= v"1.11.0-DEV.469"
     eval(Meta.parse("""
     public AbstractLeafScalar, AbstractPhotosynthesis, AbstractC3Photosynthesis,
+        AbstractTemperatureResponse, AbstractColimitation, AbstractAssimilationSign,
         AbstractCompensationPoint, AbstractExcitation, AbstractFluorescence,
         AbstractQuenching, AbstractStomatalTarget, AbstractStomatalModel,
         AbstractOxygenExchange, AbstractLeafDiffusion, AbstractEquilibriumMethod,
@@ -78,9 +78,12 @@ subtyping `AbstractLeafScalar` or one of the package's abstract component types.
 abstract type AbstractLeafScalar end
 Base.broadcastable(x::AbstractLeafScalar) = Ref(x)
 
-# Follow this list from physical responses to a complete prescribed-CO₂ leaf call.
+# Follow this list from the shared scalar helpers through physical responses to a complete
+# leaf call.
+include("scalars.jl")
 include("temperature_response.jl")
 include("photorespiratory_compensation.jl")
+include("biochemical_rates.jl")
 include("rate_limitation.jl")
 include("excitation.jl")
 include("electron_transport.jl")

@@ -49,7 +49,7 @@ function check_excitation_batches(to_device, synchronize)
                 GasExchangeEnvironment(
                     env.temperature,
                     light,
-                    env.co2,
+                    env.ambient_co2,
                     env.oxygen,
                     env.pressure,
                     env.relative_humidity,
@@ -61,7 +61,7 @@ function check_excitation_batches(to_device, synchronize)
         for q2 in (FT(-1), FT(NaN), FT(Inf), nextfloat(env.absorbed_par))
             push!(
                 sites,
-                LeafEnvironment(env.temperature, env.absorbed_par, env.co2, env.oxygen),
+                LeafEnvironment(env.temperature, env.absorbed_par, env.ambient_co2, env.oxygen),
             )
             push!(forcings, env)
             push!(inputs, PrescribedPSIIExcitation(q2))
@@ -77,8 +77,8 @@ function check_excitation_batches(to_device, synchronize)
                 compare_excitation_diagnostics(a, b, FT, rtol, atol)
             end
         end
-        expected_inputs=psii_flux_inputs.(Ref(p), sites, inputs)
-        flux_inputs=psii_flux_inputs.(Ref(p), ds, dx)
+        expected_inputs=fluorescence_inputs.(Ref(p), sites, inputs)
+        flux_inputs=fluorescence_inputs.(Ref(p), ds, dx)
         fluorescence_result=fluorescence.(Ref(case.fluorescence.regulated), flux_inputs)
         synchronize()
         for (a, b) in zip(Array(flux_inputs), expected_inputs)
@@ -179,7 +179,7 @@ function check_excitation_batches(to_device, synchronize)
             # Iteration counts may differ across backend arithmetic; preserve native
             # Int/Bool/Enum fields and compare convergence/status and physical values.
             @test a.status===b.status
-            @test a.converged===b.converged
+            @test is_valid(a)===is_valid(b)
             @test a.iterations isa Int
             for key in fieldnames(typeof(a))
                 key===:iterations && continue
@@ -225,7 +225,7 @@ function check_excitation_batches(to_device, synchronize)
         @test_throws MethodError equilibrium_gas_exchange(
             case.steady, first(forcings), case.diffusion, case.solver, first(mismatch),
         )
-        @test_throws MethodError psii_flux_inputs(p, first(sites), first(mismatch))
+        @test_throws MethodError fluorescence_inputs(p, first(sites), first(mismatch))
         # A second explicit convention can be compiled without changing the core.
         alternate=to_device(ExtraBandTestExcitation.(getfield.(inputs, :photons)))
         alternate_carbon=photosynthesize.(Ref(case.leaf), ds, alternate)

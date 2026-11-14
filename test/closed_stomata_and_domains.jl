@@ -9,7 +9,7 @@ function core_closed_case(::Type{FT}) where {FT}
     return (; leaf, photo = leaf.photosynthesis, diffusion, env, solver = core_solver(FT, settings))
 end
 
-with_light(env, par) = GasExchangeEnvironment(env.temperature, par, env.co2, env.oxygen,
+with_light(env, par) = GasExchangeEnvironment(env.temperature, par, env.ambient_co2, env.oxygen,
     env.pressure, env.relative_humidity, env.vpd)
 
 @testset "Closed stomata at prescribed conductance" begin
@@ -17,7 +17,7 @@ with_light(env, par) = GasExchangeEnvironment(env.temperature, par, env.co2, env
         c = core_closed_case(FT)
         photo, env, d = c.photo, c.env, c.diffusion
         closed = @inferred gas_exchange(c.leaf, env, StomatalState(zero(FT)), d)
-        @test all(x -> x isa FT && isfinite(x), values(closed.carbon))
+        @test all(x -> x isa FT && isfinite(x), values(carbon_fluxes(closed)))
         # Sealed-leaf limit: Γ = max over branches of (m Γ* + Rd k) / (m - Rd), in BigFloat.
         r = biochemical_rates(photo.temperature, env.temperature, env.oxygen)
         jlight = electron_transport(photo.electron_transport, env.absorbed_par, r.jmax)
@@ -28,11 +28,11 @@ with_light(env, par) = GasExchangeEnvironment(env.temperature, par, env.co2, env
         gamma = max(big_gamma(r.vcmax, km),
             big_gamma(big(jlight) / big(s.electrons_per_carboxylation), big(s.oxygenation_cost) * big(r.gamma_star)))
         @test isapprox(closed.biochemical_co2, FT(gamma); rtol = 64eps(FT))
-        @test abs(closed.carbon.net_assimilation) <= 64eps(FT) * r.vcmax
+        @test abs(closed.net_assimilation) <= 64eps(FT) * r.vcmax
         @test closed.conductance == zero(FT)
-        @test closed.diffusion_residual == -closed.carbon.net_assimilation
+        @test closed.diffusion_residual == -closed.net_assimilation
         @test isapprox(closed.intercellular_co2, closed.biochemical_co2; rtol = 64eps(FT))
-        @test isapprox(closed.surface_co2, env.co2; rtol = 64eps(FT))
+        @test isapprox(closed.surface_co2, env.ambient_co2; rtol = 64eps(FT))
         # The analytic limit, not a small conductance: approached by gs → 0⁺.
         nearly = gas_exchange(c.leaf, env, StomatalState(FT(1e-6)), d)
         @test isapprox(nearly.biochemical_co2, closed.biochemical_co2; rtol = FT(1e-3))
@@ -40,7 +40,7 @@ with_light(env, par) = GasExchangeEnvironment(env.temperature, par, env.co2, env
         # compensation point (J / e_c < Rd).
         for par in (zero(FT), FT(1))
             sealed = gas_exchange(c.leaf, with_light(env, par), StomatalState(zero(FT)), d)
-            @test all(isnan, values(sealed.carbon)) && isnan(sealed.biochemical_co2)
+            @test all(isnan, values(carbon_fluxes(sealed))) && isnan(sealed.biochemical_co2)
         end
         # Sensitivity: the one-sided limit, which ForwardDiff reproduces at gs = 0.
         sens0 = @inferred assimilation_sensitivity(photo, env, StomatalState(zero(FT)), d)
@@ -72,14 +72,14 @@ end
         )
         for d in invalid
             g = gas_exchange(c.photo, c.env, state, d)
-            @test all(isnan, values(g.carbon)) && isnan(g.surface_co2) && isnan(g.conductance)
+            @test all(isnan, values(carbon_fluxes(g))) && isnan(g.surface_co2) && isnan(g.conductance)
             @test all(isnan, values(assimilation_sensitivity(c.photo, c.env, state, d)))
             @test equilibrium_gas_exchange(c.photo, steady, c.env, d, c.solver).status ==
                 EquilibriumInvalidInput
         end
         open_path = SeriesDiffusion{FT}(Inf, Inf, d0.diffusivity_ratio, d0.mole_to_micromole)
-        @test isfinite(gas_exchange(c.photo, c.env, state, open_path).carbon.net_assimilation)
-        @test equilibrium_gas_exchange(c.photo, steady, c.env, open_path, c.solver).converged
+        @test isfinite(gas_exchange(c.photo, c.env, state, open_path).net_assimilation)
+        @test is_valid(equilibrium_gas_exchange(c.photo, steady, c.env, open_path, c.solver))
     end
 end
 
@@ -114,10 +114,10 @@ end
         @test isfinite(stomatal_tendency(c.leaf.stomata, StomatalState(zero(FT)), ok))
         # An invalid exchange no longer relaxes stomata toward g0.
         for env in (
-            GasExchangeEnvironment{FT}(0.0, c.env.absorbed_par, c.env.co2, c.env.oxygen, c.env.pressure, 0.6, 1200.0),
-            GasExchangeEnvironment{FT}(c.env.temperature, -1.0, c.env.co2, c.env.oxygen, c.env.pressure, 0.6, 1200.0),
-            GasExchangeEnvironment{FT}(c.env.temperature, c.env.absorbed_par, c.env.co2, c.env.oxygen, -1.0, 0.6, 1200.0),
-            GasExchangeEnvironment{FT}(c.env.temperature, c.env.absorbed_par, c.env.co2, c.env.oxygen, c.env.pressure, 1.5, 1200.0),
+            GasExchangeEnvironment{FT}(0.0, c.env.absorbed_par, c.env.ambient_co2, c.env.oxygen, c.env.pressure, 0.6, 1200.0),
+            GasExchangeEnvironment{FT}(c.env.temperature, -1.0, c.env.ambient_co2, c.env.oxygen, c.env.pressure, 0.6, 1200.0),
+            GasExchangeEnvironment{FT}(c.env.temperature, c.env.absorbed_par, c.env.ambient_co2, c.env.oxygen, -1.0, 0.6, 1200.0),
+            GasExchangeEnvironment{FT}(c.env.temperature, c.env.absorbed_par, c.env.ambient_co2, c.env.oxygen, c.env.pressure, 1.5, 1200.0),
         )
             t = leaf_tendencies(c.leaf, env, StomatalState(FT(0.2)), c.diffusion)
             @test isnan(t.conductance_target) && isnan(t.conductance_tendency)

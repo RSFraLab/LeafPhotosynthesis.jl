@@ -41,6 +41,15 @@ LeafModel(; photosynthesis, stomata = NoStomatalDynamics(), oxygen = NoOxygenExc
     excitation::AbstractExcitation = BroadbandExcitation(),
 ) = oxygen_exchange(leaf.oxygen, leaf.photosynthesis, env, excitation)
 
+@inline fluorescence_inputs(
+    leaf::LeafModel,
+    site::LeafEnvironment,
+    excitation::AbstractExcitation = BroadbandExcitation(),
+) = fluorescence_inputs(leaf.photosynthesis, site, excitation)
+
+@inline target_conductance(leaf::LeafModel, drivers::StomatalDrivers) =
+    target_conductance(leaf.stomata, drivers)
+
 @inline stomatal_tendency(leaf::LeafModel, state::StomatalState, drivers::StomatalDrivers) =
     stomatal_tendency(leaf.stomata, state, drivers)
 
@@ -54,22 +63,39 @@ LeafModel(; photosynthesis, stomata = NoStomatalDynamics(), oxygen = NoOxygenExc
 
 @inline equilibrium_gas_exchange(
     leaf::LeafModel{P,S}, env, diffusion, solver,
-    excitation::AbstractExcitation = BroadbandExcitation(); initial_co2 = nothing,
+    excitation::AbstractExcitation = BroadbandExcitation(),
+    initial_co2::Union{Nothing,Real} = nothing,
 ) where {P,S<:SteadyStateStomata} =
-    equilibrium_gas_exchange(
-        leaf.photosynthesis, leaf.stomata, env, diffusion, solver, excitation; initial_co2,
-    )
+    equilibrium_gas_exchange(leaf.photosynthesis, leaf.stomata, env, diffusion, solver, excitation, initial_co2)
 
 """
     leaf_tendencies(leaf, environment, stomatal_state, diffusion,
         excitation=BroadbandExcitation())
 
-Evaluate prescribed-conductance [`gas_exchange`](@ref), prognostic stomatal
-target and tendency, and optional [`oxygen_exchange`](@ref) diagnostics at
-`stomatal_state` without mutating state.
+Evaluate prescribed-conductance [`gas_exchange`](@ref), the stomatal target and tendency,
+and the [`oxygen_exchange`](@ref) budget at `stomatal_state` without mutating state.
+
+`leaf.stomata` is a [`PrognosticStomata`](@ref) or [`NoStomatalDynamics`](@ref); a
+[`SteadyStateStomata`](@ref) leaf has no tendency (solve it with
+[`equilibrium_gas_exchange`](@ref)) and is a `MethodError`.
+
+Return `(; gas_exchange, conductance_target, conductance_tendency, oxygen)`:
+- `gas_exchange`: the [`gas_exchange`](@ref) result at `stomatal_state`;
+- `conductance_target` [mol H₂O m⁻² leaf s⁻¹] and `conductance_tendency`
+  [mol H₂O m⁻² leaf s⁻²] of [`target_conductance`](@ref) and [`stomatal_tendency`](@ref),
+  with drivers from the gas exchange (net assimilation, surface CO₂) and `environment`
+  (pressure, relative humidity, VPD); for `NoStomatalDynamics` the target is the state
+  conductance and the tendency zero;
+- `oxygen`: the coupled [`oxygen_exchange`](@ref) at the solved `biochemical_co2`, or
+  `nothing` for [`NoOxygenExchange`](@ref).
+
+Each part follows its own domain: inputs outside the gas-exchange domain give `NaN` in every
+field of `gas_exchange` and `oxygen` and, through the drivers, in the outputs of
+`PrognosticStomata`; invalid stomatal drivers alone (for example relative humidity outside
+`[0, 1]`) give `NaN` stomatal outputs only.
 """
 @inline function leaf_tendencies(
-    leaf::LeafModel,
+    leaf::LeafModel{<:AbstractPhotosynthesis,<:Union{PrognosticStomata,NoStomatalDynamics}},
     env::GasExchangeEnvironment,
     state::StomatalState,
     diffusion::AbstractLeafDiffusion,
@@ -78,7 +104,7 @@ target and tendency, and optional [`oxygen_exchange`](@ref) diagnostics at
     require_compatible(leaf_tendencies, leaf, env, state, diffusion, excitation)
     exchange = gas_exchange(leaf, env, state, diffusion, excitation)
     drivers = StomatalDrivers(
-        exchange.carbon.net_assimilation, exchange.surface_co2,
+        exchange.net_assimilation, exchange.surface_co2,
         env.pressure, env.relative_humidity, env.vpd,
     )
     site = LeafEnvironment(env.temperature, env.absorbed_par, exchange.biochemical_co2, env.oxygen)

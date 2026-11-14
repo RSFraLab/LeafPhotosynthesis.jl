@@ -42,8 +42,8 @@ function check_cytochrome_batches(to_device, synchronize)
         gpu_turn = Array(biochemical_turnover.(Ref(leaf), dev_envs, dev_excs))
         cpu_oxy = oxygen_exchange.(Ref(leaf), environments, excitations)
         gpu_oxy = Array(oxygen_exchange.(Ref(leaf), dev_envs, dev_excs))
-        cpu_inp = photosystem_flux_inputs.(Ref(photo), environments, excitations)
-        gpu_inp = Array(photosystem_flux_inputs.(Ref(photo), dev_envs, dev_excs))
+        cpu_inp = fluorescence_inputs.(Ref(photo), environments, excitations)
+        gpu_inp = Array(fluorescence_inputs.(Ref(photo), dev_envs, dev_excs))
         synchronize()
 
         for (a, b) in zip(cpu_photo, gpu_photo)
@@ -113,11 +113,11 @@ function check_cytochrome_batches(to_device, synchronize)
 
         for (a, b) in zip(cpu_gx, gpu_gx)
             @test isapprox(a.biochemical_co2, b.biochemical_co2; rtol, atol)
-            @test isapprox(a.carbon.net_assimilation, b.carbon.net_assimilation; rtol, atol)
+            @test isapprox(a.net_assimilation, b.net_assimilation; rtol, atol)
         end
         for (a, b) in zip(cpu_eq, gpu_eq)
-            @test a.status === b.status && a.converged && b.converged
-            @test isapprox(a.biochemical_co2, b.biochemical_co2; rtol, atol)
+            @test a.status === b.status && is_valid(a) && is_valid(b)
+            @test isapprox(a.exchange.biochemical_co2, b.exchange.biochemical_co2; rtol, atol)
             @test isapprox(a.stomatal_conductance, b.stomatal_conductance; rtol, atol)
         end
         for (a, b) in zip(cpu_sens, gpu_sens)
@@ -141,8 +141,8 @@ function check_cytochrome_batches(to_device, synchronize)
         cpu_st_exc = state_transition_excitation.(Ref(rule), Ref(case.jb_connected), Ref(leaf), st_envs)
         gpu_st_exc = Array(state_transition_excitation.(Ref(rule), Ref(case.jb_connected), Ref(leaf), dev_st_envs))
         dev_st_exc = state_transition_excitation.(Ref(rule), Ref(case.jb_connected), Ref(leaf), dev_st_envs)
-        cpu_st_fl = fluorescence.(Ref(case.jb_connected), photosystem_flux_inputs.(Ref(photo), st_envs, cpu_st_exc))
-        dev_st_fl = fluorescence.(Ref(case.jb_connected), photosystem_flux_inputs.(Ref(photo), dev_st_envs, dev_st_exc))
+        cpu_st_fl = fluorescence.(Ref(case.jb_connected), fluorescence_inputs.(Ref(photo), st_envs, cpu_st_exc))
+        dev_st_fl = fluorescence.(Ref(case.jb_connected), fluorescence_inputs.(Ref(photo), dev_st_envs, dev_st_exc))
         gpu_st_fl = Array(dev_st_fl)
 
         a2_vec = [isfinite(b) ? FT(0.85) * b : FT(NaN) for b in cpu_beta]

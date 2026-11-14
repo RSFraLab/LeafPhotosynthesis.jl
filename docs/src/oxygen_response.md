@@ -33,7 +33,7 @@ respiration is nonzero. The oxygen budget uses realized turnover at the same Cc.
 at the biochemical O₂ level. Both implement `AbstractCompensationPoint` and live
 in the existing `C3TemperatureResponse.gamma_star` slot. They do not change the
 `C3Photosynthesis` layout or the signed/clipped assimilation policy, which remains
-a separate component named `compensation`.
+a separate component named `assimilation_sign`.
 
 Call `biochemical_rates(responses, T, O)` when oxygen affects Γ*. All production
 environment-aware calculations use this interface: prescribed-CO₂ photosynthesis,

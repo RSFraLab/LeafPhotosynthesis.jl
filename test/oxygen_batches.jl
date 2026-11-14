@@ -60,8 +60,8 @@ function check_oxygen_batches(to_device, synchronize_device)
                         atol,
                     )
                     @test isapprox(
-                        a.prognostic.gas_exchange.carbon.net_assimilation,
-                        b.prognostic.gas_exchange.carbon.net_assimilation;
+                        a.prognostic.gas_exchange.net_assimilation,
+                        b.prognostic.gas_exchange.net_assimilation;
                         rtol,
                         atol,
                     )
@@ -73,11 +73,11 @@ function check_oxygen_batches(to_device, synchronize_device)
                     )
                     @test abs(a.prognostic.gas_exchange.diffusion_residual) <=
                           atol +
-                          rtol * abs(a.prognostic.gas_exchange.carbon.net_assimilation)
-                    @test a.equilibrium.converged && b.equilibrium.converged
+                          rtol * abs(a.prognostic.gas_exchange.net_assimilation)
+                    @test is_valid(a.equilibrium) && is_valid(b.equilibrium)
                     @test isapprox(
-                        a.equilibrium.carbon.net_assimilation,
-                        b.equilibrium.carbon.net_assimilation;
+                        a.equilibrium.exchange.net_assimilation,
+                        b.equilibrium.exchange.net_assimilation;
                         rtol,
                         atol,
                     )

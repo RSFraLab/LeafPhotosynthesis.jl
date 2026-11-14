@@ -85,7 +85,7 @@ end
                 rates.gamma_star*factor,
                 e["oxygen_Pa"],
             )
-            inputs=@inferred psii_flux_inputs(p, site)
+            inputs=@inferred fluorescence_inputs(p, site)
             @test inputs.psii_excitation === p.electron_transport.psii_fraction*light
             @test inputs.linear_electron_flow ===
                   biochemical_turnover(p, site).linear_electron_flow
@@ -94,7 +94,7 @@ end
                 result=@inferred fluorescence(model, inputs)
                 @test isbitstype(typeof(result))
                 @test result.photon_flux isa FT
-                @test fluorescence_valid(result)
+                @test is_valid(result)
                 @test fluorescence_allocations(model, inputs)==0
                 if iszero(light)
                     @test result.status===FluorescenceDark
@@ -141,7 +141,7 @@ end
             for phi in
                 (zero(FT), phi0/FT(2), phi0, nextfloat(phi0), phi0+model.yield_tolerance)
                 result=fluorescence(model, PSIIFluxInputs(one(FT), phi))
-                @test fluorescence_valid(result)
+                @test is_valid(result)
                 @test result.photochemical_yield===phi
                 @test result.boundary_roundoff == (phi>phi0)
             end
@@ -169,7 +169,7 @@ end
             quenched.quenching.rate
         )
         result=fluorescence(quenched, PSIIFluxInputs(one(FT), nextfloat(limit)))
-        @test fluorescence_valid(result) && result.boundary_roundoff
+        @test is_valid(result) && result.boundary_roundoff
         @test result.photochemical_yield===nextfloat(limit)
         @test result.photochemical_rate > quenched.maximum_photochemical_rate
         @test fluorescence(
@@ -212,7 +212,7 @@ end
         end
         custom=with_quenching(case.unquenched, LinearTestQuenching(one(FT)))
         @test validate_fluorescence_coupling(custom, p.electron_transport) === nothing
-        @test fluorescence_valid(@inferred fluorescence(custom, inputs))
+        @test is_valid(@inferred fluorescence(custom, inputs))
         # Extreme positive beta remains well-defined at both saturation endpoints.
         for beta in (nextfloat(zero(FT)), floatmax(FT))
             law=SaturationQuenching(one(FT), one(FT), beta)
@@ -236,8 +236,8 @@ end
             yield_tolerance = zero(FT),
         )
         invalid_site=LeafEnvironment(zero(FT), one(FT), one(FT), one(FT))
-        @test fluorescence(case.regulated, psii_flux_inputs(p, invalid_site)).status===FluorescenceInvalidInput
-        @test_throws MethodError psii_flux_inputs(
+        @test fluorescence(case.regulated, fluorescence_inputs(p, invalid_site)).status===FluorescenceInvalidInput
+        @test_throws MethodError fluorescence_inputs(
             p,
             GasExchangeEnvironment(
                 one(FT),

@@ -12,7 +12,7 @@ function equilibrium_example(::Type{FT}, biochemistry, settings) where {FT}
 
     # Solve the coupled assimilation–diffusion–stomatal equilibrium.
     exchange = equilibrium_gas_exchange(steady_leaf, environment, diffusion, core_solver(FT, settings))
-    exchange.converged || error("Equilibrium failed: $(exchange.status)")
+    is_valid(exchange) || error("Equilibrium failed: $(exchange.status)")
     state = StomatalState(exchange.stomatal_conductance)
 
     # Evaluate carbon and water responses to opening the stomata, at fixed T.
@@ -24,7 +24,7 @@ function equilibrium_example(::Type{FT}, biochemistry, settings) where {FT}
 
     # Oxygen uses the solved CO₂ concentration inside the leaf.
     site = LeafEnvironment(environment.temperature, environment.absorbed_par,
-        exchange.biochemical_co2, environment.oxygen)
+        exchange.exchange.biochemical_co2, environment.oxygen)
     oxygen = oxygen_exchange(steady_leaf, site)
     return (; exchange, carbon, water, oxygen)
 end

@@ -12,7 +12,7 @@
         fl = CytochromeFluorescence(psii, jb.fl_ku2.psi, jb.fl_ku2.yield_tolerance)
         site = LeafEnvironment(FT(298.15), FT(1500), FT(25), FT(21000))
         excitation = PrescribedDualExcitation(FT(780), FT(690))
-        result = fluorescence(fl, photosystem_flux_inputs(jb.photo, site, excitation))
+        result = fluorescence(fl, fluorescence_inputs(jb.photo, site, excitation))
         @test result.status == FluorescenceLit && result.psii_quenching_rate > zero(FT)
         kf, kd, kn = p2.fluorescence_rate, p2.constitutive_heat_rate, result.psii_quenching_rate
         @test isapprox(result.npq, kn / (kf + kd + kns); rtol = 8eps(FT))
@@ -48,7 +48,7 @@ end
             @test all(isnan, values(photosynthesize(model, site)))
             @test all(isnan, values(biochemical_turnover(model, site)))
             @test all(isnan, values(oxygen_exchange(leaf.oxygen, model, site)))
-            @test all(isnan, values(gas_exchange(model, env, state, diffusion).carbon))
+            @test all(isnan, values(carbon_fluxes(gas_exchange(model, env, state, diffusion))))
         end
         @test_throws ArgumentError C3Stoichiometry(zero(FT), FT(2))
         @test_throws ArgumentError C3Stoichiometry(FT(4), FT(-2))

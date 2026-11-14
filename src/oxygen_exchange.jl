@@ -78,12 +78,19 @@ OxygenFluxInputs(fields::Vararg{Real,3}) =
         excitation=BroadbandExcitation())
     oxygen_exchange(leaf, environment, excitation=BroadbandExcitation())
 
-Compute gross O₂ evolution, photorespiratory O₂ uptake, mitochondrial
-respiratory O₂ uptake, and net O₂ release [μmol O₂ m⁻² leaf s⁻¹] (`nothing` for
-[`NoOxygenExchange`](@ref)).
+Return `(; gross_production, photorespiratory_uptake, respiratory_uptake, net_release)`
+[μmol O₂ m⁻² leaf s⁻¹]: gross O₂ evolution, photorespiratory and mitochondrial respiratory
+O₂ uptake, and net O₂ release (`nothing` for [`NoOxygenExchange`](@ref)). The coupled forms
+append the realized `carboxylation` and `rubisco_oxygenation` [μmol m⁻² leaf s⁻¹] and the
+realized `linear_electron_flow` [μmol e⁻ m⁻² leaf s⁻¹]; [`CytochromePhotosynthesis`](@ref)
+adds `psi_electron_flow` and `cyclic_electron_flow`. Input outside the physical domain gives
+`NaN` in every field.
 
 With [`OxygenFluxInputs`](@ref), gross O₂ evolution is the given linear electron flow divided
-by `electrons_per_oxygen`.
+by `electrons_per_oxygen`. This agrees with the coupled form below only when the linear flow
+is `electrons_per_oxygen` times `v_c + (o_po - c_po) v_o` (for example the classical FvCB
+stoichiometry with `e_c = 4`, `a = 2` and four electrons per O₂); `electrons_per_oxygen` is
+used only by this form.
 
 When coupled to a signed [`C3Photosynthesis`](@ref) or
 [`CytochromePhotosynthesis`](@ref) model, the budget is computed from the realized

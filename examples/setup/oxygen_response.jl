@@ -17,7 +17,7 @@ function with_compensation_point(leaf, component)
         p.electron_transport,
         p.stoichiometry,
         p.limitation,
-        p.compensation,
+        p.assimilation_sign,
     )
     return LeafModel(; photosynthesis, leaf.stomata, leaf.oxygen)
 end

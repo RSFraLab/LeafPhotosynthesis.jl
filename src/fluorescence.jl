@@ -32,8 +32,7 @@ Base.@kwdef struct ConstantQuenching{FT<:Real} <: AbstractQuenching{FT}
     rate::FT
     function ConstantQuenching{FT}(fields::Vararg{Any,1}) where {FT<:Real}
         q = new{FT}(continuous_fields(FT, ConstantQuenching{FT}, fields)...)
-        rp = primal_scalar(q.rate)
-        isfinite(rp) && rp >= zero(rp) || throw(ArgumentError("Invalid quenching rate"))
+        is_nonnegative(q.rate) || throw(ArgumentError("Invalid quenching rate"))
         return q
     end
 end
@@ -67,13 +66,7 @@ Base.@kwdef struct SaturationQuenching{FT<:Real} <: AbstractQuenching{FT}
     half_saturation::FT
     function SaturationQuenching{FT}(fields::Vararg{Any,3}) where {FT<:Real}
         q = new{FT}(continuous_fields(FT, SaturationQuenching{FT}, fields)...)
-        mp, ep, hp = map(primal_scalar, (q.maximum_rate, q.exponent, q.half_saturation))
-        isfinite(mp) &&
-        mp >= zero(mp) &&
-        isfinite(ep) &&
-        ep > zero(ep) &&
-        isfinite(hp) &&
-        hp > zero(hp) ||
+        is_nonnegative(q.maximum_rate) && is_positive(q.exponent) && is_positive(q.half_saturation) ||
             throw(ArgumentError("Invalid saturation-quenching parameters"))
         return q
     end
@@ -92,14 +85,6 @@ SaturationQuenching(fields::Vararg{Real,3}) =
     scale = one(power) + q.half_saturation
     return T(q.maximum_rate * (power / (q.half_saturation / scale + power / scale)))
 end
-
-@inline _convert_quenching(::Type{FT}, q::AbstractQuenching{FT}) where {FT<:Real} = q
-@inline _convert_quenching(::Type{FT}, q::ConstantQuenching{FT}) where {FT<:Real} = q
-@inline _convert_quenching(::Type{FT}, q::ConstantQuenching) where {FT<:Real} =
-    ConstantQuenching(FT(q.rate))
-@inline _convert_quenching(::Type{FT}, q::SaturationQuenching{FT}) where {FT<:Real} = q
-@inline _convert_quenching(::Type{FT}, q::SaturationQuenching) where {FT<:Real} =
-    SaturationQuenching(FT(q.maximum_rate), FT(q.exponent), FT(q.half_saturation))
 
 """
     RateCompetitionFluorescence(; fluorescence_rate, constitutive_heat_rate,
@@ -159,7 +144,7 @@ function RateCompetitionFluorescence(
         zero(FTQ),
         yield_tolerance,
     )
-    q = _convert_quenching(FT, quenching)
+    q = quenching isa AbstractQuenching{FT} ? quenching : with_precision(FT, quenching)
     return RateCompetitionFluorescence{FT,typeof(q)}(
         fluorescence_rate, constitutive_heat_rate, maximum_photochemical_rate, q, yield_tolerance,
     )
@@ -240,9 +225,8 @@ the fluorescence model's maximum photochemical yield or Z-scheme domain.
 Store scalar PSII rate-competition diagnostics for [`RateCompetitionFluorescence`](@ref).
 
 `photon_flux` is internal PSII fluorescence emission [μmol photons m⁻² one-sided leaf s⁻¹]
-prior to within-leaf optical escape. Check [`fluorescence_valid`](@ref) before
-consuming outputs; `boundary_roundoff` flags tolerated roundoff above the
-maximum photochemical yield.
+prior to within-leaf optical escape. Check [`is_valid`](@ref) before consuming outputs;
+`boundary_roundoff` flags tolerated roundoff above the maximum photochemical yield.
 """
 Base.@kwdef struct RateCompetitionResult{FT<:Real} <: AbstractLeafScalar
     status::FluorescenceStatus
@@ -262,12 +246,7 @@ RateCompetitionResult(status::FluorescenceStatus, boundary_roundoff::Bool, scala
         status, boundary_roundoff, scalars...,
     )
 
-"""
-    fluorescence_valid(result) -> Bool
-
-Return `true` if `result.status` is [`FluorescenceLit`](@ref) or [`FluorescenceDark`](@ref).
-"""
-@inline fluorescence_valid(r::RateCompetitionResult) =
+@inline is_valid(r::RateCompetitionResult) =
     r.status == FluorescenceLit || r.status == FluorescenceDark
 
 @inline function unavailable_fluorescence(::Type{FT}, status) where {FT}
@@ -279,9 +258,15 @@ end
 """
     fluorescence(model, inputs)
 
-Evaluate internal chlorophyll fluorescence yields, rate constants, and photon
-emission flux without throwing on out-of-domain device inputs (`NoFluorescence`
-returns `nothing`).
+Evaluate internal chlorophyll fluorescence yields, rate constants and photon emission flux
+for the inputs of [`fluorescence_inputs`](@ref): a [`RateCompetitionResult`](@ref) for
+[`RateCompetitionFluorescence`](@ref) with [`PSIIFluxInputs`](@ref), a
+[`CytochromeFluorescenceResult`](@ref) for [`CytochromeFluorescence`](@ref) with
+[`CoupledPhotosystemInputs`](@ref), and `nothing` for [`NoFluorescence`](@ref).
+
+Out-of-domain values do not throw: they give a result whose `status`
+([`FluorescenceStatus`](@ref)) says why and whose yields are `NaN`; check it with
+[`is_valid`](@ref). A model and inputs of different binary precisions are a `MethodError`.
 """
 @inline function fluorescence(
     p::RateCompetitionFluorescence{FTP},
@@ -290,15 +275,9 @@ returns `nothing`).
     require_compatible(fluorescence, p, x)
     S = promote_type(FTP, FTX)
     q, j = S(x.psii_excitation), S(x.linear_electron_flow)
-    qp, jp = primal_scalar(q), primal_scalar(j)
-    isfinite(qp) && isfinite(jp) && qp >= zero(qp) && jp >= zero(jp) ||
+    is_nonnegative(q) && is_nonnegative(j) ||
         return unavailable_fluorescence(S, FluorescenceInvalidInput)
-    if iszero(qp)
-        return unavailable_fluorescence(
-            S,
-            iszero(jp) ? FluorescenceDark : FluorescenceInvalidInput,
-        )
-    end
+    is_zero(q) && return unavailable_fluorescence(S, is_zero(j) ? FluorescenceDark : FluorescenceInvalidInput)
     phi = j / q
     phi0 = S(maximum_photochemical_yield(p))
     isfinite(phi) && exceeds(one(S), phi) && is_at_most(phi - phi0, p.yield_tolerance) ||
@@ -324,28 +303,33 @@ returns `nothing`).
 end
 
 """
-    psii_flux_inputs(photosynthesis::C3Photosynthesis, site::LeafEnvironment,
-        excitation=BroadbandExcitation())
+    fluorescence_inputs(photosynthesis, site::LeafEnvironment, excitation=BroadbandExcitation())
+    fluorescence_inputs(leaf, site::LeafEnvironment, excitation=BroadbandExcitation())
 
-Extract PSII photon excitation and realized linear electron flow from signed C3
-turnover at biochemical-site `site.co2` (`Cc`).
+Return the inputs of [`fluorescence`](@ref) from the signed turnover of `photosynthesis` at
+the biochemical site `site`: a [`PSIIFluxInputs`](@ref) (PSII excitation and realized linear
+electron flow) for [`C3Photosynthesis`](@ref), a [`CoupledPhotosystemInputs`](@ref) (PSII
+and PSI excitations, realized linear `J_P680` and PSI `J_P700` electron flows, open PSII
+fraction `q₂`) for [`CytochromePhotosynthesis`](@ref).
 
-After solving gas exchange, verify solver convergence first and pass a
-[`LeafEnvironment`](@ref) constructed with `biochemical_co2`, never ambient CO₂.
+Both require [`SignedAssimilation`](@ref) (the turnover contract); another sign treatment is a
+`MethodError`. An invalid site or excitation gives `NaN` in every field; an invalid rate
+domain gives `NaN` electron flows. After solving gas exchange, check the result with
+[`is_valid`](@ref) and pass a [`LeafEnvironment`](@ref) built with its `biochemical_co2`,
+never ambient CO₂.
 """
-@inline function psii_flux_inputs(
+@inline function fluorescence_inputs(
     p::C3Photosynthesis{T,E,S,L,SignedAssimilation},
     site::LeafEnvironment{FT},
     excitation::AbstractExcitation = BroadbandExcitation(),
 ) where {T,E,S,L,FT<:Real}
-    require_compatible(psii_flux_inputs, p, site, excitation)
+    require_compatible(fluorescence_inputs, p, site, excitation)
     turnover = biochemical_turnover(p, site, excitation)
     q2 = psii_excitation(p.electron_transport, site.absorbed_par, excitation)
     OutFT = promote_type(typeof(q2), typeof(turnover.linear_electron_flow))
     nan = OutFT(NaN)
-    par_p = primal_scalar(site.absorbed_par)
-    valid_site(site) && isfinite(par_p) && par_p >= zero(par_p) &&
-        valid_excitation(excitation, site.absorbed_par) || return PSIIFluxInputs(nan, nan)
+    valid_site(site) && valid_excitation(excitation, site.absorbed_par) ||
+        return PSIIFluxInputs(nan, nan)
     return PSIIFluxInputs(OutFT(q2), OutFT(turnover.linear_electron_flow))
 end
 
@@ -387,10 +371,7 @@ function validate_fluorescence_coupling(
     require_compatible(validate_fluorescence_coupling, p, e)
     S = promote_type(FTP, FTE)
     expected = S(fluorescence_low_light_yield(p))
-    exp_p = primal_scalar(expected)
-    isfinite(exp_p) &&
-    zero(exp_p) < exp_p < one(exp_p) &&
-    primal_scalar(abs(e.psii_yield - expected)) <= primal_scalar(p.yield_tolerance) ||
+    is_open_fraction(expected) && is_at_most(abs(e.psii_yield - expected), p.yield_tolerance) ||
         throw(ArgumentError("Photosynthesis and fluorescence low-light yields disagree"))
     return nothing
 end

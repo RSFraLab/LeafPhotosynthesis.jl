@@ -14,12 +14,12 @@ function jet_entry_points(::Type{FT}) where {FT}
     state = StomatalState(FT(0.2))
     solver = core_solver(FT, core)
     vdt = setup_fluorescence(FT)
-    psii = psii_flux_inputs(vdt.leaf.photosynthesis, site)
+    psii = fluorescence_inputs(vdt.leaf.photosynthesis, site)
 
     cyto = setup_cytochrome_stress(FT)
     jb = setup_johnson_berry_2021(FT)
     dual = PrescribedDualExcitation(FT(400), FT(380))
-    photosystems = photosystem_flux_inputs(jb.photo, site, dual)
+    photosystems = fluorescence_inputs(jb.photo, site, dual)
     jb_result = fluorescence(jb.fl_ku2, photosystems)
     a2, a1 = FT(0.425), FT(0.425)
 
@@ -32,7 +32,7 @@ function jet_entry_points(::Type{FT}) where {FT}
         "equilibrium_gas_exchange" => (equilibrium_gas_exchange, (c3_steady, gas, diffusion, solver)),
         "assimilation_sensitivity" =>
             (assimilation_sensitivity, (c3_leaf.photosynthesis, gas, state, diffusion)),
-        "psii_flux_inputs" => (psii_flux_inputs, (vdt.leaf.photosynthesis, site)),
+        "fluorescence_inputs" => (fluorescence_inputs, (vdt.leaf.photosynthesis, site)),
         "fluorescence" => (fluorescence, (vdt.regulated, psii)),
         "gas_exchange, closed stomata" => (gas_exchange, (c3_leaf, gas, StomatalState(zero(FT)), diffusion)),
         "equilibrium_gas_exchange, zero minimum conductance" => (equilibrium_gas_exchange,
@@ -52,7 +52,7 @@ function jet_entry_points(::Type{FT}) where {FT}
             (equilibrium_gas_exchange, (cyto.cyto_leaf, gas, cyto.diffusion, cyto.solver)),
         "assimilation_sensitivity" => (assimilation_sensitivity,
             (cyto.cyto_leaf.photosynthesis, gas, state, cyto.diffusion, dual)),
-        "photosystem_flux_inputs" => (photosystem_flux_inputs, (jb.photo, site, dual)),
+        "fluorescence_inputs" => (fluorescence_inputs, (jb.photo, site, dual)),
         "fluorescence" => (fluorescence, (jb.fl_ku2, photosystems)),
         "state_transition_excitation" =>
             (state_transition_excitation, (jb.rule, jb.fl_ku2, jb.photo, site)),

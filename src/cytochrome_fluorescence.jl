@@ -93,25 +93,6 @@ end
 PSIRateParameters(fields::Vararg{Real,4}) =
     PSIRateParameters{scalar_type(PSIRateParameters, fields...)}(fields...)
 
-@inline _convert_psii(::Type{FT}, p::PSIIRateParameters{FT}) where {FT<:Real} = p
-@inline _convert_psii(::Type{FT}, p::PSIIRateParameters) where {FT<:Real} =
-    PSIIRateParameters(
-        FT(p.fluorescence_rate),
-        FT(p.constitutive_heat_rate),
-        FT(p.maximum_photochemical_rate),
-        FT(p.exciton_transfer_rate),
-        FT(p.sustained_quenching_rate),
-    )
-
-@inline _convert_psi(::Type{FT}, p::PSIRateParameters{FT}) where {FT<:Real} = p
-@inline _convert_psi(::Type{FT}, p::PSIRateParameters) where {FT<:Real} =
-    PSIRateParameters(
-        FT(p.fluorescence_rate),
-        FT(p.constitutive_heat_rate),
-        FT(p.maximum_photochemical_rate),
-        FT(p.closed_quenching_rate),
-    )
-
 """
     CytochromeFluorescence(; psii, psi, yield_tolerance)
     CytochromeFluorescence(psii, psi, yield_tolerance)
@@ -141,7 +122,7 @@ function CytochromeFluorescence(
     yield_tolerance::Real,
 ) where {FT2<:Real,FT1<:Real}
     FT = scalar_type(CytochromeFluorescence, zero(FT2), zero(FT1), yield_tolerance)
-    return CytochromeFluorescence{FT}(_convert_psii(FT, psii), _convert_psi(FT, psi), yield_tolerance)
+    return CytochromeFluorescence{FT}(with_precision(FT, psii), with_precision(FT, psi), yield_tolerance)
 end
 
 """
@@ -225,8 +206,8 @@ The two agree when ``K_{N,\\mathrm{sus}} = 0``.
 
 `psii_photon_flux`, `psi_photon_flux`, and `total_photon_flux` represent
 internal leaf emission rates [μmol photons m⁻² one-sided leaf s⁻¹] prior to
-within-leaf optical escape and reabsorption. Check [`fluorescence_valid`](@ref)
-before consuming fluxes or yields.
+within-leaf optical escape and reabsorption. Check [`is_valid`](@ref) before consuming
+fluxes or yields.
 """
 Base.@kwdef struct CytochromeFluorescenceResult{FT<:Real} <: AbstractLeafScalar
     status::FluorescenceStatus
@@ -259,7 +240,7 @@ CytochromeFluorescenceResult(
     status, boundary_roundoff, scalars...,
 )
 
-@inline fluorescence_valid(r::CytochromeFluorescenceResult) =
+@inline is_valid(r::CytochromeFluorescenceResult) =
     r.status == FluorescenceLit || r.status == FluorescenceDark
 
 @inline function unavailable_cytochrome_fluorescence(::Type{FT}, status) where {FT}
@@ -282,27 +263,23 @@ end
     S = promote_type(FTM, FTX)
     q2_exc, q1_exc = S(x.psii_excitation), S(x.psi_excitation)
     j2, j1, q2_open = S(x.linear_electron_flow), S(x.psi_electron_flow), S(x.psii_open_fraction)
-    q2p, q1p, j2p, j1p, q2op = map(primal_scalar, (q2_exc, q1_exc, j2, j1, q2_open))
-    all(isfinite, (q2p, q1p, j2p, j1p, q2op)) &&
-        q2p >= zero(q2p) && q1p >= zero(q1p) &&
-        j2p >= zero(j2p) && j1p >= zero(j1p) &&
-        zero(q2op) <= q2op <= one(q2op) ||
+    all(is_nonnegative, (q2_exc, q1_exc, j2, j1)) && is_fraction(q2_open) ||
         return unavailable_cytochrome_fluorescence(S, FluorescenceInvalidInput)
 
-    if iszero(q2p) && iszero(q1p)
+    if is_zero(q2_exc) && is_zero(q1_exc)
         return unavailable_cytochrome_fluorescence(
             S,
-            iszero(j2p) && iszero(j1p) ? FluorescenceDark : FluorescenceInvalidInput,
+            is_zero(j2) && is_zero(j1) ? FluorescenceDark : FluorescenceInvalidInput,
         )
-    elseif iszero(q2p)
+    elseif is_zero(q2_exc)
         return unavailable_cytochrome_fluorescence(
             S,
-            iszero(j2p) ? FluorescenceIncompatibleRates : FluorescenceInvalidInput,
+            is_zero(j2) ? FluorescenceIncompatibleRates : FluorescenceInvalidInput,
         )
-    elseif iszero(q1p)
+    elseif is_zero(q1_exc)
         return unavailable_cytochrome_fluorescence(
             S,
-            iszero(j1p) ? FluorescenceIncompatibleRates : FluorescenceInvalidInput,
+            is_zero(j1) ? FluorescenceIncompatibleRates : FluorescenceInvalidInput,
         )
     end
 
@@ -421,28 +398,18 @@ end
     )
 end
 
-"""
-    photosystem_flux_inputs(photosynthesis::CytochromePhotosynthesis,
-        site::LeafEnvironment, excitation=BroadbandExcitation())
-
-Extract coupled PSII and PSI excitations, realized linear (`J_P680`) and PSI
-(`J_P700`) electron flows, and open PSII fraction (`q₂`) from signed Cytochrome
-turnover at biochemical-site `site.co2` (`Cc`).
-"""
-@inline function photosystem_flux_inputs(
+@inline function fluorescence_inputs(
     p::CytochromePhotosynthesis{T,E,S,L,SignedAssimilation},
     site::LeafEnvironment{FT},
     excitation::AbstractExcitation = BroadbandExcitation(),
 ) where {T,E,S,L,FT<:Real}
-    require_compatible(photosystem_flux_inputs, p, site, excitation)
+    require_compatible(fluorescence_inputs, p, site, excitation)
     turnover = biochemical_turnover(p, site, excitation)
     q2 = psii_excitation(p.electron_transport, site.absorbed_par, excitation)
     q1 = psi_excitation(p.electron_transport, site.absorbed_par, excitation)
     OutFT = promote_type(typeof(q2), typeof(q1), typeof(turnover.linear_electron_flow))
     nan = OutFT(NaN)
-    par_p = primal_scalar(site.absorbed_par)
-    valid_site(site) && isfinite(par_p) && par_p >= zero(par_p) &&
-        valid_excitation(excitation, site.absorbed_par) ||
+    valid_site(site) && valid_excitation(excitation, site.absorbed_par) ||
         return CoupledPhotosystemInputs(nan, nan, nan, nan, nan)
     return CoupledPhotosystemInputs(
         OutFT(q2),
@@ -452,6 +419,10 @@ turnover at biochemical-site `site.co2` (`Cc`).
         OutFT(turnover.psii_open_fraction),
     )
 end
+
+# Smallest PSI/PSII electron ratio η over all CO₂: η_min = 1 + min(cef₁/e_c, cef₂/e_o).
+@inline minimum_psi_to_psii_ratio(::Type{FT}, cef_c1, cef_c2, s) where {FT} =
+    one(FT) + min(cef_c1 / s.electrons_per_carboxylation, cef_c2 / s.electrons_per_photorespiratory_co2)
 
 """
     minimum_psii_partition(fluorescence_model::CytochromeFluorescence,
@@ -473,26 +444,20 @@ function minimum_psii_partition(
         minimum_psii_partition, zero(FTF), zero(FTS), linear_atp_per_electron, cyclic_atp_per_electron,
     )
     FT = typeof(nl)
-    nlp, ncp = primal_scalar(nl), primal_scalar(nc)
-    isfinite(nlp) && nlp >= zero(nlp) &&
-        isfinite(ncp) && ncp > zero(ncp) ||
+    is_nonnegative(nl) && is_positive(nc) ||
         throw(ArgumentError("Invalid ATP/electron coupling ratios"))
-    all(x -> (xp = primal_scalar(x); isfinite(xp) && xp > zero(xp)), (s.electrons_per_carboxylation,
-        s.electrons_per_photorespiratory_co2, s.atp_per_carboxylation,
-        s.atp_per_photorespiratory_co2)) ||
-        throw(ArgumentError("Invalid Cytochrome stoichiometry"))
     cef_c1, cef_c2 = cytochrome_cyclic_coefficients(nl, nc, s)
-    c1p, c2p = primal_scalar(cef_c1), primal_scalar(cef_c2)
-    isfinite(c1p) && isfinite(c2p) && c1p >= zero(c1p) && c2p >= zero(c2p) ||
+    is_nonnegative(cef_c1) && is_nonnegative(cef_c2) ||
         throw(ArgumentError("Implied minimum PSI/PSII electron ratio η_min < 1 implies negative cyclic flow"))
-    eta_min = one(FT) + min(
-        cef_c1 / s.electrons_per_carboxylation,
-        cef_c2 / s.electrons_per_photorespiratory_co2,
-    )
+    eta_min = minimum_psi_to_psii_ratio(FT, cef_c1, cef_c2, s)
     phi1_max = FT(psi_maximum_photochemical_yield(fl))
     phi2_max = FT(psii_maximum_photochemical_yield(fl, one(FTF)))
     return FT(phi1_max / (phi1_max + eta_min * phi2_max))
 end
+
+require_serial_limitation(::SerialLimitation) = nothing
+require_serial_limitation(::AbstractColimitation) = throw(ArgumentError(
+    "Coupled Cytochrome fluorescence requires SerialLimitation() in CytochromeElectronParameters"))
 
 function validate_fluorescence_coupling(
     fl::CytochromeFluorescence{FTF},
@@ -506,18 +471,13 @@ function validate_fluorescence_coupling(
         zero(FTF), zero(FTE), zero(FTS), linear_atp_per_electron, cyclic_atp_per_electron,
     )
     FT = typeof(nl)
-    et.limitation isa SerialLimitation ||
-        throw(ArgumentError("Coupled Cytochrome fluorescence requires SerialLimitation() in CytochromeElectronParameters"))
+    require_serial_limitation(et.limitation)
     expected_psi = FT(psi_maximum_photochemical_yield(fl))
     primal_scalar(abs(et.psi_maximum_yield - expected_psi)) <= primal_scalar(fl.yield_tolerance) ||
         throw(ArgumentError("Cytochrome electron transport and PSI fluorescence maximum yields disagree"))
     beta_min = minimum_psii_partition(fl, s;
         linear_atp_per_electron = nl, cyclic_atp_per_electron = nc)
-    cef_c1, cef_c2 = cytochrome_cyclic_coefficients(nl, nc, s)
-    eta_min = one(FT) + min(
-        cef_c1 / s.electrons_per_carboxylation,
-        cef_c2 / s.electrons_per_photorespiratory_co2,
-    )
+    eta_min = minimum_psi_to_psii_ratio(FT, cytochrome_cyclic_coefficients(nl, nc, s)..., s)
     phi2_max = FT(psii_maximum_photochemical_yield(fl, one(FTF)))
     primal_scalar(et.psii_fraction) > zero(primal_scalar(et.psii_fraction)) ||
         throw(ArgumentError("Broadband PSII fraction must exceed β_min = $(beta_min)"))

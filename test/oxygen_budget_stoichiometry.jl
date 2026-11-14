@@ -11,7 +11,7 @@
         for stoichiometry in (C3Stoichiometry(FT(4), FT(2)), C3Stoichiometry(FT(4.5), FT(10.5) / FT(4.5)),
                 C3Stoichiometry(FT(5), FT(1)))
             model = C3Photosynthesis(base.temperature, base.electron_transport, stoichiometry,
-                base.limitation, base.compensation)
+                base.limitation, base.assimilation_sign)
             for co2 in FT.((2, 5, 20, 40, 100)), par in FT.((0, 200, 1600))
                 site = LeafEnvironment(FT(298.15), par, co2, FT(21000))
                 ox = oxygen_exchange(leaf.oxygen, model, site)

@@ -37,8 +37,7 @@ PSIIRateParameters
 PSIRateParameters
 LeafPhotosynthesis.PSIIFluxInputs
 LeafPhotosynthesis.CoupledPhotosystemInputs
-psii_flux_inputs
-photosystem_flux_inputs
+fluorescence_inputs
 LeafPhotosynthesis.maximum_photochemical_yield
 LeafPhotosynthesis.psii_maximum_photochemical_yield
 LeafPhotosynthesis.psi_maximum_photochemical_yield
@@ -58,7 +57,6 @@ LeafPhotosynthesis.FluorescenceDark
 LeafPhotosynthesis.FluorescenceInvalidInput
 LeafPhotosynthesis.FluorescenceIncompatibleRates
 fluorescence
-fluorescence_valid
 ```
 
 ## Closed-Form LHCII State Transitions (qT)
@@ -76,6 +74,5 @@ state_transition_excitation
 PAMFluorescenceObserver
 LeafPhotosynthesis.PAMFluorescenceResult
 pam_fluorescence
-pam_fluorescence_valid
 LeafPhotosynthesis.dark_pam_levels
 ```

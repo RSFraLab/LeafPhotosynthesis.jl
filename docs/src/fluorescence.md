@@ -48,7 +48,7 @@ point, so runtime checks remain necessary.
 ## Darkness, failure and floating point
 
 `RateCompetitionResult{FT}` carries `FluorescenceStatus`, `boundary_roundoff`,
-internal photon flux, four yields and inferred rates. `fluorescence_valid` accepts
+internal photon flux, four yields and inferred rates. `is_valid` accepts
 lit and dark results. In exact darkness, Q₂=J=0, the computed photon flux is zero
 but flux-derived yields and rates are NaN: they are undefined, not measured zero.
 The example converts only these valid-dark yields to plot gaps and empty CSV cells.
@@ -64,7 +64,7 @@ The tolerance is a numerical boundary policy, not a tunable physiological allowa
 
 ## Connection to other models
 
-`psii_flux_inputs` accepts a biochemical-site `LeafEnvironment`. For solved gas
+`fluorescence_inputs` accepts a biochemical-site `LeafEnvironment`. For solved gas
 exchange, first verify convergence, then construct that environment using accepted
 Cc (`solution.biochemical_co2`). Ambient CO₂ is not interchangeable with Cc; no
 ambient gas-environment overload is provided. A failed gas-exchange solve must not

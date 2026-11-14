@@ -31,7 +31,7 @@ function excitation_demand_reference(p, env, q2)
             theta=BigFloat(p.limitation.curvature)
             (rubisco+light-sqrt((rubisco+light)^2-4theta*rubisco*light))/(2theta)
         end
-        excess=p.compensation isa SignedAssimilation ? c-gamma : max(c-gamma, 0)
+        excess=p.assimilation_sign isa SignedAssimilation ? c-gamma : max(c-gamma, 0)
         (;
             net = capacity*excess-rd,
             assimilation = capacity*excess,
@@ -47,7 +47,7 @@ end
 
 function excitation_equilibrium_reference(p, target, env, d, q2; fixed_gs = nothing)
     demand=excitation_demand_reference(p, env, q2)
-    ca, pressure, conversion=BigFloat.((env.co2, env.pressure, d.mole_to_micromole))
+    ca, pressure, conversion=BigFloat.((env.ambient_co2, env.pressure, d.mole_to_micromole))
     rb, rm, ratio=inv(BigFloat(d.boundary_co2)),
     inv(BigFloat(d.mesophyll_co2)),
     BigFloat(d.diffusivity_ratio)

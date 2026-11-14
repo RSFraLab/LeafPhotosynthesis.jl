@@ -9,8 +9,8 @@ function equilibrium_closed_case(::Type{FT}) where {FT}
     return (; leaf, photo = leaf.photosynthesis, diffusion, env, solver = core_solver(FT, settings))
 end
 
-with_forcing(env; par = env.absorbed_par, co2 = env.co2) = GasExchangeEnvironment(
-    env.temperature, par, co2, env.oxygen, env.pressure, env.relative_humidity, env.vpd)
+with_forcing(env; par = env.absorbed_par, ambient_co2 = env.ambient_co2) = GasExchangeEnvironment(
+    env.temperature, par, ambient_co2, env.oxygen, env.pressure, env.relative_humidity, env.vpd)
 
 @testset "Equilibrium with zero minimum conductance" begin
     for FT in (Float32, Float64)
@@ -27,36 +27,36 @@ with_forcing(env; par = env.absorbed_par, co2 = env.co2) = GasExchangeEnvironmen
             steady = SteadyStateStomata(target)
             # Open stomata at the solution: the ordinary root with g_sw = gain A / Cs.
             open = @inferred equilibrium_gas_exchange(photo, steady, env, d, solver)
-            @test open.status == EquilibriumConverged && open.converged
-            @test open.biochemical_co2 > gamma && open.stomatal_conductance > zero(FT)
-            drivers = StomatalDrivers(open.carbon.net_assimilation, open.surface_co2,
+            @test open.status == EquilibriumConverged && is_valid(open)
+            @test open.exchange.biochemical_co2 > gamma && open.stomatal_conductance > zero(FT)
+            drivers = StomatalDrivers(open.exchange.net_assimilation, open.exchange.surface_co2,
                 env.pressure, env.relative_humidity, env.vpd)
             @test isapprox(open.stomatal_conductance, target_conductance(target, drivers); rtol = 64eps(FT))
-            @test abs(open.diffusion_residual) <= 2 * (solver.flux_atol + solver.flux_rtol * abs(open.carbon.net_assimilation))
+            @test abs(open.exchange.diffusion_residual) <= 2 * (solver.flux_atol + solver.flux_rtol * abs(open.exchange.net_assimilation))
             # Ambient CO2 below the compensation point: the closed-stomata limit at Γ.
-            low = @inferred equilibrium_gas_exchange(photo, steady, with_forcing(env; co2 = FT(2)), d, solver)
-            @test low.status == EquilibriumStomataClosed && low.converged
-            @test low.stomatal_conductance == zero(FT) && low.conductance == zero(FT)
-            @test isapprox(low.biochemical_co2, gamma; atol = 4 * solver.co2_atol, rtol = 4 * solver.co2_rtol + 64eps(FT))
-            @test abs(low.carbon.net_assimilation) <= 4 * (solver.flux_atol + solver.flux_rtol * low.carbon.respiration)
-            @test low.diffusion_residual == -low.carbon.net_assimilation
+            low = @inferred equilibrium_gas_exchange(photo, steady, with_forcing(env; ambient_co2 = FT(2)), d, solver)
+            @test low.status == EquilibriumStomataClosed && is_valid(low)
+            @test low.stomatal_conductance == zero(FT) && low.exchange.conductance == zero(FT)
+            @test isapprox(low.exchange.biochemical_co2, gamma; atol = 4 * solver.co2_atol, rtol = 4 * solver.co2_rtol + 64eps(FT))
+            @test abs(low.exchange.net_assimilation) <= 4 * (solver.flux_atol + solver.flux_rtol * low.exchange.respiration)
+            @test low.exchange.diffusion_residual == -low.exchange.net_assimilation
             # No steady state of a respiring closed leaf: darkness, or light below the
             # light compensation point.
             for par in (zero(FT), FT(1))
                 none = equilibrium_gas_exchange(photo, steady, with_forcing(env; par), d, solver)
-                @test none.status == EquilibriumInvalidBracket && !none.converged
-                @test isnan(none.carbon.net_assimilation)
+                @test none.status == EquilibriumInvalidBracket && !is_valid(none)
+                @test isnan(none.exchange.net_assimilation)
             end
         end
         # A slope too small to open stomata (Ca − Γ ≤ (P/u) r Ca / gain): closed limit.
         shy = SteadyStateStomata(BallBerry{FT}(0.0, 1.0, bb.micromole_to_mole))
         shut = equilibrium_gas_exchange(photo, shy, env, d, solver)
-        @test shut.status == EquilibriumStomataClosed && shut.converged
-        @test isapprox(shut.biochemical_co2, gamma; atol = 4 * solver.co2_atol, rtol = 4 * solver.co2_rtol + 64eps(FT))
+        @test shut.status == EquilibriumStomataClosed && is_valid(shut)
+        @test isapprox(shut.exchange.biochemical_co2, gamma; atol = 4 * solver.co2_atol, rtol = 4 * solver.co2_rtol + 64eps(FT))
         # Limit g0 → 0⁺ of the open root.
         tiny = equilibrium_gas_exchange(photo, SteadyStateStomata(BallBerry{FT}(1e-7, bb.slope, bb.micromole_to_mole)), env, d, solver)
         open = equilibrium_gas_exchange(photo, SteadyStateStomata(first(targets)), env, d, solver)
-        @test isapprox(tiny.biochemical_co2, open.biochemical_co2; rtol = FT(1e-4))
+        @test isapprox(tiny.exchange.biochemical_co2, open.exchange.biochemical_co2; rtol = FT(1e-4))
     end
 end
 

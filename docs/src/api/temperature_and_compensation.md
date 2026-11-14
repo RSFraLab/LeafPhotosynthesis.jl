@@ -19,6 +19,7 @@ Walkthroughs: [Bonan 11.1 curves](../bonan_exercises.md), [Oxygen response](../o
 ## Scalar Thermal Response Laws
 
 ```@docs
+LeafPhotosynthesis.AbstractTemperatureResponse
 ConstantResponse
 Arrhenius
 PeakedArrhenius

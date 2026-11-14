@@ -18,17 +18,17 @@ struct Bisection <: AbstractEquilibriumMethod end
     SafeguardedNewton(bisection_interval)
 
 Select analytic Newton iteration safeguarded within a physical CO₂ bracket,
-forcing a bisection step every `bisection_interval` (`> 0`) iterations and
+forcing a bisection step every `bisection_interval` (an integer `> 0`) iterations and
 whenever a Newton trial step leaves the bracket.
 """
 struct SafeguardedNewton <: AbstractEquilibriumMethod
     bisection_interval::Int
-    function SafeguardedNewton(bisection_interval::Int)
+    function SafeguardedNewton(bisection_interval::Integer)
         bisection_interval > 0 || throw(ArgumentError("bisection_interval must be positive"))
         return new(bisection_interval)
     end
 end
-SafeguardedNewton(; bisection_interval::Int) = SafeguardedNewton(bisection_interval)
+SafeguardedNewton(; bisection_interval::Integer) = SafeguardedNewton(bisection_interval)
 
 """
     EquilibriumSolver(; method, co2_atol, co2_rtol, flux_atol, flux_rtol, max_iterations)
@@ -38,7 +38,7 @@ Configure numerical tolerances and iteration limits for [`equilibrium_gas_exchan
 
 `co2_atol` [Pa], `co2_rtol` [-], `flux_atol` [μmol CO₂ m⁻² leaf s⁻¹], and
 `flux_rtol` [-] must be finite and nonnegative with at least one positive
-CO₂ tolerance and one positive flux tolerance; `max_iterations` must be positive.
+CO₂ tolerance and one positive flux tolerance; `max_iterations` must be a positive integer.
 """
 Base.@kwdef struct EquilibriumSolver{FT<:Real,M<:AbstractEquilibriumMethod} <: AbstractLeafScalar
     method::M
@@ -51,10 +51,10 @@ Base.@kwdef struct EquilibriumSolver{FT<:Real,M<:AbstractEquilibriumMethod} <: A
         fields::Vararg{Any,6},
     ) where {FT<:Real,M<:AbstractEquilibriumMethod}
         s = new{FT,M}(continuous_fields(FT, EquilibriumSolver{FT,M}, fields)...)
-        tols_p = map(primal_scalar, (s.co2_atol, s.co2_rtol, s.flux_atol, s.flux_rtol))
-        all(x -> isfinite(x) && x >= zero(x), tols_p) ||
+        all(is_nonnegative, (s.co2_atol, s.co2_rtol, s.flux_atol, s.flux_rtol)) ||
             throw(ArgumentError("tolerances must be nonnegative and finite"))
-        max(tols_p[1], tols_p[2]) > zero(tols_p[1]) && max(tols_p[3], tols_p[4]) > zero(tols_p[3]) ||
+        (is_positive(s.co2_atol) || is_positive(s.co2_rtol)) &&
+            (is_positive(s.flux_atol) || is_positive(s.flux_rtol)) ||
             throw(ArgumentError("each residual needs a positive tolerance"))
         s.max_iterations > 0 || throw(ArgumentError("max_iterations must be positive"))
         return s
@@ -66,7 +66,7 @@ EquilibriumSolver(
     co2_rtol::Real,
     flux_atol::Real,
     flux_rtol::Real,
-    max_iterations::Int,
+    max_iterations::Integer,
 ) = EquilibriumSolver{
     scalar_type(EquilibriumSolver, co2_atol, co2_rtol, flux_atol, flux_rtol),typeof(method),
 }(method, co2_atol, co2_rtol, flux_atol, flux_rtol, max_iterations)
@@ -136,61 +136,53 @@ leaves no CO₂ at which assimilation balances a closed leaf.
 `EquilibriumStatus` value of a converged closed-stomata limit: the minimum conductance is
 zero and no root with open stomata exists, so stomatal conductance is zero, net
 assimilation is zero (to the flux tolerance) and `biochemical_co2` is the CO₂ compensation
-point of the model, respiration included. `converged` is `true`.
+point of the model, respiration included. [`is_valid`](@ref) is `true`.
 """ EquilibriumStomataClosed
 
 """
-    EquilibriumSolution{FT,C}
+    EquilibriumSolution{FT,X}
+    EquilibriumSolution(exchange, stomatal_conductance, co2_residual, bracket_width,
+        iterations, status)
 
-Store allocation-free diagnostics from [`equilibrium_gas_exchange`](@ref).
+Store the result of [`equilibrium_gas_exchange`](@ref) without allocation.
 
-The first fields are those of a [`gas_exchange`](@ref) result in the same order: `carbon`
-fluxes, `electron_transport`, `surface_co2`, `intercellular_co2`, `biochemical_co2` [Pa],
-total CO₂ `conductance` [mol CO₂ m⁻² leaf s⁻¹] and `diffusion_residual`
-[μmol CO₂ m⁻² leaf s⁻¹]; the solver adds the solved `stomatal_conductance`
-[mol H₂O m⁻² leaf s⁻¹], `co2_residual` [Pa], `bracket_width` [Pa], `iterations`, `status`
-and `converged` (`true` for `EquilibriumConverged` and `EquilibriumStomataClosed`). For the
-closed-stomata limit `co2_residual` is the Newton estimate of the distance to the exact
-compensation point. Model-specific electron diagnostics of [`CytochromePhotosynthesis`](@ref)
-are not stored; evaluate [`gas_exchange`](@ref) at `StomatalState(stomatal_conductance)`
-for them.
+- `exchange::X`: the gas exchange at the solution, a NamedTuple with the fields of a
+  [`gas_exchange`](@ref) result (carbon fluxes, `electron_transport` and the model's extra
+  electron diagnostics, `surface_co2`, `intercellular_co2`, `biochemical_co2` [Pa], total CO₂
+  `conductance` [mol CO₂ m⁻² leaf s⁻¹] and `diffusion_residual` [μmol CO₂ m⁻² leaf s⁻¹]).
+- `stomatal_conductance`: the solved stomatal H₂O conductance [mol H₂O m⁻² leaf s⁻¹].
+- `co2_residual` [Pa]: the pressure residual of the CO₂ balance; for the closed-stomata limit,
+  the Newton estimate of the distance to the exact compensation point.
+- `bracket_width` [Pa], `iterations` and `status` ([`EquilibriumStatus`](@ref)).
+
+[`is_valid`](@ref) is `true` for `EquilibriumConverged` and `EquilibriumStomataClosed`; for
+any other status every scalar of `exchange` is `NaN` (`EquilibriumInvalidInput`,
+`EquilibriumInvalidBracket`) or the result is the best point found (`EquilibriumIterationLimit`,
+`EquilibriumPrecisionLimit`).
 """
-Base.@kwdef struct EquilibriumSolution{FT<:Real,C} <: AbstractLeafScalar
-    carbon::C
-    electron_transport::FT
-    surface_co2::FT
-    intercellular_co2::FT
-    biochemical_co2::FT
-    conductance::FT
-    diffusion_residual::FT
+Base.@kwdef struct EquilibriumSolution{FT<:Real,X<:NamedTuple} <: AbstractLeafScalar
+    exchange::X
     stomatal_conductance::FT
     co2_residual::FT
     bracket_width::FT
     iterations::Int
     status::EquilibriumStatus
-    converged::Bool
-    EquilibriumSolution{FT,C}(fields::Vararg{Any,13}) where {FT<:Real,C} =
-        new{FT,C}(continuous_fields(FT, EquilibriumSolution{FT,C}, fields)...)
+    EquilibriumSolution{FT,X}(fields::Vararg{Any,6}) where {FT<:Real,X<:NamedTuple} =
+        new{FT,X}(continuous_fields(FT, EquilibriumSolution{FT,X}, fields)...)
 end
 EquilibriumSolution(
-    carbon,
-    electron_transport::FT,
-    surface_co2::FT,
-    intercellular_co2::FT,
-    biochemical_co2::FT,
-    conductance::FT,
-    diffusion_residual::FT,
+    exchange::NamedTuple,
     stomatal_conductance::FT,
     co2_residual::FT,
     bracket_width::FT,
     iterations::Int,
     status::EquilibriumStatus,
-    converged::Bool,
-) where {FT<:Real} = EquilibriumSolution{FT,typeof(carbon)}(
-    carbon, electron_transport, surface_co2, intercellular_co2, biochemical_co2,
-    conductance, diffusion_residual, stomatal_conductance, co2_residual, bracket_width,
-    iterations, status, converged,
+) where {FT<:Real} = EquilibriumSolution{FT,typeof(exchange)}(
+    exchange, stomatal_conductance, co2_residual, bracket_width, iterations, status,
 )
+
+@inline is_valid(s::EquilibriumSolution) =
+    s.status == EquilibriumConverged || s.status == EquilibriumStomataClosed
 
 # These two target laws have g_sw = g0 + gain * max(A,0) / Cs. More general
 # optimality laws must provide their own residual/closure, not pretend to be linear.
@@ -204,52 +196,55 @@ EquilibriumSolution(
         p.micromole_to_mole * env.pressure,
     )
 
-@inline function valid_equilibrium_inputs(env, d, target)
-    return valid_site(env) && is_nonnegative(env.absorbed_par) && is_positive(env.pressure) &&
-        is_fraction(env.relative_humidity) && is_finite(env.vpd) && valid_diffusion(d) &&
-        is_nonnegative(target.minimum_conductance)
-end
+# Domain of the solver inputs; `g0` is the target's minimum conductance.
+@inline valid_equilibrium_inputs(env, d, g0) =
+    valid_site(env) && is_nonnegative(env.absorbed_par) && is_positive(env.pressure) &&
+    is_fraction(env.relative_humidity) && is_finite(env.vpd) && valid_diffusion(d) &&
+    is_nonnegative(g0)
 
-@inline function invalid_equilibrium(::Type{FT}, status) where {FT}
-    n = FT(NaN)
-    carbon = invalid_carbon(FT)
-    return EquilibriumSolution(carbon, n, n, n, n, n, n, n, n, n, 0, status, false)
+# The invalid solution has the shape of a valid one: the model's electron diagnostics are
+# evaluated (at any CO₂) only for their names and types.
+@inline function invalid_equilibrium(::Type{OutFT}, status, p, r, supply) where {OutFT}
+    n = OutFT(NaN)
+    _, transport, extras = electron_state(p, r, supply, n)
+    exchange = invalid_result(OutFT, exchange_result(invalid_carbon(OutFT), transport, extras, n, n, n, n, n))
+    return EquilibriumSolution{OutFT,typeof(exchange)}(exchange, n, n, n, 0, status)
 end
 
 # Return pressure residual, derivative, g_sw, surface CO₂, and total resistance.
 @inline function equilibrium_residual(co2, p, r, electrons, env, d, g0, gain)
     assimilation, slope = assimilation_and_slope(
         r, co2, env.oxygen, electrons,
-        p.stoichiometry, p.limitation, p.compensation,
+        p.stoichiometry, p.limitation, p.assimilation_sign,
     )
     conversion = env.pressure / d.mole_to_micromole
     flux = assimilation * conversion
-    surface = env.co2 - flux / d.boundary_co2
+    surface = env.ambient_co2 - flux / d.boundary_co2
     if exceeds(assimilation, zero(assimilation)) && is_at_most(surface, zero(surface))
         # Boundary supply is already insufficient even at infinite stomatal
         # conductance. This is a negative bracket endpoint, never a physical root.
         resistance = inv(d.boundary_co2) + inv(d.mesophyll_co2)
-        residual = env.co2 - co2 - flux * resistance
+        residual = env.ambient_co2 - co2 - flux * resistance
         return (; residual, derivative = -one(co2) - slope * conversion * resistance,
             assimilation, gs = oftype(residual, g0), surface, resistance = oftype(residual, resistance), physical = false)
     end
     if exceeds(assimilation, zero(assimilation))
         gs = g0 + gain * assimilation / surface
-        dgs = gain * slope * env.co2 / surface^2
+        dgs = gain * slope * env.ambient_co2 / surface^2
     else
         gs, dgs = oftype(surface + g0 + gain, g0), zero(surface + g0 + gain)
     end
     resistance = inv(d.boundary_co2) + d.diffusivity_ratio / gs + inv(d.mesophyll_co2)
-    residual = env.co2 - co2 - flux * resistance
+    residual = env.ambient_co2 - co2 - flux * resistance
     derivative = -one(co2) - slope * conversion * resistance + flux * d.diffusivity_ratio * dgs / gs^2
     return (; residual, derivative, assimilation, gs = oftype(residual, gs), surface, resistance = oftype(residual, resistance), physical = true)
 end
 
 @inline function equilibrium_resolved(e, co2, env, d, solver)
     e.physical && isfinite(e.residual) || return false
-    supply = (env.co2 - co2) / e.resistance * d.mole_to_micromole / env.pressure
+    supply = (env.ambient_co2 - co2) / e.resistance * d.mole_to_micromole / env.pressure
     flux_error = e.residual / e.resistance * d.mole_to_micromole / env.pressure
-    return is_at_most(abs(e.residual), solver.co2_atol + solver.co2_rtol * max(abs(env.co2), abs(co2))) &&
+    return is_at_most(abs(e.residual), solver.co2_atol + solver.co2_rtol * max(abs(env.ambient_co2), abs(co2))) &&
         is_at_most(abs(flux_error), solver.flux_atol + solver.flux_rtol * max(abs(e.assimilation), abs(supply)))
 end
 
@@ -277,23 +272,21 @@ end
     ::Type{OutFT}, co2, p, r, electrons, supply, env, d, g0, gain, width, iterations, status,
 ) where {OutFT}
     co2_s = OutFT(co2)
-    valid, transport, _ = electron_state(p, r, supply, co2_s)
-    valid || return invalid_equilibrium(OutFT, EquilibriumInvalidInput)
+    valid, transport, extras = electron_state(p, r, supply, co2_s)
+    valid || return invalid_equilibrium(OutFT, EquilibriumInvalidInput, p, r, supply)
     e = equilibrium_residual(co2_s, p, r, electrons, env, d, g0, gain)
     carbon = typed_result(OutFT, carbon_assimilation(
-        r, co2_s, env.oxygen, electrons, p.stoichiometry, p.limitation, p.compensation,
+        r, co2_s, env.oxygen, electrons, p.stoichiometry, p.limitation, p.assimilation_sign,
     ))
     conductance = OutFT(inv(e.resistance))
     flux_residual = e.residual * conductance * d.mole_to_micromole / env.pressure
     intercellular = co2_s + carbon.net_assimilation * env.pressure / (d.mole_to_micromole * d.mesophyll_co2)
-    # The solution constructor converts every scalar field to OutFT.
-    return EquilibriumSolution{OutFT,typeof(carbon)}(
-        carbon, transport, e.surface, intercellular, co2_s, conductance, flux_residual,
-        e.gs, e.residual, width, iterations, status, converged_status(status),
-    )
+    exchange = typed_result(OutFT, exchange_result(
+        carbon, transport, extras, e.surface, intercellular, co2_s, conductance, flux_residual,
+    ))
+    # The solution constructor converts the solver scalars to OutFT.
+    return EquilibriumSolution{OutFT,typeof(exchange)}(exchange, e.gs, e.residual, width, iterations, status)
 end
-
-@inline converged_status(status) = status == EquilibriumConverged || status == EquilibriumStomataClosed
 
 @inline midpoint(lo, hi) = lo + (hi - lo) / (one(lo) + one(lo))
 @inline strictly_between(x, lo, hi) = exceeds(x, lo) && exceeds(hi, x)
@@ -307,9 +300,9 @@ end
 
 """
     equilibrium_gas_exchange(photosynthesis, SteadyStateStomata(target), environment,
-        diffusion, solver, excitation=BroadbandExcitation(); initial_co2=nothing)
+        diffusion, solver, excitation=BroadbandExcitation(), initial_co2=nothing)
     equilibrium_gas_exchange(leaf, environment, diffusion, solver,
-        excitation=BroadbandExcitation(); initial_co2=nothing)
+        excitation=BroadbandExcitation(), initial_co2=nothing)
 
 Solve coupled steady-state C3 assimilation ([`C3Photosynthesis`](@ref) or
 [`CytochromePhotosynthesis`](@ref)), series CO₂ diffusion, and Ball–Berry or Medlyn
@@ -331,34 +324,45 @@ conductance `g₀` (common in Medlyn fits). Then the result is the limit ``g_0 �
   the root in ``(Γ, C_a)`` found as for ``g_0 > 0`` (`EquilibriumConverged`);
 - otherwise the solution is the closed-stomata limit: stomatal and total conductance zero,
   net assimilation zero to the flux tolerance and `biochemical_co2 = Γ`
-  (`EquilibriumStomataClosed`, `converged = true`). This includes ambient CO₂ at or below Γ.
-`initial_co2` is not used when ``g_0 = 0``.
+  (`EquilibriumStomataClosed`, valid). This includes ambient CO₂ at or below Γ.
+
+`initial_co2` [Pa] warm-starts the iteration, typically from the previous time step's
+`biochemical_co2`. It is `nothing` (start at the midpoint of the CO₂ bracket) or a scalar of
+the model's binary precision (a dual number over it counts by its value); another number
+type, including an integer, is a `MethodError`, as for every other argument. A warm start
+that is not finite or lies outside the open bracket falls back to the midpoint. It is not
+used when ``g_0 = 0``, in darkness, or when a bracket end already satisfies the tolerances.
+Being positional, it broadcasts: `equilibrium_gas_exchange.(leaf, environments, diffusion,
+solver, BroadbandExcitation(), previous_co2)` warm-starts every leaf from its own value.
+Return an [`EquilibriumSolution`](@ref).
 
 [`Medlyn`](@ref) and `diffusion` each hold the stomatal H₂O/CO₂ diffusivity ratio; nothing
 checks that the two copies agree, so pass the same value to both.
 """
-@inline function equilibrium_gas_exchange(
+function equilibrium_gas_exchange(
     p::AbstractC3Photosynthesis,
     stomata::SteadyStateStomata,
     env::GasExchangeEnvironment{FT},
     d::SeriesDiffusion,
     solver::EquilibriumSolver,
-    excitation::AbstractExcitation = BroadbandExcitation();
-    initial_co2 = nothing,
+    excitation::AbstractExcitation = BroadbandExcitation(),
+    initial_co2::Union{Nothing,Real} = nothing,
 ) where {FT<:Real}
-    require_compatible(equilibrium_gas_exchange, p, stomata, env, d, solver, excitation)
+    require_compatible(equilibrium_gas_exchange, p, stomata, env, d, solver, excitation, initial_co2)
+    continuous_or_nothing(initial_co2) ||
+        throw(MethodError(equilibrium_gas_exchange, (p, stomata, env, d, solver, excitation, initial_co2)))
     g0, gain = equilibrium_coefficients(stomata.target, env)
     r, electrons, supply = light_supply(p, env, excitation)
     OutFT = working_type(p, stomata, env, d, solver, excitation)
-    valid_equilibrium_inputs(env, d, stomata.target) && valid_excitation(excitation, env.absorbed_par) &&
+    valid_equilibrium_inputs(env, d, g0) && valid_excitation(excitation, env.absorbed_par) &&
         is_finite(gain) && valid_equilibrium_biochemistry(p, r) && is_nonnegative(electrons) ||
-        return invalid_equilibrium(OutFT, EquilibriumInvalidInput)
+        return invalid_equilibrium(OutFT, EquilibriumInvalidInput, p, r, supply)
     is_zero(g0) && return zero_minimum_conductance_equilibrium(
         OutFT, p, r, electrons, supply, env, d, gain, solver,
     )
     resistance0 = inv(d.boundary_co2) + d.diffusivity_ratio / g0 + inv(d.mesophyll_co2)
     if iszero(primal_scalar(electrons)) || iszero(primal_scalar(r.vcmax))
-        x = OutFT(env.co2 + r.respiration * env.pressure / d.mole_to_micromole * resistance0)
+        x = OutFT(env.ambient_co2 + r.respiration * env.pressure / d.mole_to_micromole * resistance0)
         e = equilibrium_residual(x, p, r, electrons, env, d, g0, gain)
         status = equilibrium_resolved(e, x, env, d, solver) ? EquilibriumConverged : EquilibriumPrecisionLimit
         x_pol = polish_equilibrium_tangent(
@@ -368,7 +372,7 @@ checks that the two copies agree, so pass the same value to both.
     end
     lo = zero(OutFT)
     elo = equilibrium_residual(lo, p, r, electrons, env, d, g0, gain)
-    hi = OutFT(env.co2 + primal_max(-elo.assimilation, zero(elo.assimilation)) * env.pressure / d.mole_to_micromole * resistance0)
+    hi = OutFT(env.ambient_co2 + primal_max(-elo.assimilation, zero(elo.assimilation)) * env.pressure / d.mole_to_micromole * resistance0)
     ehi = equilibrium_residual(hi, p, r, electrons, env, d, g0, gain)
     if equilibrium_resolved(elo, lo, env, d, solver)
         x_lo = polish_equilibrium_tangent(lo, lo, hi, p, r, electrons, env, d, g0, gain, EquilibriumConverged)
@@ -380,14 +384,12 @@ checks that the two copies agree, so pass the same value to both.
     end
     isfinite(hi) && isfinite(elo.residual) && isfinite(ehi.residual) &&
         is_at_most(zero(OutFT), elo.residual) && is_at_most(ehi.residual, zero(OutFT)) ||
-        return invalid_equilibrium(OutFT, EquilibriumInvalidBracket)
+        return invalid_equilibrium(OutFT, EquilibriumInvalidBracket, p, r, supply)
     x = if isnothing(initial_co2)
         midpoint(lo, hi)
-    elseif initial_co2 isa Real && compatible_scalar(typeof(initial_co2), OutFT)
+    else
         x0 = primal_scalar(initial_co2)
         isfinite(x0) && strictly_between(x0, lo, hi) ? OutFT(x0) : midpoint(lo, hi)
-    else
-        midpoint(lo, hi)
     end
     best, best_error = lo, OutFT(abs(elo.residual))
     if ehi.physical && exceeds(best_error, abs(ehi.residual))
@@ -396,15 +398,18 @@ checks that the two copies agree, so pass the same value to both.
     return solve_bracket(OutFT, x, lo, hi, best, best_error, p, r, electrons, supply, env, d, g0, gain, solver)
 end
 
+@inline continuous_or_nothing(::Nothing) = true
+@inline continuous_or_nothing(x::Real) = is_continuous_scalar(typeof(x))
+
 # Safeguarded iteration on the pressure residual inside the bracket [lo, hi], starting at
 # `x`; `best` is the physical point with the smallest residual seen so far.
-@inline function solve_bracket(
+function solve_bracket(
     ::Type{OutFT}, x, lo, hi, best, best_error, p, r, electrons, supply, env, d, g0, gain, solver,
 ) where {OutFT}
     lo_orig, hi_orig = lo, hi
     for iteration in 1:solver.max_iterations
         e = equilibrium_residual(x, p, r, electrons, env, d, g0, gain)
-        isfinite(e.residual) || return invalid_equilibrium(OutFT, EquilibriumInvalidBracket)
+        isfinite(e.residual) || return invalid_equilibrium(OutFT, EquilibriumInvalidBracket, p, r, supply)
         if e.physical && exceeds(best_error, abs(e.residual))
             best, best_error = x, OutFT(abs(e.residual))
         end
@@ -437,22 +442,22 @@ end
 #   the stomatal drop A r / g_sw → r Cs / gain and Cs → Ca); it lies in (Γ, Ca) and is
 #   solved there as for g0 > 0;
 # - otherwise the limit is the closed state, `EquilibriumStomataClosed`.
-@inline function zero_minimum_conductance_equilibrium(
+function zero_minimum_conductance_equilibrium(
     ::Type{OutFT}, p, r, electrons, supply, env, d, gain, solver,
 ) where {OutFT}
     g0 = zero(OutFT)
-    (is_zero(electrons) || is_zero(r.vcmax)) && return invalid_equilibrium(OutFT, EquilibriumInvalidBracket)
+    (is_zero(electrons) || is_zero(r.vcmax)) && return invalid_equilibrium(OutFT, EquilibriumInvalidBracket, p, r, supply)
     gamma, gamma_hi, width, iterations, status = compensation_co2(OutFT, p, r, electrons, env, solver)
-    status == EquilibriumInvalidBracket && return invalid_equilibrium(OutFT, status)
+    status == EquilibriumInvalidBracket && return invalid_equilibrium(OutFT, status, p, r, supply)
     status == EquilibriumConverged || return closed_stomata_result(
         OutFT, gamma, p, r, electrons, supply, env, d, width, iterations, status,
     )
-    open = env.co2 - gamma - env.pressure / d.mole_to_micromole * d.diffusivity_ratio * env.co2 / gain
+    open = env.ambient_co2 - gamma - env.pressure / d.mole_to_micromole * d.diffusivity_ratio * env.ambient_co2 / gain
     if exceeds(open, zero(open))
-        lo, hi = OutFT(gamma_hi), OutFT(env.co2)
+        lo, hi = OutFT(gamma_hi), OutFT(env.ambient_co2)
         ehi = equilibrium_residual(hi, p, r, electrons, env, d, g0, gain)
         isfinite(ehi.residual) && is_at_most(ehi.residual, zero(OutFT)) ||
-            return invalid_equilibrium(OutFT, EquilibriumInvalidBracket)
+            return invalid_equilibrium(OutFT, EquilibriumInvalidBracket, p, r, supply)
         if equilibrium_resolved(ehi, hi, env, d, solver)
             x_hi = polish_equilibrium_tangent(hi, lo, hi, p, r, electrons, env, d, g0, gain, EquilibriumConverged)
             return equilibrium_result(OutFT, x_hi, p, r, electrons, supply, env, d, g0, gain, hi - lo, 0, EquilibriumConverged)
@@ -472,7 +477,7 @@ end
 # and because every co-limitation is monotone and homogeneous of degree one,
 # A_n(C) ≥ M (C − Γ*)/(C + k_max) − R_d with M = colimit(V_cmax, m_j) the capacity as
 # C → ∞, which vanishes at C_u = (M Γ* + R_d k_max)/(M − R_d). No Γ exists for M ≤ R_d.
-@inline function compensation_co2(::Type{OutFT}, p, r, electrons, env, solver) where {OutFT}
+function compensation_co2(::Type{OutFT}, p, r, electrons, env, solver) where {OutFT}
     m, k = light_limited_kinetics(p, r, electrons)
     km = r.kc * (one(env.oxygen) + env.oxygen / r.ko)
     capacity = colimit(r.vcmax, m, p.limitation)
@@ -484,7 +489,7 @@ end
     x = midpoint(lo, hi)
     for iteration in 1:solver.max_iterations
         a, slope = assimilation_and_slope(
-            r, x, env.oxygen, electrons, p.stoichiometry, p.limitation, p.compensation,
+            r, x, env.oxygen, electrons, p.stoichiometry, p.limitation, p.assimilation_sign,
         )
         step = a / slope
         is_at_most(abs(a), solver.flux_atol + solver.flux_rtol * r.respiration) &&
@@ -509,7 +514,7 @@ end
     x = co2
     for _ in 1:3
         a, slope = assimilation_and_slope(
-            r, x, env.oxygen, electrons, p.stoichiometry, p.limitation, p.compensation,
+            r, x, env.oxygen, electrons, p.stoichiometry, p.limitation, p.assimilation_sign,
         )
         (isfinite(a) && is_finite(slope) && !is_zero(slope)) || break
         cand = S(x - a / slope)
@@ -526,19 +531,19 @@ end
     ::Type{OutFT}, co2, p, r, electrons, supply, env, d, width, iterations, status,
 ) where {OutFT}
     co2_s = OutFT(co2)
-    valid, transport, _ = electron_state(p, r, supply, co2_s)
-    valid || return invalid_equilibrium(OutFT, EquilibriumInvalidInput)
+    valid, transport, extras = electron_state(p, r, supply, co2_s)
+    valid || return invalid_equilibrium(OutFT, EquilibriumInvalidInput, p, r, supply)
     a, slope = assimilation_and_slope(
-        r, co2_s, env.oxygen, electrons, p.stoichiometry, p.limitation, p.compensation,
+        r, co2_s, env.oxygen, electrons, p.stoichiometry, p.limitation, p.assimilation_sign,
     )
     carbon = typed_result(OutFT, carbon_assimilation(
-        r, co2_s, env.oxygen, electrons, p.stoichiometry, p.limitation, p.compensation,
+        r, co2_s, env.oxygen, electrons, p.stoichiometry, p.limitation, p.assimilation_sign,
     ))
     flux = carbon.net_assimilation * env.pressure / d.mole_to_micromole
     closed = zero(OutFT)
-    return EquilibriumSolution{OutFT,typeof(carbon)}(
-        carbon, transport, env.co2 - flux / d.boundary_co2, co2_s + flux / d.mesophyll_co2, co2_s,
-        closed, -carbon.net_assimilation, closed, -a / slope, width, iterations, status,
-        converged_status(status),
-    )
+    exchange = typed_result(OutFT, exchange_result(
+        carbon, transport, extras, env.ambient_co2 - flux / d.boundary_co2, co2_s + flux / d.mesophyll_co2,
+        co2_s, closed, -carbon.net_assimilation,
+    ))
+    return EquilibriumSolution{OutFT,typeof(exchange)}(exchange, closed, -a / slope, width, iterations, status)
 end

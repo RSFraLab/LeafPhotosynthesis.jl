@@ -4,7 +4,9 @@
 
 One shared implementation behind the C3 and Cytochrome b₆f leaf paths, one physical input
 domain for both (the same rate, stoichiometry, diffusion and stomatal-driver domains at every
-entry point), and a smaller API. Results for valid inputs are bit-identical to 0.1.1 except
+entry point), and a smaller, more consistent API: one result shape, one validity predicate
+(`is_valid`), field names that say which CO₂ they hold, and abstract types for every kind of
+component. Results for valid inputs are bit-identical to 0.1.1 except
 where listed below: the coupled oxygen budget (last digits, and corrected for non-canonical
 electron stoichiometry), `npq` of the Cytochrome fluorescence model when sustained quenching
 is nonzero, and the closed-stomata inputs that 0.1.1 rejected. The other behaviour changes
@@ -45,7 +47,7 @@ concern inputs outside the physical domain and precision mismatches.
   compensation point (no steady state) every field is `NaN`. `equilibrium_gas_exchange`
   accepts a Ball–Berry or Medlyn minimum conductance of zero and returns the limit `g0 → 0⁺`:
   the open-stomata root, the closed-stomata limit with the new status
-  `EquilibriumStomataClosed` (`converged = true`), or `EquilibriumInvalidBracket` where no
+  `EquilibriumStomataClosed` (a valid solution), or `EquilibriumInvalidBracket` where no
   steady state exists. `transpiration_sensitivity` at `gs = 0` returns `E = 0`,
   `∂E/∂g_sw = Δe/P`.
   Before: `gs = 0` gave `NaN` (0.1.1: finite values from a division by zero) and `g0 = 0`
@@ -106,10 +108,16 @@ concern inputs outside the physical domain and precision mismatches.
   `psi_to_psii_ratio` after `psii_open_fraction`.
   Before: `(…, psi_electron_supply, psii_open_fraction)`. After: `(…, psi_electron_supply,
   psii_open_fraction, psi_to_psii_ratio)`.
-- Cytochrome `gas_exchange` inserts `psi_to_psii_ratio` after `psii_open_fraction`.
-  Before: `(carbon, electron_transport, psi_electron_supply, psii_open_fraction, surface_co2, …)`.
-  After: `(carbon, electron_transport, psi_electron_supply, psii_open_fraction,
-  psi_to_psii_ratio, surface_co2, …)`.
+- `gas_exchange` (also for a `LeafModel` and as `leaf_tendencies(…).gas_exchange`) returns the
+  fields of `photosynthesize` flat, followed by the diffusion fields; the Cytochrome model's
+  electron diagnostics now include `psi_to_psii_ratio`.
+  Before: `(carbon, electron_transport, [psi_electron_supply, psii_open_fraction,]
+  surface_co2, intercellular_co2, biochemical_co2, conductance, diffusion_residual)`, read as
+  `exchange.carbon.net_assimilation`.
+  After: `(rubisco_limited, electron_limited, assimilation, respiration, net_assimilation,
+  electron_transport, [psi_electron_supply, psii_open_fraction, psi_to_psii_ratio,]
+  surface_co2, intercellular_co2, biochemical_co2, conductance, diffusion_residual)`, read as
+  `exchange.net_assimilation`.
 - Environment-level `biochemical_turnover` names the available linear electron supply as
   the other entry points do.
   Before: `turnover.electron_supply`. After: `turnover.electron_transport`.
@@ -124,14 +132,36 @@ concern inputs outside the physical domain and precision mismatches.
   Before: with `K_N,sus = 0.6`, `npq = 6.74` while the ideal PAM index was 2.87. After: 2.87.
 - `EquilibriumStatus` has the new value `EquilibriumStomataClosed` (appended; the other
   values keep their codes).
-- `EquilibriumSolution` lists the fields it shares with a `gas_exchange` result first, in
-  the same order.
-  Before: `(carbon, electron_transport, biochemical_co2, intercellular_co2, surface_co2,
-  stomatal_conductance, conductance, co2_residual, diffusion_residual, bracket_width,
-  iterations, status, converged)`.
-  After: `(carbon, electron_transport, surface_co2, intercellular_co2, biochemical_co2,
-  conductance, diffusion_residual, stomatal_conductance, co2_residual, bracket_width,
-  iterations, status, converged)`; the positional constructor follows the field order.
+- `EquilibriumSolution{FT,X}` holds the gas exchange at the solution as a `gas_exchange`
+  result, including the Cytochrome electron diagnostics it used to drop, and the solver fields.
+  Before: `EquilibriumSolution{FT,C}` with fields `(carbon, electron_transport,
+  biochemical_co2, intercellular_co2, surface_co2, stomatal_conductance, conductance,
+  co2_residual, diffusion_residual, bracket_width, iterations, status, converged)`, read as
+  `sol.carbon.net_assimilation`, `sol.biochemical_co2`, `sol.converged`.
+  After: fields `(exchange, stomatal_conductance, co2_residual, bracket_width, iterations,
+  status)` (positional and keyword constructors in this order), read as
+  `sol.exchange.net_assimilation`, `sol.exchange.biochemical_co2`, `is_valid(sol)`.
+- One validity predicate: `is_valid(result)` has a method for every result type (NamedTuple
+  results: no `NaN`; `EquilibriumSolution`: `EquilibriumConverged` or
+  `EquilibriumStomataClosed`; fluorescence results: lit or dark; PAM results: lit).
+  Before: `sol.converged`, `fluorescence_valid(result)`, `pam_fluorescence_valid(result)` and
+  checking fields for `NaN`. After: `is_valid(sol)`, `is_valid(result)`; the field
+  `converged` and both functions are removed.
+- `assimilation_sensitivity` returns `(; dco2_dgs, dnet_assimilation_dgs)`.
+  Before: also `dassimilation_dgs`, always equal to `dnet_assimilation_dgs`. After: removed.
+- The CO₂ field of each environment says which CO₂ it is (fields and keywords; the positional
+  constructors are unchanged).
+  Before: `LeafEnvironment(; …, co2, …)` (biochemical-site Cc) and
+  `GasExchangeEnvironment(; …, co2, …)` (ambient Ca), both read as `env.co2`.
+  After: `LeafEnvironment(; …, biochemical_co2, …)` and
+  `GasExchangeEnvironment(; …, ambient_co2, …)`, read as `site.biochemical_co2` and
+  `env.ambient_co2`, matching the result fields `biochemical_co2`, `surface_co2`.
+- The sign treatment of `C3Photosynthesis` and `CytochromePhotosynthesis` is the field
+  `assimilation_sign` (keyword too).
+  Before: `C3Photosynthesis(; …, compensation = SignedAssimilation())`, `p.compensation`
+  (next to the unrelated compensation point `gamma_star`).
+  After: `C3Photosynthesis(; …, assimilation_sign = SignedAssimilation())`,
+  `p.assimilation_sign`.
 
 ### Breaking: call forms
 
@@ -140,7 +170,28 @@ concern inputs outside the physical domain and precision mismatches.
   `assimilation_sensitivity(p, env, state, d, exchange, excitation)`.
   After: `assimilation_sensitivity(p, env, state, d, BroadbandExcitation(), exchange)` and
   `assimilation_sensitivity(p, env, state, d, excitation, exchange)`;
-  `assimilation_sensitivity(p, env, state, d[, excitation])` is unchanged.
+  `assimilation_sensitivity(p, env, state, d[, excitation])` is unchanged. An
+  `EquilibriumSolution` passed as `exchange` is used through its `exchange` field.
+- The equilibrium warm start is a positional argument after the excitation, typed
+  `Union{Nothing,Real}` and subject to the precision rule, so it broadcasts per leaf.
+  Before: `equilibrium_gas_exchange(…, excitation; initial_co2 = x)`; a value of another type
+  or precision (an `Int`, a `Float64` in a `Float32` model, a vector passed through a
+  broadcast) was ignored without notice. After: `equilibrium_gas_exchange(…, excitation, x)`;
+  `equilibrium_gas_exchange.(leaf, envs, d, solver, BroadbandExcitation(), previous_cc)`
+  warm-starts each leaf from its own value, and an integer or other-precision value is a
+  `MethodError`.
+- `psii_flux_inputs` (C3) and `photosystem_flux_inputs` (Cytochrome) are one function that
+  dispatches on the model, with a `LeafModel` method.
+  Before: `psii_flux_inputs(c3, site)`, `photosystem_flux_inputs(cyto, site)`.
+  After: `fluorescence_inputs(c3_or_cyto_or_leaf, site)`.
+- `leaf_tendencies` accepts a `LeafModel` with `PrognosticStomata` or `NoStomatalDynamics`.
+  Before: a `SteadyStateStomata` leaf failed inside with `MethodError: stomatal_outputs`.
+  After: a `MethodError` of `leaf_tendencies`. `target_conductance(leaf, drivers)` is new,
+  matching `stomatal_tendency(leaf, state, drivers)`.
+- `dark_balanced_psii_partition`, `state_transition_partition` and
+  `state_transition_excitation` require `SerialLimitation` in the Cytochrome electron
+  transport (the condition of their closed forms). Before: another co-limitation gave `NaN`.
+  After: a `MethodError`.
 - Components that implement only the excitation-free arity are no longer reached.
   Before: a custom component with `electron_transport(c, par, jmax)`,
   `photosynthesize(c, env)` or `oxygen_exchange(c, p, env)` was called for broadband light.
@@ -148,21 +199,23 @@ concern inputs outside the physical domain and precision mismatches.
   `photosynthesize(c, env, ::BroadbandExcitation)` or
   `oxygen_exchange(c, p, env, ::BroadbandExcitation)`; every entry point passes
   `BroadbandExcitation()` when no excitation is given.
-- `carbon_assimilation(rates, co2, oxygen, electrons, stoichiometry, limitation, compensation)`
-  is one generic method for both rate types (before: one method typed on `C3Rates` and
+- `carbon_assimilation(rates, co2, oxygen, electrons, stoichiometry, limitation,
+  assimilation_sign)` is one generic method for both rate types (before: one method typed on `C3Rates` and
   `C3Stoichiometry`, plus an undocumented Cytochrome method).
 
 ### Breaking: exports
 
-63 names stay exported: the components, environments, `StomatalState`, the excitation
-types, the solver types and the entry points (`photosynthesize`, `biochemical_turnover`,
+61 names are exported: the components, environments, `StomatalState`, the excitation
+types, the solver types, the entry points (`photosynthesize`, `biochemical_turnover`,
 `oxygen_exchange`, `gas_exchange`, `leaf_tendencies`, `equilibrium_gas_exchange`,
-`assimilation_sensitivity`, `transpiration_sensitivity`, `psii_flux_inputs`,
-`photosystem_flux_inputs`, `fluorescence`, `fluorescence_valid`,
-`validate_fluorescence_coupling`, `state_transition_excitation`, `pam_fluorescence`,
-`pam_fluorescence_valid`).
+`assimilation_sensitivity`, `transpiration_sensitivity`, `fluorescence_inputs`,
+`fluorescence`, `validate_fluorescence_coupling`, `state_transition_excitation`,
+`pam_fluorescence`) and `is_valid`. 0.1.1 exported 120 names: these 61 without the new
+`fluorescence_inputs` and `is_valid`, plus `psii_flux_inputs`, `photosystem_flux_inputs`,
+`fluorescence_valid` and `pam_fluorescence_valid` (replaced, see above) and the 57 names
+below.
 
-57 names are public but no longer exported. Before: `using LeafPhotosynthesis` made them
+57 names of 0.1.1 are public but no longer exported. Before: `using LeafPhotosynthesis` made them
 available. After: write `LeafPhotosynthesis.name` or `using LeafPhotosynthesis: name`.
 They are the abstract types (`AbstractPhotosynthesis`, `AbstractC3Photosynthesis`,
 `AbstractCompensationPoint`, `AbstractExcitation`, `AbstractFluorescence`,
@@ -182,8 +235,10 @@ component-level functions (`temperature_response`, `biochemical_rates`,
 `RateCompetitionResult`, `CytochromeFluorescenceResult`, `PAMFluorescenceResult`) and the
 status enums with their values (`EquilibriumStatus`, `EquilibriumConverged`,
 `EquilibriumIterationLimit`, `EquilibriumPrecisionLimit`, `EquilibriumInvalidInput`,
-`EquilibriumInvalidBracket`, the new `EquilibriumStomataClosed`, `FluorescenceStatus`, `FluorescenceLit`, `FluorescenceDark`,
-`FluorescenceInvalidInput`, `FluorescenceIncompatibleRates`).
+`EquilibriumInvalidBracket`, `FluorescenceStatus`, `FluorescenceLit`, `FluorescenceDark`,
+`FluorescenceInvalidInput`, `FluorescenceIncompatibleRates`). New public names: `AbstractLeafScalar`,
+`AbstractTemperatureResponse`, `AbstractColimitation`, `AbstractAssimilationSign` and
+`EquilibriumStomataClosed` (62 public names in all).
 
 ### Breaking: types
 
@@ -195,6 +250,21 @@ status enums with their values (`EquilibriumStatus`, `EquilibriumConverged`,
   Before: a fixed `Union` of 44 package types broadcast as scalars, and a new component had
   to be wrapped in `Ref`. After: a new struct gets scalar broadcasting by subtyping
   `AbstractLeafScalar` or one of the abstract component types.
+- New abstract types bound the fields of the composite structs, so a constructor given a
+  value of the wrong kind is a `MethodError`: `AbstractTemperatureResponse` (`Arrhenius`,
+  `PeakedArrhenius`, `ConstantResponse`, `CytochromeCapacity`; every field of the rate
+  bundles, Γ* also an `AbstractCompensationPoint`, the `response` of both compensation
+  points), `AbstractColimitation` (`MinimumLimitation`, `SerialLimitation`,
+  `QuadraticLimitation`; the `limitation` of the models and electron-transport parameters)
+  and `AbstractAssimilationSign` (`SignedAssimilation`, `NonnegativeAssimilation`); the
+  `temperature`, `electron_transport` and `stoichiometry` of the two models are
+  `AbstractLeafScalar`s. Before: `C3Photosynthesis(1, 2, 3, 4, 5)` and
+  `C3TemperatureResponse(vcmax = 1.0, …)` constructed and failed later inside an entry point.
+  After: `MethodError`. A custom temperature law subtypes `AbstractTemperatureResponse`, a
+  custom rate bundle or electron component `AbstractLeafScalar`.
+- The methods through which the leaf entry points reach a subtype of
+  `AbstractC3Photosynthesis` (`light_supply`, `electron_state`, …) are internal; the docstring
+  no longer describes them as an extension interface.
 
 ### Constructors
 
@@ -221,7 +291,11 @@ status enums with their values (`EquilibriumStatus`, `EquilibriumConverged`,
   `transpiration_sensitivity` returns `NaN` for an invalid one. Before: a non-positive value
   was an `ArgumentError`.
 - `EquilibriumSolver(; …, max_iterations = 30.0)` is a `MethodError` (before: a
-  `TypeError` from the keyword annotation).
+  `TypeError` from the keyword annotation). `max_iterations` and
+  `SafeguardedNewton(bisection_interval)` accept any integer type (before: only `Int`).
+- `Arrhenius` (finite `value_ref` and `activation_energy`, positive `temperature_ref` and
+  `gas_constant`) and `PeakedArrhenius` (finite `deactivation_energy` and `entropy`) validate
+  their parameters (`ArgumentError`). Before: any values constructed.
 - Result structs (`RateCompetitionResult`, `CytochromeFluorescenceResult`,
   `PAMFluorescenceResult`) accept a mix of a float type and dual numbers on it, promoted
   as the parameter structs do (before: one exact type).
@@ -256,3 +330,8 @@ status enums with their values (`EquilibriumStatus`, `EquilibriumConverged`,
   every dependency has a compat bound. `Project.toml` has `authors`.
 - Working notes and validation records moved from `docs/` to `docs/dev_notes/` (not part of
   the manual).
+- Source layout: the package-wide scalar, precision and result helpers are in
+  `src/scalars.jl`, the C3 rate bundle and `biochemical_rates` in `src/biochemical_rates.jl`,
+  and `WaterVaporDiffusion` with the other diffusion types in `src/gas_diffusion.jl`. The
+  equilibrium solver body is no longer forced inline into its callers (time to first call of
+  the 46 reviewed entry-point calls 4.2 s → 3.6 s).

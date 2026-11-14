@@ -168,10 +168,14 @@ StomatalState(fields::Vararg{Real,1}) =
     is_positive(d.pressure) && is_fraction(d.relative_humidity) && is_finite(d.vpd)
 
 """
-    target_conductance(target_or_model, drivers::StomatalDrivers)
+    target_conductance(target, drivers::StomatalDrivers)
+    target_conductance(stomatal_model, drivers::StomatalDrivers)
+    target_conductance(leaf, drivers::StomatalDrivers)
 
-Evaluate the steady-state stomatal H₂O conductance target [mol H₂O m⁻² leaf s⁻¹]
-for `drivers`, or return `nothing` for [`NoStomatalDynamics`](@ref).
+Evaluate the steady-state stomatal H₂O conductance target [mol H₂O m⁻² leaf s⁻¹] of a
+[`BallBerry`](@ref) or [`Medlyn`](@ref) target (directly, in a [`SteadyStateStomata`](@ref)
+or [`PrognosticStomata`](@ref), or in a [`LeafModel`](@ref)) for `drivers`, or return
+`nothing` for [`NoStomatalDynamics`](@ref).
 
 Drivers outside their domain give `NaN`, never the minimum conductance: non-finite
 assimilation, negative or non-finite surface CO₂ (zero only without net uptake), non-positive
@@ -202,12 +206,12 @@ end
     return S(p.minimum_conductance + p.diffusivity_ratio * sensitivity * uptake * d.pressure / d.surface_co2)
 end
 
-@inline target_conductance(p::AbstractStomatalModel, d::StomatalDrivers) =
+@inline target_conductance(p::Union{SteadyStateStomata,PrognosticStomata}, d::StomatalDrivers) =
     target_conductance(p.target, d)
 @inline target_conductance(::NoStomatalDynamics, ::StomatalDrivers) = nothing
 
 """
-    stomatal_tendency(model, state::StomatalState, drivers::StomatalDrivers)
+    stomatal_tendency(model_or_leaf, state::StomatalState, drivers::StomatalDrivers)
 
 Compute the stomatal H₂O conductance rate of change ``\\mathrm{d}g_{sw}/\\mathrm{d}t``
 [mol H₂O m⁻² leaf s⁻²] without mutating `state` (`0` for [`NoStomatalDynamics`](@ref)).

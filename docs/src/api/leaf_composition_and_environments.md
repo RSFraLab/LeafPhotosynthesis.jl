@@ -21,6 +21,7 @@ Walkthroughs: [Design decisions](../design.md), [Core gas exchange](../core_exch
 LeafPhotosynthesis.AbstractLeafScalar
 LeafModel
 photosynthesize
+is_valid
 ```
 
 ## Scalar Forcing Environments

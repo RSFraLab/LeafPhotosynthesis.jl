@@ -105,7 +105,7 @@ function setup_cytochrome_stress(::Type{FT}; vcmax_factor::FT = one(FT),
         electron_transport = cyto_et,
         stoichiometry = cyto_stoich,
         limitation = MinimumLimitation(),
-        compensation = SignedAssimilation(),
+        assimilation_sign = SignedAssimilation(),
     )
 
     x = settings["experiment"]
@@ -132,7 +132,7 @@ function setup_cytochrome_stress(::Type{FT}; vcmax_factor::FT = one(FT),
         electron_transport = fvcb_et,
         stoichiometry = base_leaf.photosynthesis.stoichiometry,
         limitation = MinimumLimitation(),
-        compensation = SignedAssimilation(),
+        assimilation_sign = SignedAssimilation(),
     )
     cotton_fl, drought_fl = map((emp_cot, emp_drt)) do cfg
         model = RateCompetitionFluorescence(;
@@ -176,19 +176,19 @@ end
 function evaluate_fluorescence_comparison(case, site::LeafEnvironment)
     cyto_carbon = photosynthesize(case.cyto_leaf, site)
     fvcb_carbon = photosynthesize(case.fvcb_leaf, site)
-    cyto_inputs = photosystem_flux_inputs(case.cyto_leaf.photosynthesis, site)
-    fvcb_inputs = psii_flux_inputs(case.fvcb_leaf.photosynthesis, site)
+    cyto_inputs = fluorescence_inputs(case.cyto_leaf.photosynthesis, site)
+    fvcb_inputs = fluorescence_inputs(case.fvcb_leaf.photosynthesis, site)
     jb = fluorescence(case.jb_connected, cyto_inputs)
     jb_pud = fluorescence(case.jb_puddle, cyto_inputs)
     cot = fluorescence(case.cotton_fl, fvcb_inputs)
     drt = fluorescence(case.drought_fl, fvcb_inputs)
-    all(fluorescence_valid, (jb, jb_pud, cot, drt)) ||
+    all(is_valid, (jb, jb_pud, cot, drt)) ||
         error("Invalid fluorescence comparison state: $(jb.status), $(cot.status), $(drt.status)")
     val_or_gap(result, field) =
         result.status == FluorescenceDark ? nothing : getproperty(result, field)
     return (;
         absorbed_par = site.absorbed_par,
-        biochemical_co2 = site.co2,
+        biochemical_co2 = site.biochemical_co2,
         jb_net_assimilation = cyto_carbon.net_assimilation,
         fvcb_net_assimilation = fvcb_carbon.net_assimilation,
         jb_psi_to_psii_ratio = cyto_carbon.psi_to_psii_ratio,

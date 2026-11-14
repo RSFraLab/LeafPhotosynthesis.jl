@@ -10,11 +10,11 @@
         rates=biochemical_rates(p.temperature, env.temperature, env.oxygen)
         @test isconcretetype(LeafEnvironment{FT})
         @test isconcretetype(GasExchangeEnvironment{FT})
-        @test fieldnames(LeafEnvironment{FT})==(:temperature, :absorbed_par, :co2, :oxygen)
+        @test fieldnames(LeafEnvironment{FT})==(:temperature, :absorbed_par, :biochemical_co2, :oxygen)
         @test fieldnames(GasExchangeEnvironment{FT})==(
             :temperature,
             :absorbed_par,
-            :co2,
+            :ambient_co2,
             :oxygen,
             :pressure,
             :relative_humidity,
@@ -39,10 +39,10 @@
             carbon=@inferred photosynthesize(case.leaf, site, excitation)
             turnover=@inferred biochemical_turnover(case.leaf, site, excitation)
             oxygen=@inferred oxygen_exchange(case.leaf, site, excitation)
-            flux=@inferred psii_flux_inputs(p, site, excitation)
+            flux=@inferred fluorescence_inputs(p, site, excitation)
             fluorescence_result=@inferred fluorescence(case.fluorescence.regulated, flux)
             reference=excitation_demand_reference(p, site, excitation.photons)(
-                BigFloat(site.co2),
+                BigFloat(site.biochemical_co2),
             )
             @test all(x->x isa FT, values(carbon))
             @test all(x->x isa FT, values(turnover))
@@ -64,7 +64,7 @@
             )
             @test flux.psii_excitation===excitation.photons
             @test flux.linear_electron_flow===turnover.linear_electron_flow
-            @test fluorescence_valid(fluorescence_result)
+            @test is_valid(fluorescence_result)
             @test fluorescence_result.status ==
                   (iszero(excitation.photons) ? FluorescenceDark : FluorescenceLit)
             o=case.leaf.oxygen
@@ -88,7 +88,7 @@
                 site,
             )
         end
-        site=LeafEnvironment(env.temperature, env.absorbed_par, env.co2, env.oxygen)
+        site=LeafEnvironment(env.temperature, env.absorbed_par, env.ambient_co2, env.oxygen)
         excitation=PrescribedPSIIExcitation(
             p.electron_transport.psii_fraction*env.absorbed_par,
         )
@@ -129,7 +129,7 @@ end
             env=GasExchangeEnvironment(
                 base.temperature,
                 light,
-                base.co2,
+                base.ambient_co2,
                 base.oxygen,
                 base.pressure,
                 base.relative_humidity,
@@ -158,7 +158,7 @@ end
                 atol = case.solver.co2_atol,
             )
             @test isapprox(
-                fixed.carbon.net_assimilation,
+                fixed.net_assimilation,
                 FT(reference.carbon.net);
                 rtol,
                 atol,
@@ -171,7 +171,7 @@ end
                 case.solver,
                 excitation,
             )
-            @test equilibrium.converged
+            @test is_valid(equilibrium)
             @test equilibrium.status===EquilibriumConverged
             @test equilibrium.iterations isa Int
             ref_eq=excitation_equilibrium_reference(
@@ -182,13 +182,13 @@ end
                 excitation.photons,
             )
             @test isapprox(
-                equilibrium.biochemical_co2,
+                equilibrium.exchange.biochemical_co2,
                 FT(ref_eq.co2);
                 rtol,
                 atol = 4case.solver.co2_atol,
             )
             @test isapprox(
-                equilibrium.carbon.net_assimilation,
+                equilibrium.exchange.net_assimilation,
                 FT(ref_eq.carbon.net);
                 rtol,
                 atol,
@@ -196,13 +196,13 @@ end
             site=LeafEnvironment(
                 env.temperature,
                 env.absorbed_par,
-                equilibrium.biochemical_co2,
+                equilibrium.exchange.biochemical_co2,
                 env.oxygen,
             )
-            @test psii_flux_inputs(p, site, excitation).psii_excitation===excitation.photons
+            @test fluorescence_inputs(p, site, excitation).psii_excitation===excitation.photons
             @test isapprox(
                 photosynthesize(p, site, excitation).net_assimilation,
-                equilibrium.carbon.net_assimilation;
+                equilibrium.exchange.net_assimilation;
                 rtol,
                 atol,
             )
@@ -222,7 +222,7 @@ end
             )
             @test tendencies.oxygen==oxygen_exchange(case.leaf, fixed_site, excitation)
             drivers=StomatalDrivers(
-                fixed.carbon.net_assimilation,
+                fixed.net_assimilation,
                 fixed.surface_co2,
                 env.pressure,
                 env.relative_humidity,
@@ -259,7 +259,7 @@ end
         env=GasExchangeEnvironment(
             base.temperature,
             inputs["sensitivity_light"],
-            base.co2,
+            base.ambient_co2,
             base.oxygen,
             base.pressure,
             base.relative_humidity,
@@ -334,7 +334,7 @@ end
     for FT in (Float32, Float64)
         case=setup_excitation_test(FT)
         p, env=case.leaf.photosynthesis, case.environment
-        site=LeafEnvironment(env.temperature, env.absorbed_par, env.co2, env.oxygen)
+        site=LeafEnvironment(env.temperature, env.absorbed_par, env.ambient_co2, env.oxygen)
         exchange=gas_exchange(p, env, case.state, case.diffusion)
         disabled=LeafModel(; photosynthesis = p)
         for bad in (FT(-1), FT(NaN), FT(Inf), nextfloat(env.absorbed_par))
@@ -349,8 +349,8 @@ end
             @test isnothing(oxygen_exchange(disabled, site, input))
             @test isnothing(fluorescence(NoFluorescence(), p, site, input))
             fixed=@inferred gas_exchange(case.leaf, env, case.state, case.diffusion, input)
-            @test all(isnan, values(fixed.carbon))
-            @test all(isnan, values(Base.structdiff(fixed, (; carbon = fixed.carbon))))
+            @test all(isnan, values(carbon_fluxes(fixed)))
+            @test all(isnan, values(Base.structdiff(fixed, carbon_fluxes(fixed))))
             result=@inferred equilibrium_gas_exchange(
                 case.steady,
                 env,
@@ -359,9 +359,9 @@ end
                 input,
             )
             @test result.status===EquilibriumInvalidInput
-            @test !result.converged
+            @test !is_valid(result)
             @test result.iterations===0
-            @test all(isnan, values(result.carbon))
+            @test all(isnan, values(carbon_fluxes(result.exchange)))
             @test all(
                 isnan,
                 values(assimilation_sensitivity(p, env, case.state, case.diffusion, input)),
@@ -379,7 +379,7 @@ end
                     ),
                 ),
             )
-            flux=@inferred psii_flux_inputs(p, site, input)
+            flux=@inferred fluorescence_inputs(p, site, input)
             @test isnan(flux.psii_excitation)&&isnan(flux.linear_electron_flow)
             @test fluorescence(case.fluorescence.regulated, flux).status===FluorescenceInvalidInput
         end
@@ -419,7 +419,7 @@ end
             case.solver,
             mismatch,
         )
-        @test_throws MethodError psii_flux_inputs(p, site, mismatch)
+        @test_throws MethodError fluorescence_inputs(p, site, mismatch)
         @test !valid_excitation(PrescribedPSIIExcitation(one(FT)), zero(FT))
         @test valid_excitation(PrescribedPSIIExcitation(zero(FT)), zero(FT))
         broadband_only=BroadbandOnlyElectrons(
@@ -465,8 +465,8 @@ end
         @test valid_excitation(extra, env.absorbed_par)
         @test !valid_excitation(PrescribedPSIIExcitation(extra.photons), env.absorbed_par)
         @test all(isfinite, values(photosynthesize(p, site, extra)))
-        @test psii_flux_inputs(p, site, extra).psii_excitation===extra.photons
-        @test equilibrium_gas_exchange(case.steady, env, case.diffusion, case.solver, extra).converged
+        @test fluorescence_inputs(p, site, extra).psii_excitation===extra.photons
+        @test is_valid(equilibrium_gas_exchange(case.steady, env, case.diffusion, case.solver, extra))
         @test all(
             isfinite,
             values(assimilation_sensitivity(p, env, case.state, case.diffusion, extra)),
@@ -483,14 +483,14 @@ end
         rtol, atol=tol["relative_tolerance"], tol["flux_atol"]
         for limitation in
             (MinimumLimitation(), QuadraticLimitation(inputs["carbon_curvature"])),
-            compensation in (SignedAssimilation(), NonnegativeAssimilation())
+            assimilation_sign in (SignedAssimilation(), NonnegativeAssimilation())
 
             p=C3Photosynthesis(;
                 base.temperature,
                 base.electron_transport,
                 base.stoichiometry,
                 limitation,
-                compensation,
+                assimilation_sign,
             )
             rates=biochemical_rates(p.temperature, env.temperature, env.oxygen)
             for fraction in inputs["psii_fractions"], factor in inputs["co2_gamma_factors"]
@@ -503,10 +503,10 @@ end
                 )
                 response=@inferred photosynthesize(p, site, input)
                 reference=excitation_demand_reference(p, site, input.photons)(
-                    BigFloat(site.co2),
+                    BigFloat(site.biochemical_co2),
                 )
                 @test isapprox(response.net_assimilation, FT(reference.net); rtol, atol)
-                if compensation isa SignedAssimilation
+                if assimilation_sign isa SignedAssimilation
                     turnover=@inferred biochemical_turnover(p, site, input)
                     @test isapprox(
                         turnover.linear_electron_flow,
@@ -514,7 +514,7 @@ end
                         rtol,
                         atol,
                     )
-                    @test psii_flux_inputs(p, site, input).linear_electron_flow===turnover.linear_electron_flow
+                    @test fluorescence_inputs(p, site, input).linear_electron_flow===turnover.linear_electron_flow
                 else
                     @test_throws MethodError biochemical_turnover(p, site, input)
                 end
@@ -535,16 +535,16 @@ end
                             solver,
                             input,
                         )
-                        @test result.converged
+                        @test is_valid(result)
                         @test result.status===EquilibriumConverged
                         @test isapprox(
-                            result.biochemical_co2,
+                            result.exchange.biochemical_co2,
                             FT(reference_eq.co2);
                             rtol,
                             atol = 4solver.co2_atol,
                         )
                         @test isapprox(
-                            result.carbon.net_assimilation,
+                            result.exchange.net_assimilation,
                             FT(reference_eq.carbon.net);
                             rtol,
                             atol = 4solver.flux_atol,

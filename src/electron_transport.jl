@@ -9,22 +9,20 @@ rate co-limitation model `limitation`.
 Leaf absorptance belongs to optics and is not included in `psii_fraction`.
 Throws `ArgumentError` if `psii_fraction` or `psii_yield` is outside `[0, 1]`.
 """
-Base.@kwdef struct ElectronTransportParameters{FT<:Real,L} <: AbstractLeafScalar
+Base.@kwdef struct ElectronTransportParameters{FT<:Real,L<:AbstractColimitation} <: AbstractLeafScalar
     psii_fraction::FT
     psii_yield::FT
     limitation::L
-    function ElectronTransportParameters{FT,L}(fields::Vararg{Any,3}) where {FT<:Real,L}
+    function ElectronTransportParameters{FT,L}(
+        fields::Vararg{Any,3},
+    ) where {FT<:Real,L<:AbstractColimitation}
         p = new{FT,L}(continuous_fields(FT, ElectronTransportParameters{FT,L}, fields)...)
-        fp = primal_scalar(p.psii_fraction)
-        yp = primal_scalar(p.psii_yield)
-        isfinite(fp) && zero(fp) <= fp <= one(fp) ||
-            throw(ArgumentError("invalid PSII fraction"))
-        isfinite(yp) && zero(yp) <= yp <= one(yp) ||
-            throw(ArgumentError("invalid PSII yield"))
+        is_fraction(p.psii_fraction) || throw(ArgumentError("invalid PSII fraction"))
+        is_fraction(p.psii_yield) || throw(ArgumentError("invalid PSII yield"))
         return p
     end
 end
-ElectronTransportParameters(psii_fraction::Real, psii_yield::Real, limitation) =
+ElectronTransportParameters(psii_fraction::Real, psii_yield::Real, limitation::AbstractColimitation) =
     ElectronTransportParameters{
         scalar_type(ElectronTransportParameters, psii_fraction, psii_yield),typeof(limitation),
     }(psii_fraction, psii_yield, limitation)
@@ -53,27 +51,19 @@ excitation of different binary precisions are a `MethodError`.
     return res
 end
 
-@inline function electron_transport(
-    p::ElectronTransportParameters,
-    absorbed_par,
-    jmax,
-    input::PrescribedPSIIExcitation,
-)
-    require_compatible(electron_transport, p, absorbed_par, jmax, input)
-    res = colimit(p.psii_yield * input.photons, jmax, p.limitation)
-    S = promote_type(typeof(res), typeof(absorbed_par))
-    valid_excitation(input, absorbed_par) || return S(NaN)
-    return S(res)
-end
+# Photon flux a prescribed excitation delivers to PSII.
+@inline psii_photons(x::PrescribedPSIIExcitation) = x.photons
+@inline psii_photons(x::PrescribedDualExcitation) = x.psii_photons
+const PrescribedExcitation = Union{PrescribedPSIIExcitation,PrescribedDualExcitation}
 
 @inline function electron_transport(
     p::ElectronTransportParameters,
     absorbed_par,
     jmax,
-    input::PrescribedDualExcitation,
+    input::PrescribedExcitation,
 )
     require_compatible(electron_transport, p, absorbed_par, jmax, input)
-    res = colimit(p.psii_yield * input.psii_photons, jmax, p.limitation)
+    res = colimit(p.psii_yield * psii_photons(input), jmax, p.limitation)
     S = promote_type(typeof(res), typeof(absorbed_par))
     valid_excitation(input, absorbed_par) || return S(NaN)
     return S(res)
@@ -93,18 +83,11 @@ centers prior to multiplication by photochemical yield, or typed `NaN` when
     return res
 end
 
-@inline function psii_excitation(p, absorbed_par, input::PrescribedPSIIExcitation)
+@inline function psii_excitation(p, absorbed_par, input::PrescribedExcitation)
     require_compatible(psii_excitation, p, absorbed_par, input)
-    S = promote_type(typeof(absorbed_par), typeof(input.photons))
+    S = promote_type(typeof(absorbed_par), typeof(psii_photons(input)))
     valid_excitation(input, absorbed_par) || return S(NaN)
-    return S(input.photons)
-end
-
-@inline function psii_excitation(p, absorbed_par, input::PrescribedDualExcitation)
-    require_compatible(psii_excitation, p, absorbed_par, input)
-    S = promote_type(typeof(absorbed_par), typeof(input.psii_photons))
-    valid_excitation(input, absorbed_par) || return S(NaN)
-    return S(input.psii_photons)
+    return S(psii_photons(input))
 end
 
 """

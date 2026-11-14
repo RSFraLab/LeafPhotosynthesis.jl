@@ -7,18 +7,19 @@ site density `site_density` [μmol sites m⁻² leaf] and catalytic turnover law
 `turnover_rate` [mol e⁻ mol⁻¹ sites s⁻¹] (Johnson & Berry 2021):
 ``V_{q\\max}(T) = B \\cdot k_q(T)`` [μmol e⁻ m⁻² leaf s⁻¹].
 """
-Base.@kwdef struct CytochromeCapacity{FT<:Real,K} <: AbstractLeafScalar
+Base.@kwdef struct CytochromeCapacity{FT<:Real,K<:AbstractTemperatureResponse} <: AbstractTemperatureResponse
     site_density::FT
     turnover_rate::K
-    function CytochromeCapacity{FT,K}(fields::Vararg{Any,2}) where {FT<:Real,K}
+    function CytochromeCapacity{FT,K}(
+        fields::Vararg{Any,2},
+    ) where {FT<:Real,K<:AbstractTemperatureResponse}
         c = new{FT,K}(continuous_fields(FT, CytochromeCapacity{FT,K}, fields)...)
-        sp = primal_scalar(c.site_density)
-        isfinite(sp) && sp >= zero(sp) ||
+        is_nonnegative(c.site_density) ||
             throw(ArgumentError("Cytochrome b6f site_density must be finite and nonnegative"))
         return c
     end
 end
-CytochromeCapacity(site_density::Real, turnover_rate) =
+CytochromeCapacity(site_density::Real, turnover_rate::AbstractTemperatureResponse) =
     CytochromeCapacity{scalar_type(CytochromeCapacity, site_density),typeof(turnover_rate)}(
         site_density, turnover_rate,
     )
@@ -35,12 +36,21 @@ end
 Bundle temperature and oxygen response laws for Cytochrome b₆f C3 biochemistry
 (Johnson & Berry 2021).
 
-`vqmax` may be a [`CytochromeCapacity`](@ref) or any temperature-response law
-returning μmol e⁻ m⁻² leaf s⁻¹; `gamma_star` may be a temperature law or an
-[`AbstractCompensationPoint`](@ref); `linear_atp_per_electron` (`η_L`) and
-`cyclic_atp_per_electron` (`η_C`) use [`ConstantResponse`](@ref) or temperature laws.
+Every field is an [`AbstractTemperatureResponse`](@ref): `vqmax` a [`CytochromeCapacity`](@ref)
+or any law returning μmol e⁻ m⁻² leaf s⁻¹, `linear_atp_per_electron` (`η_L`) and
+`cyclic_atp_per_electron` (`η_C`) a [`ConstantResponse`](@ref) or a temperature law;
+`gamma_star` may also be an [`AbstractCompensationPoint`](@ref).
 """
-Base.@kwdef struct CytochromeTemperatureResponse{V,Q,R,C,O,G,NL,NC} <: AbstractLeafScalar
+Base.@kwdef struct CytochromeTemperatureResponse{
+    V<:AbstractTemperatureResponse,
+    Q<:AbstractTemperatureResponse,
+    R<:AbstractTemperatureResponse,
+    C<:AbstractTemperatureResponse,
+    O<:AbstractTemperatureResponse,
+    G<:GammaStarLaw,
+    NL<:AbstractTemperatureResponse,
+    NC<:AbstractTemperatureResponse,
+} <: AbstractLeafScalar
     vcmax::V
     vqmax::Q
     respiration::R
@@ -52,8 +62,19 @@ Base.@kwdef struct CytochromeTemperatureResponse{V,Q,R,C,O,G,NL,NC} <: AbstractL
     CytochromeTemperatureResponse{V,Q,R,C,O,G,NL,NC}(fields::Vararg{Any,8}) where {V,Q,R,C,O,G,NL,NC} =
         new{V,Q,R,C,O,G,NL,NC}(component_fields(CytochromeTemperatureResponse{V,Q,R,C,O,G,NL,NC}, fields)...)
 end
-CytochromeTemperatureResponse(fields::Vararg{Any,8}) =
-    CytochromeTemperatureResponse{map(typeof, fields)...}(fields...)
+CytochromeTemperatureResponse(
+    vcmax::AbstractTemperatureResponse,
+    vqmax::AbstractTemperatureResponse,
+    respiration::AbstractTemperatureResponse,
+    kc::AbstractTemperatureResponse,
+    ko::AbstractTemperatureResponse,
+    gamma_star::GammaStarLaw,
+    linear_atp_per_electron::AbstractTemperatureResponse,
+    cyclic_atp_per_electron::AbstractTemperatureResponse,
+) = CytochromeTemperatureResponse{
+    map(typeof, (vcmax, vqmax, respiration, kc, ko, gamma_star,
+        linear_atp_per_electron, cyclic_atp_per_electron))...,
+}(vcmax, vqmax, respiration, kc, ko, gamma_star, linear_atp_per_electron, cyclic_atp_per_electron)
 
 """
     CytochromeRates{FT}(; vcmax, vqmax, respiration, kc, ko, gamma_star,
@@ -83,21 +104,7 @@ end
 CytochromeRates(fields::Vararg{Real,8}) =
     CytochromeRates{scalar_type(CytochromeRates, fields...)}(fields...)
 
-@inline function biochemical_rates(p::CytochromeTemperatureResponse, temperature)
-    require_compatible(biochemical_rates, p, temperature)
-    return CytochromeRates(
-        temperature_response(p.vcmax, temperature),
-        temperature_response(p.vqmax, temperature),
-        temperature_response(p.respiration, temperature),
-        temperature_response(p.kc, temperature),
-        temperature_response(p.ko, temperature),
-        temperature_response(p.gamma_star, temperature),
-        temperature_response(p.linear_atp_per_electron, temperature),
-        temperature_response(p.cyclic_atp_per_electron, temperature),
-    )
-end
-
-@inline function biochemical_rates(p::CytochromeTemperatureResponse, temperature, oxygen)
+@inline function biochemical_rates(p::CytochromeTemperatureResponse, temperature, oxygen = nothing)
     require_compatible(biochemical_rates, p, temperature, oxygen)
     return CytochromeRates(
         temperature_response(p.vcmax, temperature),
@@ -105,7 +112,7 @@ end
         temperature_response(p.respiration, temperature),
         temperature_response(p.kc, temperature),
         temperature_response(p.ko, temperature),
-        compensation_point(p.gamma_star, temperature, oxygen),
+        gamma_star_response(p.gamma_star, temperature, oxygen),
         temperature_response(p.linear_atp_per_electron, temperature),
         temperature_response(p.cyclic_atp_per_electron, temperature),
     )
@@ -203,11 +210,13 @@ open-center PSI maximum photochemical yield `psi_maximum_yield` (`Φ_P1,max ∈ 
 and rate co-limitation model `limitation` ([`SerialLimitation`](@ref) for
 Johnson & Berry 2021, Eq. 20).
 """
-Base.@kwdef struct CytochromeElectronParameters{FT<:Real,L} <: AbstractLeafScalar
+Base.@kwdef struct CytochromeElectronParameters{FT<:Real,L<:AbstractColimitation} <: AbstractLeafScalar
     psii_fraction::FT
     psi_maximum_yield::FT
     limitation::L
-    function CytochromeElectronParameters{FT,L}(fields::Vararg{Any,3}) where {FT<:Real,L}
+    function CytochromeElectronParameters{FT,L}(
+        fields::Vararg{Any,3},
+    ) where {FT<:Real,L<:AbstractColimitation}
         p = new{FT,L}(continuous_fields(FT, CytochromeElectronParameters{FT,L}, fields)...)
         is_open_fraction(p.psii_fraction) ||
             throw(ArgumentError("invalid PSII fraction: coupled Z-scheme transport requires 0 < psii_fraction < 1"))
@@ -216,7 +225,11 @@ Base.@kwdef struct CytochromeElectronParameters{FT<:Real,L} <: AbstractLeafScala
         return p
     end
 end
-CytochromeElectronParameters(psii_fraction::Real, psi_maximum_yield::Real, limitation) =
+CytochromeElectronParameters(
+    psii_fraction::Real,
+    psi_maximum_yield::Real,
+    limitation::AbstractColimitation,
+) =
     CytochromeElectronParameters{
         scalar_type(CytochromeElectronParameters, psii_fraction, psi_maximum_yield),typeof(limitation),
     }(psii_fraction, psi_maximum_yield, limitation)
@@ -252,45 +265,75 @@ coupled Z-scheme steady-state domain and returns `NaN` fields.
     colimited = colimit(psi_light, vqmax, p.limitation)
     OutFT = promote_type(typeof(psi_light + q2 + zero(vqmax)), typeof(colimited))
     psi_supply = OutFT(colimited)
-    psi_light_p = primal_scalar(psi_light)
-    q2_open = if isinf(vqp)
-        one(OutFT)
-    elseif exact_zero_scalar(vqmax) || (iszero(vqp) && !(p.limitation isa SerialLimitation && !iszero(psi_light_p)))
-        iszero(psi_light_p) && iszero(q2p) ? one(OutFT) : zero(OutFT)
-    elseif p.limitation isa SerialLimitation
-        if isinf(psi_light_p)
-            zero(OutFT)
-        else
-            scale = max(vqmax, psi_light)
-            x, y = vqmax / scale, psi_light / scale
-            OutFT(x / (x + y))
-        end
-    else
-        OutFT(primal_clamp(one(psi_supply) - psi_supply / vqmax, zero(psi_supply), one(psi_supply)))
-    end
+    q2_open = open_psii_fraction(OutFT, p.limitation, vqmax, psi_light, psi_supply, q2p)
     return checked_result(valid, (; psi_electron_supply = psi_supply, psii_open_fraction = q2_open))
+end
+
+# Open PSII fraction q₂ (Johnson & Berry 2021, Eq. 22) at Cytochrome capacity `vqmax`, PSI
+# light supply `psi_light`, co-limited PSI supply `psi_supply` and primal PSII excitation
+# `q2p`. Without capacity the centres are open only in the dark.
+@inline function open_psii_fraction(::Type{OutFT}, ::SerialLimitation, vqmax, psi_light, psi_supply, q2p) where {OutFT}
+    vqp, psi_light_p = primal_scalar(vqmax), primal_scalar(psi_light)
+    isinf(vqp) && return one(OutFT)
+    if exact_zero_scalar(vqmax) || (iszero(vqp) && iszero(psi_light_p))
+        return iszero(psi_light_p) && iszero(q2p) ? one(OutFT) : zero(OutFT)
+    end
+    isinf(psi_light_p) && return zero(OutFT)
+    scale = max(vqmax, psi_light)
+    x, y = vqmax / scale, psi_light / scale
+    return OutFT(x / (x + y))
+end
+@inline function open_psii_fraction(::Type{OutFT}, ::AbstractColimitation, vqmax, psi_light, psi_supply, q2p) where {OutFT}
+    vqp, psi_light_p = primal_scalar(vqmax), primal_scalar(psi_light)
+    isinf(vqp) && return one(OutFT)
+    iszero(vqp) && return iszero(psi_light_p) && iszero(q2p) ? one(OutFT) : zero(OutFT)
+    return OutFT(primal_clamp(one(psi_supply) - psi_supply / vqmax, zero(psi_supply), one(psi_supply)))
 end
 
 """
     CytochromePhotosynthesis(; temperature, electron_transport, stoichiometry,
-        limitation, compensation)
+        limitation, assimilation_sign)
+    CytochromePhotosynthesis(temperature, electron_transport, stoichiometry,
+        limitation, assimilation_sign)
 
 Compose steady-state C3 photosynthesis governed by Cytochrome b₆f plastoquinol
 oxidation, PSI photochemistry, and coupled linear/cyclic ATP–NADPH stoichiometry
-(Johnson & Berry 2021) from immutable component structs. Components of different binary
-precisions are a `MethodError`.
+(Johnson & Berry 2021) from immutable components: `temperature`
+([`CytochromeTemperatureResponse`](@ref)), `electron_transport`
+([`CytochromeElectronParameters`](@ref)), `stoichiometry` ([`CytochromeStoichiometry`](@ref)),
+the carbon `limitation` ([`AbstractColimitation`](@ref)) and `assimilation_sign`
+([`AbstractAssimilationSign`](@ref)). Components of different binary precisions are a
+`MethodError`.
 """
-Base.@kwdef struct CytochromePhotosynthesis{T,E,S,L,C} <: AbstractC3Photosynthesis{L,C}
+Base.@kwdef struct CytochromePhotosynthesis{
+    T<:AbstractLeafScalar,
+    E<:AbstractLeafScalar,
+    S<:AbstractLeafScalar,
+    L<:AbstractColimitation,
+    C<:AbstractAssimilationSign,
+} <: AbstractC3Photosynthesis{L,C}
     temperature::T
     electron_transport::E
     stoichiometry::S
     limitation::L
-    compensation::C
+    assimilation_sign::C
     CytochromePhotosynthesis{T,E,S,L,C}(fields::Vararg{Any,5}) where {T,E,S,L,C} =
         new{T,E,S,L,C}(component_fields(CytochromePhotosynthesis{T,E,S,L,C}, fields)...)
 end
-CytochromePhotosynthesis(fields::Vararg{Any,5}) =
-    CytochromePhotosynthesis{map(typeof, fields)...}(fields...)
+CytochromePhotosynthesis(
+    temperature::AbstractLeafScalar,
+    electron_transport::AbstractLeafScalar,
+    stoichiometry::AbstractLeafScalar,
+    limitation::AbstractColimitation,
+    assimilation_sign::AbstractAssimilationSign,
+) = CytochromePhotosynthesis{map(typeof, (temperature, electron_transport, stoichiometry,
+    limitation, assimilation_sign))...}(temperature, electron_transport, stoichiometry, limitation,
+    assimilation_sign)
+
+# Cytochrome models whose PSI supply is co-limited in series with Cytochrome b₆f, the only
+# electron co-limitation for which the state-transition and dark-partition closed forms hold.
+const SerialCytochromePhotosynthesis =
+    CytochromePhotosynthesis{<:Any,<:CytochromeElectronParameters{<:Real,SerialLimitation}}
 
 @inline function electron_demand(r::CytochromeRates, co2, s::CytochromeStoichiometry)
     c1, c2 = cytochrome_carbon_coefficients(r, s)
@@ -335,54 +378,9 @@ end
     ))
 end
 
-@inline function valid_cytochrome_rates_and_stoichiometry(
-    r::CytochromeRates,
-    s::CytochromeStoichiometry;
-    require_positive_gamma::Bool = true,
-)
-    vcp, vqp, rdp, kcp, kop, gsp, nlp, ncp = map(
-        primal_scalar,
-        (
-            r.vcmax,
-            r.vqmax,
-            r.respiration,
-            r.kc,
-            r.ko,
-            r.gamma_star,
-            r.linear_atp_per_electron,
-            r.cyclic_atp_per_electron,
-        ),
-    )
-    zr = zero(vcp)
-    zs = zero(primal_scalar(s.electrons_per_carboxylation))
-    all(isfinite, (vcp, vqp, rdp, kcp, kop, gsp, nlp, ncp)) || return false
-    gamma_ok = require_positive_gamma ? (gsp > zr) : (gsp >= zr)
-    min(vcp, vqp, rdp, nlp) >= zr && min(kcp, kop, ncp) > zr && gamma_ok || return false
-    all(
-        x -> isfinite(primal_scalar(x)) && primal_scalar(x) > zs,
-        (
-            s.electrons_per_carboxylation,
-            s.electrons_per_photorespiratory_co2,
-            s.atp_per_carboxylation,
-            s.atp_per_photorespiratory_co2,
-        ),
-    ) || return false
-    cef_c1, cef_c2 = cytochrome_cyclic_coefficients(
-        r.linear_atp_per_electron, r.cyclic_atp_per_electron, s,
-    )
-    c1 = s.electrons_per_carboxylation + cef_c1
-    c2 = s.electrons_per_photorespiratory_co2 + cef_c2
-    c1p, c2p, cef1p, cef2p = map(primal_scalar, (c1, c2, cef_c1, cef_c2))
-    z = zero(c1p)
-    return isfinite(c1p) && isfinite(c2p) && cef1p >= z && cef2p >= z && c1p > z && c2p > z
-end
-
-@inline function valid_zscheme_supply(psi_supply, q2, eta)
-    ps, q2p, ep = map(primal_scalar, (psi_supply, q2, eta))
-    return isfinite(ps) && ps >= zero(ps) &&
-        isfinite(q2p) && q2p >= zero(q2p) &&
-        isfinite(ep) && ps <= ep * q2p
-end
+@inline valid_zscheme_supply(psi_supply, q2, eta) =
+    is_nonnegative(psi_supply) && is_nonnegative(q2) && is_finite(eta) &&
+    primal_scalar(psi_supply) <= primal_scalar(eta) * primal_scalar(q2)
 
 @inline function light_supply(p::CytochromePhotosynthesis, env, excitation)
     rates = biochemical_rates(p.temperature, env.temperature, env.oxygen)
@@ -410,11 +408,21 @@ end
         (; supply.psi_electron_supply, supply.psii_open_fraction, psi_to_psii_ratio = eta)
 end
 
-@inline valid_biochemistry(p::CytochromePhotosynthesis, r) =
-    valid_cytochrome_rates_and_stoichiometry(r, p.stoichiometry; require_positive_gamma = false)
-
-@inline valid_equilibrium_biochemistry(p::CytochromePhotosynthesis, r) =
-    valid_cytochrome_rates_and_stoichiometry(r, p.stoichiometry)
+# Rate domain: finite rates, nonnegative capacities, respiration, Γ* and η_L, positive
+# Michaelis constants and η_C, and an ATP balance that needs no negative cyclic flow
+# (cef ≥ 0, c₁, c₂ > 0). The stoichiometry is checked by its constructor.
+@inline function valid_biochemistry(p::CytochromePhotosynthesis, r)
+    s = p.stoichiometry
+    cef_c1, cef_c2 = cytochrome_cyclic_coefficients(
+        r.linear_atp_per_electron, r.cyclic_atp_per_electron, s,
+    )
+    c1 = s.electrons_per_carboxylation + cef_c1
+    c2 = s.electrons_per_photorespiratory_co2 + cef_c2
+    return all(is_nonnegative, (r.vcmax, r.vqmax, r.respiration, r.gamma_star,
+            r.linear_atp_per_electron)) &&
+        all(is_positive, (r.kc, r.ko, r.cyclic_atp_per_electron)) &&
+        is_nonnegative(cef_c1) && is_nonnegative(cef_c2) && is_positive(c1) && is_positive(c2)
+end
 
 # Cyclic PSI flow evolves no O₂; it is reported beside the realized linear flow.
 @inline turnover_electron_flows(::CytochromePhotosynthesis, turnover) =

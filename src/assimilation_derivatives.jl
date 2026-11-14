@@ -54,15 +54,15 @@ end
 @inline excess_slope(co2, gamma, ::SignedAssimilation) = one(co2)
 @inline excess_slope(co2, gamma, ::NonnegativeAssimilation) = exceeds(co2, gamma) ? one(co2) : zero(co2)
 
-@inline function assimilation_and_slope(r, co2, oxygen, electrons, s, limitation, compensation)
+@inline function assimilation_and_slope(r, co2, oxygen, electrons, s, limitation, assimilation_sign)
     capacity, derivative = capacity_and_slope(r, co2, oxygen, electrons, s, limitation)
-    excess = co2_excess(co2, r.gamma_star, compensation)
+    excess = co2_excess(co2, r.gamma_star, assimilation_sign)
     return capacity * excess - r.respiration,
-        derivative * excess + capacity * excess_slope(co2, r.gamma_star, compensation)
+        derivative * excess + capacity * excess_slope(co2, r.gamma_star, assimilation_sign)
 end
 
 """
-    carbon_assimilation_derivative(rates, co2, oxygen, electrons, stoichiometry, limitation, compensation)
+    carbon_assimilation_derivative(rates, co2, oxygen, electrons, stoichiometry, limitation, assimilation_sign)
 
 Compute the partial derivative ``∂A_n / ∂C_c`` [μmol CO₂ m⁻² leaf s⁻¹ Pa⁻¹] of
 net assimilation with respect to biochemical-site CO₂ at fixed leaf temperature,
@@ -71,7 +71,7 @@ O₂, and available electron supply.
 At [`MinimumLimitation`](@ref) or [`NonnegativeAssimilation`](@ref) kinks, return
 a consistent one-sided derivative.
 """
-@inline function carbon_assimilation_derivative(r, co2, oxygen, electrons, s, limitation, compensation)
+@inline function carbon_assimilation_derivative(r, co2, oxygen, electrons, s, limitation, assimilation_sign)
     require_compatible(carbon_assimilation_derivative, r, co2, oxygen, electrons, s, limitation)
-    return last(assimilation_and_slope(r, co2, oxygen, electrons, s, limitation, compensation))
+    return last(assimilation_and_slope(r, co2, oxygen, electrons, s, limitation, assimilation_sign))
 end

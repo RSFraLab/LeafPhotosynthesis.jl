@@ -13,6 +13,13 @@ abstract interfaces. Explicit no-op types disable optional calculations.
 stoichiometry, rate limitation, and compensation treatment. Composition determines
 the compiled calculation through Julia dispatch. Model parameters are immutable;
 inputs and outputs are scalar values, not mutable per-leaf scratch containers.
+Every kind of component has an abstract type (temperature laws, compensation points,
+co-limitation rules, assimilation-sign treatments, excitations, stomatal targets and models,
+diffusion, oxygen exchange, fluorescence, quenching, solver methods), and the composite
+constructors require it, so a value of the wrong kind is a `MethodError` at construction.
+The C3 and Cytochrome models share their leaf entry points through
+`AbstractC3Photosynthesis`; the methods through which those entry points reach a model are
+internal, and a new electron-supply model is added inside the package.
 
 The audited [PSII fluorescence source](fluorescence.md) is composed alongside
 LeafModel, sharing its actual PSII excitation and realized linear electron flow.
@@ -87,7 +94,8 @@ point or component function (the model and its components, environment, state, d
 diffusion, excitation) must have one binary precision; dual numbers count with the
 precision of their values, so `ForwardDiff.Dual{T,Float64}` mixes with `Float64`. A
 mismatch is a `MethodError` of the called function, raised at its entry by
-`require_compatible`. The check reads only types and is folded away when the method is
+`require_compatible` (the warm start of the equilibrium solver is such an argument: a value
+of another precision, or an integer, is a `MethodError`). The check reads only types and is folded away when the method is
 compiled, so it costs nothing in a kernel; no precision mismatch is turned into `NaN` or
 promoted silently. Composite constructors (`C3Photosynthesis`, `CytochromePhotosynthesis`,
 the temperature bundles, `LeafModel`, and every struct with components) apply the same
@@ -104,6 +112,14 @@ values by their tangents). At a tie a kink returns the one-sided derivative Forw
 zero at `Cc = Γ*`, a stomatal target its minimum conductance at `A = 0`. The exception is
 the exact-darkness test of the analytic diffusion root, which also looks at the tangent so
 that a dual light of value zero propagates its derivative; it does not change validity.
+
+**One result shape, one validity predicate.** The entry points return NamedTuples whose
+fields extend each other: `gas_exchange` returns the fields of `photosynthesize` (carbon
+fluxes, `electron_transport` and the model's electron diagnostics) followed by the diffusion
+fields, and an `EquilibriumSolution` holds such a gas-exchange result in `exchange` beside the
+solver diagnostics. Invalid input never throws; it gives `NaN` in every field of a
+NamedTuple result, or a status (`EquilibriumStatus`, `FluorescenceStatus`) in a result
+struct. `is_valid(result)` tells a usable result from an invalid one for every result type.
 
 **What may throw.** Nothing callable inside a kernel throws for a value. Structs split in
 two classes:

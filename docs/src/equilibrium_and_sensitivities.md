@@ -32,14 +32,17 @@ residual without evaluating a singular target at nonpositive Cs.
 on A and Cs. Newton proposals must lie inside the current bracket. Explicit periodic
 bisection guarantees bracket contraction; `Bisection` supplies a comparison method.
 Thermal responses and electron supply are computed once per solve. Darkness/zero
-capacity has an analytic fast path. A caller may pass `initial_co2` in Pa to warm-start
-from the previous time step; no state or cache is hidden inside the model.
+capacity has an analytic fast path. A caller may pass a warm start `initial_co2` in Pa
+(the seventh argument, after `excitation`) from the previous time step; it broadcasts
+like the other arguments, so each leaf of a batch can start from its own previous `Cc`.
+No state or cache is hidden inside the model.
 
 Both a pressure residual and flux residual must satisfy the configured absolute
-and relative tolerances. `EquilibriumSolution` reports `converged`, `status`,
-`iterations`, `bracket_width`, and both residuals. Iteration/precision failures
+and relative tolerances. `EquilibriumSolution` holds the gas exchange at the solution in
+`exchange` (the fields of a `gas_exchange` result) and reports `stomatal_conductance`,
+`status`, `iterations`, `bracket_width` and the CO₂ residual. Iteration/precision failures
 return the best physical iterate; invalid inputs/brackets return NaN diagnostics.
-Always check convergence before using fluxes. Tolerances are never silently loosened.
+Always check `is_valid(solution)` before using fluxes. Tolerances are never silently loosened.
 The example's numerical settings are explicit in its TOML, separately for FP32/FP64.
 The bracket is intentionally conservative and may remain wider than the root error
 after rapid Newton convergence; the width is not a claimed uncertainty estimate.
@@ -51,7 +54,7 @@ light compensation point, no steady state exists and the solver returns
 included) exists, and the result is the limit `g0 → 0⁺`: the open-stomata root in
 (Γ, Ca) when `Ca − Γ > (P/u) r Ca / gain` (`EquilibriumConverged`), otherwise the
 closed-stomata steady state with zero conductance, zero net assimilation and `Cc = Γ`
-(`EquilibriumStomataClosed`, `converged = true`).
+(`EquilibriumStomataClosed`, a valid solution).
 Humidity and energy balance are prescribed here, so this is not a complete Bonan 12.1
 reproduction. Prognostic stomata use the same target family with independent opening
 and closing timescales; tests show their long-time approach to the coupled equilibrium
@@ -70,16 +73,16 @@ dA/dgs   = (∂A/∂Cc) (dCc/dgs)
 ```
 
 `carbon_assimilation_derivative` evaluates ∂A/∂Cc analytically for minimum and
-quadratic co-limitation. `assimilation_sensitivity` returns `dco2_dgs`,
-`dnet_assimilation_dgs`, and `dassimilation_dgs`. The latter two are equal at fixed
-temperature because respiration is independent of gs. Pre-respiration assimilation
-still includes photorespiration: it is not raw carboxylation. Canopy GPP requires
+quadratic co-limitation. `assimilation_sensitivity` returns `dco2_dgs` and
+`dnet_assimilation_dgs`; at fixed temperature respiration is independent of gs, so the
+latter is also the derivative of pre-respiration assimilation. Pre-respiration
+assimilation still includes photorespiration: it is not raw carboxylation. Canopy GPP requires
 an explicit convention and leaf-area aggregation outside this kernel.
 
 Without an existing exchange solution, this function calls the analytical
 minimum-limitation/signed-diffusion closure. To use another supported equilibrium
-configuration, pass its converged solution as the sixth argument (after `excitation`)
-and its `stomatal_conductance` as `state`; an exchange that is not a root for the passed
+configuration, pass its valid solution (or its `exchange`) as the sixth argument (after
+`excitation`) and its `stomatal_conductance` as `state`; an exchange that is not a root for the passed
 excitation and state gives `NaN`.
 It differentiates steady CO₂ supply–demand at independently varied gs, not the empirical
 stomatal target law. The optimization law should decide how to use that gradient.

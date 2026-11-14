@@ -5,7 +5,7 @@ function fluorescence_response(::Type{FT}) where {FT}
     case = setup_fluorescence(FT)
     map(case.environments) do site
         carbon = photosynthesize(case.leaf, site)
-        inputs = psii_flux_inputs(case.leaf.photosynthesis, site)
+        inputs = fluorescence_inputs(case.leaf.photosynthesis, site)
         unquenched = fluorescence(case.unquenched, inputs)
         regulated = fluorescence(case.regulated, inputs)
         fluorescence_row(site, carbon, inputs, unquenched, regulated)

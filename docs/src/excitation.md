@@ -32,7 +32,7 @@ excitation = PrescribedPSIIExcitation(q2) # same FT as leaf/environment
 carbon = photosynthesize(leaf, environment, excitation)
 turnover = biochemical_turnover(leaf, environment, excitation)
 oxygen = oxygen_exchange(leaf, environment, excitation)
-psii = psii_flux_inputs(leaf.photosynthesis, environment, excitation)
+psii = fluorescence_inputs(leaf.photosynthesis, environment, excitation)
 source = fluorescence(fluorescence_model, psii)
 ```
 

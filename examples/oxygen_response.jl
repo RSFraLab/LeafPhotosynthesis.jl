@@ -17,7 +17,7 @@ function oxygen_response(::Type{FT}) where {FT}
                 case.diffusion,
                 case.solver,
             )
-            exchange.converged || error("Leaf equilibrium failed: $(exchange.status)")
+            is_valid(exchange) || error("Leaf equilibrium failed: $(exchange.status)")
             rates = biochemical_rates(
                 leaf.photosynthesis.temperature,
                 environment.temperature,
@@ -26,13 +26,13 @@ function oxygen_response(::Type{FT}) where {FT}
             site = LeafEnvironment(
                 environment.temperature,
                 environment.absorbed_par,
-                exchange.biochemical_co2,
+                exchange.exchange.biochemical_co2,
                 environment.oxygen,
             )
             oxygen = oxygen_exchange(leaf, site)
             (;
                 gamma_star = rates.gamma_star,
-                assimilation = exchange.carbon.net_assimilation,
+                assimilation = exchange.exchange.net_assimilation,
                 conductance = exchange.stomatal_conductance,
                 net_oxygen = oxygen.net_release,
             )

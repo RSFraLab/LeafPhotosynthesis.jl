@@ -22,11 +22,11 @@ function johnson_berry_2021_curves(::Type{FT}) where {FT}
         q_abs = absorptance * q_inc
         site = LeafEnvironment(T, q_abs, co2, O2)
         static_exc = exact_dual_excitation(base.beta_dark, q_abs)
-        inp = photosystem_flux_inputs(base.photo, site, static_exc)
+        inp = fluorescence_inputs(base.photo, site, static_exc)
         r_pud = fluorescence(base.fl_puddle, inp)
         r_ku2 = fluorescence(base.fl_ku2, inp)
         r_ku10 = fluorescence(base.fl_ku10, inp)
-        all(fluorescence_valid, (r_pud, r_ku2, r_ku10)) ||
+        all(is_valid, (r_pud, r_ku2, r_ku10)) ||
             error("Invalid Case 9 fluorescence at incident_par = $q_inc")
         dark = r_ku2.status == FluorescenceDark
         (;
@@ -48,11 +48,11 @@ function johnson_berry_2021_curves(::Type{FT}) where {FT}
         beta_ku2 = state_transition_partition(base.rule, base.fl_ku2, base.photo, site)
         beta_ku10 = state_transition_partition(base.rule, base.fl_ku10, base.photo, site)
 
-        r_stat_ku2 = fluorescence(base.fl_ku2, photosystem_flux_inputs(base.photo, site, static_exc))
-        r_qt_ku2 = fluorescence(base.fl_ku2, photosystem_flux_inputs(base.photo, site, qt_exc_ku2))
-        r_stat_ku10 = fluorescence(base.fl_ku10, photosystem_flux_inputs(base.photo, site, static_exc))
-        r_qt_ku10 = fluorescence(base.fl_ku10, photosystem_flux_inputs(base.photo, site, qt_exc_ku10))
-        all(fluorescence_valid, (r_stat_ku2, r_qt_ku2, r_stat_ku10, r_qt_ku10)) ||
+        r_stat_ku2 = fluorescence(base.fl_ku2, fluorescence_inputs(base.photo, site, static_exc))
+        r_qt_ku2 = fluorescence(base.fl_ku2, fluorescence_inputs(base.photo, site, qt_exc_ku2))
+        r_stat_ku10 = fluorescence(base.fl_ku10, fluorescence_inputs(base.photo, site, static_exc))
+        r_qt_ku10 = fluorescence(base.fl_ku10, fluorescence_inputs(base.photo, site, qt_exc_ku10))
+        all(is_valid, (r_stat_ku2, r_qt_ku2, r_stat_ku10, r_qt_ku10)) ||
             error("Invalid Case 10 fluorescence at incident_par = $q_inc")
         dark = r_qt_ku2.status == FluorescenceDark
         (;
@@ -73,8 +73,8 @@ function johnson_berry_2021_curves(::Type{FT}) where {FT}
         site = LeafEnvironment(T, q_abs, co2, O2)
         res = map(scaled_cases) do sc
             exc = state_transition_excitation(sc.rule, sc.fl_ku2, sc.photo, site)
-            r = fluorescence(sc.fl_ku2, photosystem_flux_inputs(sc.photo, site, exc))
-            fluorescence_valid(r) || error("Invalid Case 12 fluorescence at incident_par = $q_inc")
+            r = fluorescence(sc.fl_ku2, fluorescence_inputs(sc.photo, site, exc))
+            is_valid(r) || error("Invalid Case 12 fluorescence at incident_par = $q_inc")
             r
         end
         dark = res[1].status == FluorescenceDark
@@ -93,12 +93,12 @@ function johnson_berry_2021_curves(::Type{FT}) where {FT}
         q_abs = absorptance * q_inc
         site = LeafEnvironment(T, q_abs, co2, O2)
         static_exc = exact_dual_excitation(base.beta_dark, q_abs)
-        r = fluorescence(base.fl_ku2, photosystem_flux_inputs(base.photo, site, static_exc))
-        fluorescence_valid(r) || error("Invalid PAM benchmark fluorescence at incident_par = $q_inc")
+        r = fluorescence(base.fl_ku2, fluorescence_inputs(base.photo, site, static_exc))
+        is_valid(r) || error("Invalid PAM benchmark fluorescence at incident_par = $q_inc")
         dark = r.status == FluorescenceDark
         p_ideal = pam_fluorescence(base.pam_ideal, base.fl_ku2, r, alpha2_dark, alpha1_dark)
         p_leak = pam_fluorescence(base.pam_leaked, base.fl_ku2, r, alpha2_dark, alpha1_dark)
-        dark || (pam_fluorescence_valid(p_ideal) && pam_fluorescence_valid(p_leak)) ||
+        dark || (is_valid(p_ideal) && is_valid(p_leak)) ||
             error("Invalid PAM observation at incident_par = $q_inc")
         (;
             incident_par = q_inc,

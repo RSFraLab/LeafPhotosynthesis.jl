@@ -8,7 +8,7 @@ function stomatal_response(::Type{FT}, biochemistry, settings) where {FT}
     experiment = settings["experiment"]
     validate_time_steps(experiment)
     dark = GasExchangeEnvironment(light.temperature, experiment["dark_absorbed_par"],
-        light.co2, light.oxygen, light.pressure, light.relative_humidity, light.vpd)
+        light.ambient_co2, light.oxygen, light.pressure, light.relative_humidity, light.vpd)
     steady = LeafModel(; photosynthesis = leaf.photosynthesis,
         stomata = SteadyStateStomata(leaf.stomata.target))
     solver = core_solver(FT, settings)
@@ -19,15 +19,15 @@ function stomatal_response(::Type{FT}, biochemistry, settings) where {FT}
 
     for (environment, duration) in ((light, experiment["duration"]), (dark, experiment["dark_duration"]))
         equilibrium = equilibrium_gas_exchange(steady, environment, diffusion, solver)
-        equilibrium.converged || error("Equilibrium failed: $(equilibrium.status)")
+        is_valid(equilibrium) || error("Equilibrium failed: $(equilibrium.status)")
         # Save before each update, including the endpoints on both sides of the light switch.
         steps = round(Int, duration / dt)
         for step in 0:steps
             result = leaf_tendencies(leaf, environment, state, diffusion)
             push!(rows, (; time = elapsed + step * dt, absorbed_par = environment.absorbed_par,
                 conductance = state.conductance, equilibrium_conductance = equilibrium.stomatal_conductance,
-                net_assimilation = result.gas_exchange.carbon.net_assimilation,
-                equilibrium_assimilation = equilibrium.carbon.net_assimilation,
+                net_assimilation = result.gas_exchange.net_assimilation,
+                equilibrium_assimilation = equilibrium.exchange.net_assimilation,
                 net_oxygen = result.oxygen.net_release))
             # Illustrative Euler step: the caller owns time integration.
             if step < steps

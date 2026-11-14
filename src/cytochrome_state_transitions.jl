@@ -17,10 +17,8 @@ struct StateTransitionRule{FT<:Real} <: AbstractLeafScalar
     maximum_psii_fraction::FT
     function StateTransitionRule{FT}(fields::Vararg{Any,2}) where {FT<:Real}
         r = new{FT}(continuous_fields(FT, StateTransitionRule{FT}, fields)...)
-        lo_p = primal_scalar(r.minimum_psii_fraction)
-        hi_p = primal_scalar(r.maximum_psii_fraction)
-        isfinite(lo_p) && isfinite(hi_p) &&
-            zero(lo_p) <= lo_p < hi_p <= one(hi_p) ||
+        lo, hi = r.minimum_psii_fraction, r.maximum_psii_fraction
+        is_fraction(lo) && is_fraction(hi) && exceeds(hi, lo) ||
             throw(ArgumentError("StateTransitionRule requires finite bounds 0 ≤ minimum_psii_fraction < maximum_psii_fraction ≤ 1"))
         return r
     end
@@ -36,6 +34,14 @@ StateTransitionRule{FT}(;
 StateTransitionRule(; minimum_psii_fraction, maximum_psii_fraction) =
     StateTransitionRule(minimum_psii_fraction, maximum_psii_fraction)
 
+# Domain shared by the partition closed forms: PSI maximum yields of the photosynthesis and
+# fluorescence models agree within the tolerance, a valid site and rate domain, and a
+# defined PSI/PSII electron ratio (not C = Γ* = 0).
+@inline valid_partition_inputs(fl, p, rates, phi1_max, temperature, co2, oxygen) =
+    is_at_most(abs(p.electron_transport.psi_maximum_yield - phi1_max), fl.yield_tolerance) &&
+    valid_site(temperature, co2, oxygen) && valid_biochemistry(p, rates) &&
+    !(is_zero(co2) && is_zero(rates.gamma_star))
+
 """
     dark_balanced_psii_partition(fluorescence_model::CytochromeFluorescence,
         photosynthesis::CytochromePhotosynthesis, temperature, co2, oxygen)
@@ -45,11 +51,13 @@ StateTransitionRule(; minimum_psii_fraction, maximum_psii_fraction) =
 Compute the low-light (`Q_abs → 0`, `q₂ → 1`, `K_N = 0`) PSII absorbed-photon
 fraction ``β_0 = Φ_{P1,\\max} / (Φ_{P1,\\max} + η(T, C_c, O_2) Φ_{P2,\\max}(1))``
 that balances open-center PSII and PSI photochemistry (Johnson & Berry 2021,
-Eqs. 28, 30, Table 2), returning `NaN` on invalid inputs without throwing.
+Eqs. 28, 30, Table 2), returning `NaN` on invalid inputs without throwing. The closed form
+holds for [`SerialLimitation`](@ref) in `photosynthesis.electron_transport`; another
+co-limitation is a `MethodError`.
 """
 @inline function dark_balanced_psii_partition(
     fl::CytochromeFluorescence{FTR},
-    p::CytochromePhotosynthesis,
+    p::SerialCytochromePhotosynthesis,
     temperature::FTT,
     co2::FTC,
     oxygen::FTO,
@@ -61,22 +69,17 @@ Eqs. 28, 30, Table 2), returning `NaN` on invalid inputs without throwing.
     phi2_max = psii_maximum_photochemical_yield(fl, one(FTR))
     beta = phi1_max / (phi1_max + eta * phi2_max)
     T = typeof(beta + rates.vcmax + rates.vqmax + rates.gamma_star + temperature + co2 + oxygen)
-    valid = p.electron_transport.limitation isa SerialLimitation &&
-        is_at_most(abs(p.electron_transport.psi_maximum_yield - phi1_max), fl.yield_tolerance) &&
-        valid_site(temperature, co2, oxygen) && valid_biochemistry(p, rates) &&
-        !(is_zero(co2) && is_zero(rates.gamma_star))
+    valid = valid_partition_inputs(fl, p, rates, phi1_max, temperature, co2, oxygen)
     return valid ? T(beta) : T(NaN)
 end
 
 @inline function dark_balanced_psii_partition(
     fl::CytochromeFluorescence,
-    p::CytochromePhotosynthesis,
+    p::SerialCytochromePhotosynthesis,
     site::LeafEnvironment,
 )
-    val = dark_balanced_psii_partition(fl, p, site.temperature, site.co2, site.oxygen)
-    par_p = primal_scalar(site.absorbed_par)
-    return isfinite(par_p) && par_p >= zero(par_p) ?
-        val : oftype(val, NaN)
+    val = dark_balanced_psii_partition(fl, p, site.temperature, site.biochemical_co2, site.oxygen)
+    return is_nonnegative(site.absorbed_par) ? val : oftype(val, NaN)
 end
 
 """
@@ -86,24 +89,24 @@ end
 
 Evaluate the pointwise, closed-form PSII absorbed-photon fraction `β ∈ (0, 1)`
 under `rule` at `site` (Johnson & Berry 2021, Cases 10–12), returning `NaN` on
-invalid or incompatible inputs without throwing.
+invalid or incompatible inputs without throwing. As for
+[`dark_balanced_psii_partition`](@ref), the model must use [`SerialLimitation`](@ref) in its
+electron transport; another co-limitation is a `MethodError`.
 """
 @inline function state_transition_partition(
     rule::StateTransitionRule{FTR},
     fl::CytochromeFluorescence{FTF},
-    p::CytochromePhotosynthesis,
+    p::SerialCytochromePhotosynthesis,
     site::LeafEnvironment{FT},
 ) where {FTR<:Real,FTF<:Real,FT<:Real}
     require_compatible(state_transition_partition, rule, fl, p, site)
     rates = biochemical_rates(p.temperature, site.temperature, site.oxygen)
     phi1_max = psi_maximum_photochemical_yield(fl)
-    valid = p.electron_transport.limitation isa SerialLimitation &&
-        is_at_most(abs(p.electron_transport.psi_maximum_yield - phi1_max), fl.yield_tolerance) &&
-        valid_site(site) && is_nonnegative(site.absorbed_par) && valid_biochemistry(p, rates) &&
-        !(is_zero(site.co2) && is_zero(rates.gamma_star))
+    valid = valid_partition_inputs(fl, p, rates, phi1_max, site.temperature, site.biochemical_co2, site.oxygen) &&
+        is_nonnegative(site.absorbed_par)
     T = typeof(
         zero(FTR) + zero(FTF) + rates.vcmax + rates.vqmax + rates.gamma_star +
-        site.temperature + site.absorbed_par + site.co2 + site.oxygen,
+        site.temperature + site.absorbed_par + site.biochemical_co2 + site.oxygen,
     )
 
     # Dimensionless PSII rate ratios bounded in [0, 1] (zero rate^2 overflow in Float32).
@@ -116,7 +119,7 @@ invalid or incompatible inputs without throwing.
     kp_hat = psii.maximum_photochemical_rate / s_tot
     sb_hat = s_base / s_tot
 
-    eta = psi_to_psii_electron_ratio(rates, site.co2, p.stoichiometry)
+    eta = psi_to_psii_electron_ratio(rates, site.biochemical_co2, p.stoichiometry)
     m1 = phi1_max * d0_hat
     mu = phi1_max * kp_hat * ku_hat
     m2 = eta * kp_hat * sb_hat
@@ -141,8 +144,8 @@ invalid or incompatible inputs without throwing.
 
     # Closed-form light-saturation floor β_sat at J_P700,j = J_P700,c.
     c1, c2 = cytochrome_carbon_coefficients(rates, p.stoichiometry)
-    km = site.co2 + rates.kc * (one(T) + site.oxygen / rates.ko)
-    j_psi_c = (rates.vcmax / km) * (c1 * site.co2 + c2 * rates.gamma_star)
+    km = site.biochemical_co2 + rates.kc * (one(T) + site.oxygen / rates.ko)
+    j_psi_c = (rates.vcmax / km) * (c1 * site.biochemical_co2 + c2 * rates.gamma_star)
     q2_sat = exceeds(rates.vqmax, zero(rates.vqmax)) ?
         primal_max(rates.vqmax - j_psi_c, zero(T)) / rates.vqmax : zero(T)
     num_sat = m1 + q2_sat * mu
@@ -174,7 +177,7 @@ across all IEEE-754 binades.
 @inline function state_transition_excitation(
     rule::StateTransitionRule{FTR},
     fl::CytochromeFluorescence{FTF},
-    p::CytochromePhotosynthesis,
+    p::SerialCytochromePhotosynthesis,
     site::LeafEnvironment{FT},
 ) where {FTR<:Real,FTF<:Real,FT<:Real}
     beta = state_transition_partition(rule, fl, p, site)

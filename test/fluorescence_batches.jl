@@ -16,8 +16,8 @@ function check_fluorescence_batches(to_device, synchronize)
             ) for light in FT.(e["test_light"]) for
             factor in FT.(e["test_co2_gamma_factors"])
         ]
-        inputs=psii_flux_inputs.(Ref(p), environments)
-        inputs_device=psii_flux_inputs.(Ref(p), to_device(environments))
+        inputs=fluorescence_inputs.(Ref(p), environments)
+        inputs_device=fluorescence_inputs.(Ref(p), to_device(environments))
         synchronize()
         for (a, b) in zip(inputs, Array(inputs_device))
             @test a.psii_excitation≈b.psii_excitation

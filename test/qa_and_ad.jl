@@ -137,7 +137,7 @@ end
             @test_throws MethodError C3Stoichiometry{BT}(4.0, 4.0)
             @test_throws MethodError OxygenScaledCompensationPoint(ConstantResponse(4.0), bad)
             @test_throws MethodError LeafEnvironment(bad, bad, bad, bad)
-            @test_throws MethodError LeafEnvironment(; temperature = bad, absorbed_par = bad, co2 = bad, oxygen = bad)
+            @test_throws MethodError LeafEnvironment(; temperature = bad, absorbed_par = bad, biochemical_co2 = bad, oxygen = bad)
             @test_throws MethodError LeafEnvironment{BT}(298.15, 800.0, 28.0, 21000.0)
             @test_throws MethodError CoreOxygenExchange(bad, bad, bad, bad)
             @test_throws MethodError CoreOxygenExchange{BT}(4.0, 1.5, 0.5, 1.0)
@@ -167,10 +167,10 @@ end
             @test_throws MethodError WaterVaporDiffusion{BT}(1.4)
             @test_throws MethodError EquilibriumSolver(SafeguardedNewton(4), bad, bad, bad, bad, 30)
             @test_throws MethodError EquilibriumSolution(
-                (net_assimilation = 1.0,), ntuple(_ -> bad, 9)..., 1, EquilibriumConverged, true,
+                (net_assimilation = 1.0,), ntuple(_ -> bad, 3)..., 1, EquilibriumConverged,
             )
             @test_throws MethodError EquilibriumSolution{BT,NamedTuple{(:net_assimilation,),Tuple{Float64}}}(
-                (net_assimilation = 1.0,), ntuple(_ -> 1.0, 9)..., 1, EquilibriumConverged, true,
+                (net_assimilation = 1.0,), ntuple(_ -> 1.0, 3)..., 1, EquilibriumConverged,
             )
             @test_throws MethodError CytochromeCapacity(bad, ConstantResponse(300.0))
             @test_throws MethodError CytochromeRates(bad, bad, bad, bad, bad, bad, bad, bad)
@@ -191,7 +191,7 @@ end
         end
         # Positive controls confirming exact arity/order of result constructors on Float64
         @test RateCompetitionResult(FluorescenceLit, false, ntuple(_ -> 0.5, 7)...) isa RateCompetitionResult{Float64}
-        @test EquilibriumSolution((net_assimilation = 1.0,), ntuple(_ -> 1.0, 9)..., 1, EquilibriumConverged, true) isa EquilibriumSolution{Float64}
+        @test EquilibriumSolution((net_assimilation = 1.0,), ntuple(_ -> 1.0, 3)..., 1, EquilibriumConverged) isa EquilibriumSolution{Float64}
         @test CytochromeFluorescenceResult(FluorescenceLit, false, ntuple(_ -> 0.5, 17)...) isa CytochromeFluorescenceResult{Float64}
         @test PAMFluorescenceResult(FluorescenceLit, ntuple(_ -> 0.5, 11)...) isa PAMFluorescenceResult{Float64}
 
@@ -324,17 +324,17 @@ end
               equilibrium_gas_exchange.(cyto_steady, gas_vec[2:2:end], diff64, solver64)
 
         # Fluorescence, state transitions, and PAM observer on OffsetArray & @view
-        vdt_off = fluorescence.(vdt_case.regulated, psii_flux_inputs.(vdt_case.leaf.photosynthesis, sites_off1))
+        vdt_off = fluorescence.(vdt_case.regulated, fluorescence_inputs.(vdt_case.leaf.photosynthesis, sites_off1))
         @test axes(vdt_off) == axes(sites_off1)
-        @test collect(vdt_off) == fluorescence.(vdt_case.regulated, psii_flux_inputs.(vdt_case.leaf.photosynthesis, sites_vec))
+        @test collect(vdt_off) == fluorescence.(vdt_case.regulated, fluorescence_inputs.(vdt_case.leaf.photosynthesis, sites_vec))
 
         exc_off = state_transition_excitation.(jb.rule, jb.fl_ku2, jb.photo, sites_off2)
         @test axes(exc_off) == axes(sites_off2)
-        jb_fl_off = fluorescence.(jb.fl_ku2, photosystem_flux_inputs.(jb.photo, sites_off2, exc_off))
+        jb_fl_off = fluorescence.(jb.fl_ku2, fluorescence_inputs.(jb.photo, sites_off2, exc_off))
         pam_off = pam_fluorescence.(jb.pam_leaked, jb.fl_ku2, jb_fl_off, 0.425, 0.425)
         @test axes(pam_off) == axes(sites_off2)
         exc_ref = state_transition_excitation.(jb.rule, jb.fl_ku2, jb.photo, sites_vec)
-        jb_fl_ref = fluorescence.(jb.fl_ku2, photosystem_flux_inputs.(jb.photo, sites_vec, exc_ref))
+        jb_fl_ref = fluorescence.(jb.fl_ku2, fluorescence_inputs.(jb.photo, sites_vec, exc_ref))
         @test vec(collect(pam_off)) == pam_fluorescence.(jb.pam_leaked, jb.fl_ku2, jb_fl_ref, 0.425, 0.425)
     end
 
@@ -423,7 +423,7 @@ end
                     GasExchangeEnvironment(x[1], x[2], x[3], x[4], x[5], x[6], x[7]),
                     diff_bf,
                     tight_bf_solver,
-                ).carbon.net_assimilation,
+                ).exchange.net_assimilation,
                 x_eq,
             )
             for slv in (coarse_newton, bisect_solver)
@@ -434,7 +434,7 @@ end
                         GasExchangeEnvironment(x[1], x[2], x[3], x[4], x[5], x[6], x[7]),
                         diff64,
                         slv,
-                    ).carbon.net_assimilation,
+                    ).exchange.net_assimilation,
                     x_eq,
                 )
                 @test all(isfinite, g_ad)
@@ -456,9 +456,10 @@ end
                     stom64,
                     GasExchangeEnvironment(x_eq...),
                     diff64,
-                    coarse_newton;
-                    initial_co2 = ci0,
-                ).intercellular_co2,
+                    coarse_newton,
+                    BroadbandExcitation(),
+                    ci0,
+                ).exchange.intercellular_co2,
                 25.0,
             )
             @test d_init == 0.0
@@ -468,9 +469,10 @@ end
                     stom64,
                     GasExchangeEnvironment(x[1], x[2], x[3], x[4], x[5], x[6], x[7]),
                     diff64,
-                    coarse_newton;
-                    initial_co2 = sol_primal.biochemical_co2 + 999.0 * (x[1] - x_eq[1]),
-                ).carbon.net_assimilation,
+                    coarse_newton,
+                    BroadbandExcitation(),
+                    sol_primal.exchange.biochemical_co2 + 999.0 * (x[1] - x_eq[1]),
+                ).exchange.net_assimilation,
                 x_eq,
             )
             @test isapprox(g_warm, g_ref_c3; rtol = 1e-10, atol = 1e-12)
@@ -482,7 +484,7 @@ end
                     GasExchangeEnvironment(x[1], x[2], x[3], x[4], x[5], x[6], x[7]),
                     diff_bf,
                     tight_bf_solver,
-                ).carbon.net_assimilation,
+                ).exchange.net_assimilation,
                 x_eq,
             )
             for slv in (coarse_newton, bisect_solver)
@@ -493,7 +495,7 @@ end
                         GasExchangeEnvironment(x[1], x[2], x[3], x[4], x[5], x[6], x[7]),
                         diff64,
                         slv,
-                    ).carbon.net_assimilation,
+                    ).exchange.net_assimilation,
                     x_eq,
                 )
                 @test all(isfinite, g_ad_cyto)
@@ -503,11 +505,11 @@ end
 
         # 3. Fluorescence, StateTransitionRule (high light KN > 0 AND low light KN == 0), & PAM observer AD
         g_vdt = ForwardDiff.gradient(
-            x -> fluorescence(vdt64.regulated, psii_flux_inputs(vdt64.leaf.photosynthesis, LeafEnvironment(x[1], x[2], x[3], x[4]))).fluorescence_yield,
+            x -> fluorescence(vdt64.regulated, fluorescence_inputs(vdt64.leaf.photosynthesis, LeafEnvironment(x[1], x[2], x[3], x[4]))).fluorescence_yield,
             x_site_light,
         )
         g_vdt_ref = _bigfloat_grad(
-            x -> fluorescence(vdt_bf.regulated, psii_flux_inputs(vdt_bf.leaf.photosynthesis, LeafEnvironment(x[1], x[2], x[3], x[4]))).fluorescence_yield,
+            x -> fluorescence(vdt_bf.regulated, fluorescence_inputs(vdt_bf.leaf.photosynthesis, LeafEnvironment(x[1], x[2], x[3], x[4]))).fluorescence_yield,
             x_site_light,
         )
         @test isapprox(g_vdt, g_vdt_ref; rtol = 1e-11, atol = 1e-13)
@@ -517,7 +519,7 @@ end
                 x -> begin
                     site = LeafEnvironment(x[1], x[2], x[3], x[4])
                     exc = state_transition_excitation(jb64.rule, jb64.fl_ku2, jb64.photo, site)
-                    fl = fluorescence(jb64.fl_ku2, photosystem_flux_inputs(jb64.photo, site, exc))
+                    fl = fluorescence(jb64.fl_ku2, fluorescence_inputs(jb64.photo, site, exc))
                     pam_fluorescence(jb64.pam_leaked, jb64.fl_ku2, fl, 0.425, 0.425).apparent_photochemical_yield
                 end,
                 x_fl,
@@ -526,7 +528,7 @@ end
                 x -> begin
                     site = LeafEnvironment(x[1], x[2], x[3], x[4])
                     exc = state_transition_excitation(jb_bf.rule, jb_bf.fl_ku2, jb_bf.photo, site)
-                    fl = fluorescence(jb_bf.fl_ku2, photosystem_flux_inputs(jb_bf.photo, site, exc))
+                    fl = fluorescence(jb_bf.fl_ku2, fluorescence_inputs(jb_bf.photo, site, exc))
                     pam_fluorescence(jb_bf.pam_leaked, jb_bf.fl_ku2, fl, BigFloat("0.425"), BigFloat("0.425")).apparent_photochemical_yield
                 end,
                 x_fl,
@@ -556,7 +558,7 @@ end
                 electron_transport = base_leaf.photosynthesis.electron_transport,
                 stoichiometry = base_leaf.photosynthesis.stoichiometry,
                 limitation = base_leaf.photosynthesis.limitation,
-                compensation = base_leaf.photosynthesis.compensation,
+                assimilation_sign = base_leaf.photosynthesis.assimilation_sign,
             )
             photosynthesize(m_new, site_arg).net_assimilation
         end
@@ -579,9 +581,9 @@ end
                 electron_transport = base_photo.electron_transport,
                 stoichiometry = base_photo.stoichiometry,
                 limitation = base_photo.limitation,
-                compensation = base_photo.compensation,
+                assimilation_sign = base_photo.assimilation_sign,
             )
-            photosynthesize(m_new, LeafEnvironment(site_arg.temperature, eltype(site_arg.temperature)(200), site_arg.co2, site_arg.oxygen)).net_assimilation
+            photosynthesize(m_new, LeafEnvironment(site_arg.temperature, eltype(site_arg.temperature)(200), site_arg.biochemical_co2, site_arg.oxygen)).net_assimilation
         end
         d_b6f = ForwardDiff.derivative(b -> fn_cyto_b6f(b, jb64.photo, site_fixed), 1.4)
         d_b6f_ref = _bigfloat_deriv(b -> fn_cyto_b6f(b, jb_bf.photo, site_fixed_bf), 1.4)
@@ -693,18 +695,18 @@ end
                 gs_dark_bf,
                 diff_bf,
             )
-            dAn_ge = ForwardDiff.derivative(par -> ge_fn64(par).carbon.net_assimilation, 0.0)
+            dAn_ge = ForwardDiff.derivative(par -> ge_fn64(par).net_assimilation, 0.0)
             dCc_ge = ForwardDiff.derivative(par -> ge_fn64(par).biochemical_co2, 0.0)
             dCi_ge = ForwardDiff.derivative(par -> ge_fn64(par).intercellular_co2, 0.0)
             dRes_ge = ForwardDiff.derivative(
                 par -> begin
                     ex = ge_fn64(par)
                     supply = ex.conductance * (diff64.mole_to_micromole / 101325.0) * (40.0 - ex.biochemical_co2)
-                    ex.carbon.net_assimilation - supply
+                    ex.net_assimilation - supply
                 end,
                 0.0,
             )
-            @test dAn_ge > 0 && isapprox(dAn_ge, _bigfloat_right_deriv(par -> ge_fnbf(par).carbon.net_assimilation, 0.0); rtol = 1e-10)
+            @test dAn_ge > 0 && isapprox(dAn_ge, _bigfloat_right_deriv(par -> ge_fnbf(par).net_assimilation, 0.0); rtol = 1e-10)
             @test dCc_ge < 0 && isapprox(dCc_ge, _bigfloat_right_deriv(par -> ge_fnbf(par).biochemical_co2, 0.0); rtol = 1e-10)
             @test dCi_ge < 0 && isapprox(dCi_ge, _bigfloat_right_deriv(par -> ge_fnbf(par).intercellular_co2, 0.0); rtol = 1e-10)
             @test abs(dRes_ge) <= 1e-12
@@ -727,13 +729,13 @@ end
                     diff_bf,
                     tight_bf_solver,
                 )
-                dAn_eq = ForwardDiff.derivative(par -> eq_fn64(par).carbon.net_assimilation, 0.0)
-                dCc_eq = ForwardDiff.derivative(par -> eq_fn64(par).biochemical_co2, 0.0)
-                dCi_eq = ForwardDiff.derivative(par -> eq_fn64(par).intercellular_co2, 0.0)
-                dRes_eq = ForwardDiff.derivative(par -> eq_fn64(par).diffusion_residual, 0.0)
-                @test dAn_eq > 0 && isapprox(dAn_eq, _bigfloat_right_deriv(par -> eq_fnbf(par).carbon.net_assimilation, 0.0); rtol = 1e-10)
-                @test dCc_eq < 0 && isapprox(dCc_eq, _bigfloat_right_deriv(par -> eq_fnbf(par).biochemical_co2, 0.0); rtol = 1e-10)
-                @test dCi_eq < 0 && isapprox(dCi_eq, _bigfloat_right_deriv(par -> eq_fnbf(par).intercellular_co2, 0.0); rtol = 1e-10)
+                dAn_eq = ForwardDiff.derivative(par -> eq_fn64(par).exchange.net_assimilation, 0.0)
+                dCc_eq = ForwardDiff.derivative(par -> eq_fn64(par).exchange.biochemical_co2, 0.0)
+                dCi_eq = ForwardDiff.derivative(par -> eq_fn64(par).exchange.intercellular_co2, 0.0)
+                dRes_eq = ForwardDiff.derivative(par -> eq_fn64(par).exchange.diffusion_residual, 0.0)
+                @test dAn_eq > 0 && isapprox(dAn_eq, _bigfloat_right_deriv(par -> eq_fnbf(par).exchange.net_assimilation, 0.0); rtol = 1e-10)
+                @test dCc_eq < 0 && isapprox(dCc_eq, _bigfloat_right_deriv(par -> eq_fnbf(par).exchange.biochemical_co2, 0.0); rtol = 1e-10)
+                @test dCi_eq < 0 && isapprox(dCi_eq, _bigfloat_right_deriv(par -> eq_fnbf(par).exchange.intercellular_co2, 0.0); rtol = 1e-10)
                 @test abs(dRes_eq) <= 1e-12
             end
         end
@@ -751,7 +753,7 @@ end
                 electron_transport = c3_prog.photosynthesis.electron_transport,
                 stoichiometry = c3_prog.photosynthesis.stoichiometry,
                 limitation = c3_prog.photosynthesis.limitation,
-                compensation = c3_prog.photosynthesis.compensation,
+                assimilation_sign = c3_prog.photosynthesis.assimilation_sign,
             )
             equilibrium_gas_exchange(
                 m, med64,
@@ -771,7 +773,7 @@ end
                 electron_transport = c3_prog_bf.photosynthesis.electron_transport,
                 stoichiometry = c3_prog_bf.photosynthesis.stoichiometry,
                 limitation = c3_prog_bf.photosynthesis.limitation,
-                compensation = c3_prog_bf.photosynthesis.compensation,
+                assimilation_sign = c3_prog_bf.photosynthesis.assimilation_sign,
             )
             equilibrium_gas_exchange(
                 m, med_bf,
@@ -782,10 +784,10 @@ end
                 diff_bf, tight_bf_solver,
             )
         end
-        dAn_vc0 = ForwardDiff.derivative(vc -> vc0_eq64(vc).carbon.net_assimilation, 0.0)
-        dCc_vc0 = ForwardDiff.derivative(vc -> vc0_eq64(vc).biochemical_co2, 0.0)
-        @test dAn_vc0 > 0 && isapprox(dAn_vc0, _bigfloat_right_deriv(vc -> vc0_eqbf(vc).carbon.net_assimilation, 0.0); rtol = 1e-10)
-        @test dCc_vc0 < 0 && isapprox(dCc_vc0, _bigfloat_right_deriv(vc -> vc0_eqbf(vc).biochemical_co2, 0.0); rtol = 1e-10)
+        dAn_vc0 = ForwardDiff.derivative(vc -> vc0_eq64(vc).exchange.net_assimilation, 0.0)
+        dCc_vc0 = ForwardDiff.derivative(vc -> vc0_eq64(vc).exchange.biochemical_co2, 0.0)
+        @test dAn_vc0 > 0 && isapprox(dAn_vc0, _bigfloat_right_deriv(vc -> vc0_eqbf(vc).exchange.net_assimilation, 0.0); rtol = 1e-10)
+        @test dCc_vc0 < 0 && isapprox(dCc_vc0, _bigfloat_right_deriv(vc -> vc0_eqbf(vc).exchange.biochemical_co2, 0.0); rtol = 1e-10)
 
         dq2_b6f0 = ForwardDiff.derivative(
             b -> cytochrome_electron_supply(
@@ -832,7 +834,7 @@ end
                     p_hess, med64,
                     GasExchangeEnvironment(v[1], v[2], v[3], 21000.0, 101325.0, 0.62, 1350.0),
                     diff64, very_coarse_newton,
-                ).carbon.net_assimilation,
+                ).exchange.net_assimilation,
                 [298.15, 450.0, 40.0],
             )
             h_tight = ForwardDiff.hessian(
@@ -840,7 +842,7 @@ end
                     p_hess, med64,
                     GasExchangeEnvironment(v[1], v[2], v[3], 21000.0, 101325.0, 0.62, 1350.0),
                     diff64, tight_f64_newton,
-                ).carbon.net_assimilation,
+                ).exchange.net_assimilation,
                 [298.15, 450.0, 40.0],
             )
             @test all(isfinite, h_coarse)

@@ -13,7 +13,7 @@ function core_leaf(::Type{FT}, biochemical_settings, settings) where {FT}
     base = bonan_leaf(FT, biochemical_settings).photosynthesis
     photosynthesis = C3Photosynthesis(; temperature = base.temperature,
         electron_transport = base.electron_transport, stoichiometry = base.stoichiometry,
-        limitation = MinimumLimitation(), compensation = SignedAssimilation())
+        limitation = MinimumLimitation(), assimilation_sign = SignedAssimilation())
     s, d, o = settings["stomata"], settings["diffusion"], settings["oxygen"]
     target = BallBerry{FT}(; minimum_conductance = s["minimum_conductance"],
         slope = s["ball_berry_slope"], micromole_to_mole = s["micromole_to_mole"])
@@ -29,7 +29,7 @@ function core_environment(::Type{FT}, p, settings) where {FT}
     return GasExchangeEnvironment{FT}(;
         temperature = c["celsius_offset"] + e["temperature_celsius"],
         absorbed_par = e["incident_par"] * (one(FT) - e["reflectance"] - e["transmittance"]),
-        co2 = e["atmospheric_co2"] * c["pressure"] * c["micromole_per_mole"],
+        ambient_co2 = e["atmospheric_co2"] * c["pressure"] * c["micromole_per_mole"],
         oxygen = e["oxygen"] * c["pressure"] * c["millimole_per_mole"],
         pressure = c["pressure"], relative_humidity = x["relative_humidity"], vpd = x["vpd"])
 end

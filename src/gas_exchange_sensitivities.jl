@@ -6,11 +6,11 @@ Compute analytic partial derivatives of steady-state CO₂ exchange with respect
 to stomatal H₂O conductance `state.conductance` (`g_sw`) at fixed leaf
 temperature, ambient CO₂ and O₂, absorbed light, and boundary/mesophyll conductances.
 
-Return `(; dco2_dgs, dnet_assimilation_dgs, dassimilation_dgs)` in units of
-Pa (mol H₂O m⁻² s⁻¹)⁻¹ and μmol CO₂ (mol H₂O)⁻¹. Without `exchange`, a fresh
-[`gas_exchange`](@ref) solve for `excitation` supplies `biochemical_co2` and
-`conductance`; a precomputed `exchange` (a [`gas_exchange`](@ref) result or an
-[`EquilibriumSolution`](@ref)) is reused and must come from the same inputs and
+Return `(; dco2_dgs, dnet_assimilation_dgs)` in units of Pa (mol H₂O m⁻² s⁻¹)⁻¹ and
+μmol CO₂ (mol H₂O)⁻¹. Without `exchange`, a fresh [`gas_exchange`](@ref) solve for
+`excitation` supplies `biochemical_co2` and `conductance`; a precomputed `exchange` (a
+[`gas_exchange`](@ref) result or an [`EquilibriumSolution`](@ref), whose `exchange` is used)
+is reused and must come from the same inputs and
 `excitation`: an `exchange` whose net assimilation differs from the biochemistry evaluated
 with `excitation` at its `biochemical_co2`, or whose total conductance is not that of `state`
 (for an `EquilibriumSolution`, `state` must hold its `stomatal_conductance`), gives `NaN` in
@@ -30,23 +30,25 @@ limit, with ``∂g/∂g_{sw} → u / (r P)``.
 )
     require_compatible(assimilation_sensitivity, p, env, state, d, excitation, exchange)
     r, electrons, supply = light_supply(p, env, excitation)
-    co2 = exchange.biochemical_co2
+    x = exchange_values(exchange)
+    co2 = x.biochemical_co2
     valid_co2, _, _ = electron_state(p, r, supply, co2)
     net, slope = assimilation_and_slope(
-        r, co2, env.oxygen, electrons, p.stoichiometry, p.limitation, p.compensation,
+        r, co2, env.oxygen, electrons, p.stoichiometry, p.limitation, p.assimilation_sign,
     )
-    conductance = exchange.conductance
+    conductance = x.conductance
     conversion = d.mole_to_micromole / env.pressure
     supply_slope = conductance * conversion
     dg_dgs = stomatal_conductance_share(d, state.conductance, conductance)^2 * d.diffusivity_ratio * conversion
-    dco2_dgs = dg_dgs * (env.co2 - co2) / (slope + supply_slope)
-    derivative = slope * dco2_dgs
+    dco2_dgs = dg_dgs * (env.ambient_co2 - co2) / (slope + supply_slope)
     valid = valid_co2 && valid_excitation(excitation, env.absorbed_par) &&
         isfinite(co2) && valid_diffusion(d) && valid_exchange_inputs(env, state, supply_slope) &&
-        valid_biochemistry(p, r) && reused_exchange_matches(exchange, net, r.respiration, co2_conductance(d, state.conductance))
-    return checked_result(valid,
-        (; dco2_dgs, dnet_assimilation_dgs = derivative, dassimilation_dgs = derivative))
+        valid_biochemistry(p, r) && reused_exchange_matches(x, net, r.respiration, co2_conductance(d, state.conductance))
+    return checked_result(valid, (; dco2_dgs, dnet_assimilation_dgs = slope * dco2_dgs))
 end
+
+@inline exchange_values(x) = x
+@inline exchange_values(s::EquilibriumSolution) = s.exchange
 
 # The formula holds only at a root of the system that `exchange` solved: its net
 # assimilation must be the biochemistry evaluated with the passed excitation at its
@@ -55,29 +57,11 @@ end
 # precomputed exchange evaluated through another but equivalent path.
 @inline function reused_exchange_matches(exchange, net, respiration, conductance)
     tolerance = sqrt(eps(primal_float_type(typeof(net))))
-    a, a_ex = exchange.carbon.net_assimilation, net
+    a, a_ex = exchange.net_assimilation, net
     g, g_ex = conductance, exchange.conductance
     return is_at_most(abs(a - a_ex), tolerance * (abs(a) + abs(a_ex) + abs(respiration))) &&
         is_at_most(abs(g - g_ex), tolerance * (abs(g) + abs(g_ex)))
 end
-
-"""
-    WaterVaporDiffusion(boundary_water)
-    WaterVaporDiffusion{FT}(boundary_water)
-    WaterVaporDiffusion(; boundary_water)
-
-Specify leaf boundary-layer H₂O conductance `boundary_water` [mol H₂O m⁻² leaf s⁻¹]
-(`> 0`; `Inf` removes boundary resistance), kept distinct from CO₂ boundary conductance.
-Like the other diffusion conductances it may vary from leaf to leaf, so any value is stored
-without throwing; [`transpiration_sensitivity`](@ref) returns `NaN` for an invalid one.
-"""
-Base.@kwdef struct WaterVaporDiffusion{FT<:Real} <: AbstractLeafDiffusion
-    boundary_water::FT
-    WaterVaporDiffusion{FT}(fields::Vararg{Any,1}) where {FT<:Real} =
-        new{FT}(continuous_fields(FT, WaterVaporDiffusion{FT}, fields)...)
-end
-WaterVaporDiffusion(fields::Vararg{Real,1}) =
-    WaterVaporDiffusion{scalar_type(WaterVaporDiffusion, fields...)}(fields...)
 
 """
     transpiration_sensitivity(diffusion::WaterVaporDiffusion, state::StomatalState,

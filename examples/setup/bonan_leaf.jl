@@ -31,15 +31,15 @@ function bonan_leaf(::Type{FT}, settings) where {FT}
     else
         error("unknown carbon limitation model")
     end
-    compensation = if ca["compensation"] == "nonnegative"
+    assimilation_sign = if ca["assimilation_sign"] == "nonnegative"
         NonnegativeAssimilation()
-    elseif ca["compensation"] == "signed"
+    elseif ca["assimilation_sign"] == "signed"
         SignedAssimilation()
     else
-        error("unknown compensation treatment")
+        error("unknown assimilation_sign treatment")
     end
     return LeafModel(; photosynthesis = C3Photosynthesis(; temperature,
-        electron_transport = transport, stoichiometry, limitation, compensation))
+        electron_transport = transport, stoichiometry, limitation, assimilation_sign))
 end
 
 function bonan_environment(::Type{FT}, p; incident_par, internal_co2, temperature_celsius) where {FT}
@@ -48,6 +48,6 @@ function bonan_environment(::Type{FT}, p; incident_par, internal_co2, temperatur
     return LeafEnvironment{FT}(;
         temperature = temperature_celsius + c["celsius_offset"],
         absorbed_par = incident_par * absorptance,
-        co2 = internal_co2 * c["micromole_per_mole"] * c["pressure"],
+        biochemical_co2 = internal_co2 * c["micromole_per_mole"] * c["pressure"],
         oxygen = e["oxygen"] * c["millimole_per_mole"] * c["pressure"])
 end

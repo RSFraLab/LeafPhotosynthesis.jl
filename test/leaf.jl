@@ -38,7 +38,7 @@ end
 
             @testset "Darkness and compensation point" begin
                 r = biochemical_rates(model.photosynthesis.temperature, env.temperature)
-                dark = LeafEnvironment{FT}(env.temperature, zero(FT), env.co2, env.oxygen)
+                dark = LeafEnvironment{FT}(env.temperature, zero(FT), env.biochemical_co2, env.oxygen)
                 d = @inferred photosynthesize(model, dark)
                 @test d.electron_transport === zero(FT)
                 @test d.net_assimilation == -r.respiration
@@ -51,7 +51,7 @@ end
                 signed_model = LeafModel(; photosynthesis = C3Photosynthesis(;
                     temperature = s.temperature, electron_transport = s.electron_transport,
                     stoichiometry = s.stoichiometry, limitation = MinimumLimitation(),
-                    compensation = SignedAssimilation()))
+                    assimilation_sign = SignedAssimilation()))
                 @test photosynthesize(signed_model, low).net_assimilation < -r.respiration
                 @test all(x -> x isa FT, values(@inferred photosynthesize(signed_model, low)))
                 # Dark endpoints do not suppress interior illuminated leaves.

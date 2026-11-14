@@ -45,7 +45,7 @@ function check_closed_stomata_batches(to_device, synchronize)
             same(t[1].conductance_tendency, t[2].conductance_tendency), zip(cpu_tendency, dev_tendency))
         @test all(map(same, cpu_water, dev_water))
         @test all(map(same, cpu_target, dev_target))
-        @test all(t -> t[1].status === t[2].status && same(t[1].biochemical_co2, t[2].biochemical_co2) &&
+        @test all(t -> t[1].status === t[2].status && same(t[1].exchange.biochemical_co2, t[2].exchange.biochemical_co2) &&
             same(t[1].stomatal_conductance, t[2].stomatal_conductance), zip(cpu_eq, dev_eq))
         # The paths are exercised: closed stomata in light, no steady state in darkness,
         # invalid drivers, the closed-stomata status and the invalid-bracket status.

@@ -22,14 +22,14 @@ end
     c = precision_case(Float64)
     p = c.leaf.photosynthesis
     with_curvature(θ) = C3Photosynthesis(p.temperature, p.electron_transport, p.stoichiometry,
-        QuadraticLimitation(θ), p.compensation)
+        QuadraticLimitation(θ), p.assimilation_sign)
     steady(θ) = LeafModel(; photosynthesis = with_curvature(θ),
         stomata = SteadyStateStomata(c.leaf.stomata.target), oxygen = c.leaf.oxygen)
     for f in (
         θ -> photosynthesize(with_curvature(θ), c.site).net_assimilation,
         θ -> biochemical_turnover(with_curvature(θ), c.site).carboxylation,
         θ -> oxygen_exchange(c.leaf.oxygen, with_curvature(θ), c.site).net_release,
-        θ -> equilibrium_gas_exchange(steady(θ), c.gas, c.diffusion, c.solver).carbon.net_assimilation,
+        θ -> equilibrium_gas_exchange(steady(θ), c.gas, c.diffusion, c.solver).exchange.net_assimilation,
     )
         derivative = ForwardDiff.derivative(f, 0.98)
         h = 1e-6
@@ -41,7 +41,7 @@ end
     c32 = precision_case(Float32)
     p32 = c32.leaf.photosynthesis
     @test_throws MethodError C3Photosynthesis(p32.temperature, p32.electron_transport,
-        p32.stoichiometry, QuadraticLimitation(0.98), p32.compensation)
+        p32.stoichiometry, QuadraticLimitation(0.98), p32.assimilation_sign)
     @test_throws MethodError ElectronTransportParameters(0.5f0, 0.85f0, QuadraticLimitation(0.7))
     @test_throws MethodError PrognosticStomata(BallBerry(0.01, 9.0, 1e-6), 600f0, 900f0)
     @test_throws MethodError LeafModel(p32, c.leaf.stomata, c.leaf.oxygen)
@@ -67,7 +67,7 @@ end
     site32 = LeafEnvironment(298.15f0, 800f0, 25f0, 21000f0)
     @test_throws MethodError state_transition_partition(jb64.rule, jb64.fl_ku2, jb64.photo, site32)
     @test_throws MethodError dark_balanced_psii_partition(jb64.fl_ku2, jb64.photo, 298.15f0, 25f0, 21000f0)
-    @test_throws MethodError fluorescence(jb64.fl_ku2, photosystem_flux_inputs(jb32.photo, site32))
+    @test_throws MethodError fluorescence(jb64.fl_ku2, fluorescence_inputs(jb32.photo, site32))
     # Duals over the same float type are accepted, and the check folds away.
     d = Dual{:t}(800.0, 1.0)
     @test isfinite(ForwardDiff.value(photosynthesize(c64.leaf,
@@ -83,7 +83,7 @@ end
         stomata = SteadyStateStomata(leaf.stomata.target), oxygen = leaf.oxygen)
     e = o.environment
     zero_o2(O) = GasExchangeEnvironment(e.temperature + zero(O), e.absorbed_par + zero(O),
-        e.co2 + zero(O), O, e.pressure + zero(O), e.relative_humidity + zero(O), e.vpd + zero(O))
+        e.ambient_co2 + zero(O), O, e.pressure + zero(O), e.relative_humidity + zero(O), e.vpd + zero(O))
     statuses = map((0.0, Dual{:t}(0.0, 1.0), Dual{:t}(0.0, -1.0))) do O
         equilibrium_gas_exchange(steady, zero_o2(O), o.diffusion, o.solver).status
     end
@@ -110,7 +110,7 @@ end
         c = precision_case(FT)
         medlyn = Medlyn{FT}(0.01, 126.5, 1.6, 1e-6, 1.0)
         @test isfinite(target_conductance(medlyn, StomatalDrivers{FT}(10.0, 30.0, 101325.0, 0.6, -5.0)))
-        bad_env = GasExchangeEnvironment(c.gas.temperature, c.gas.absorbed_par, c.gas.co2,
+        bad_env = GasExchangeEnvironment(c.gas.temperature, c.gas.absorbed_par, c.gas.ambient_co2,
             c.gas.oxygen, c.gas.pressure, c.gas.relative_humidity, FT(NaN))
         @test equilibrium_gas_exchange(c.leaf.photosynthesis, SteadyStateStomata(medlyn), bad_env,
             c.diffusion, c.solver).status == EquilibriumInvalidInput
@@ -159,12 +159,12 @@ end
     names = fieldnames(CytochromeFluorescenceResult)
     values_ = (FluorescenceLit, false, ntuple(_ -> 0.5, length(names) - 2)...)
     @test CytochromeFluorescenceResult(; NamedTuple{names}(values_)...) isa CytochromeFluorescenceResult{Float64}
-    carbon = (; net_assimilation = 1.0)
-    @test EquilibriumSolution(; carbon, electron_transport = 1.0, surface_co2 = 1.0,
+    exchange = (; net_assimilation = 1.0, electron_transport = 1.0, surface_co2 = 1.0,
         intercellular_co2 = 1.0, biochemical_co2 = 1.0, conductance = 1.0,
-        diffusion_residual = 0.0, stomatal_conductance = 1.0, co2_residual = 0.0,
-        bracket_width = 0.0, iterations = 1, status = EquilibriumStomataClosed,
-        converged = true) isa EquilibriumSolution{Float64}
+        diffusion_residual = 0.0)
+    @test EquilibriumSolution(; exchange, stomatal_conductance = 1.0, co2_residual = 0.0,
+        bracket_width = 0.0, iterations = 1, status = EquilibriumStomataClosed) isa
+        EquilibriumSolution{Float64}
 end
 
 # Specialize on the function and every argument type (Julia 1.10 does not for a plain vararg).
@@ -179,7 +179,7 @@ closed_path_allocations(f::F, args::Vararg{Any,N}) where {F,N} = (f(args...); @a
         shut = SteadyStateStomata(BallBerry{FT}(0.0, 1.0, bb.micromole_to_mole))
         w = WaterVaporDiffusion(FT(1.4))
         for g in (c.gas, LeafPhotosynthesis.GasExchangeEnvironment(c.gas.temperature,
-                ForwardDiff.Dual{:t}(c.gas.absorbed_par, one(FT)), c.gas.co2, c.gas.oxygen,
+                ForwardDiff.Dual{:t}(c.gas.absorbed_par, one(FT)), c.gas.ambient_co2, c.gas.oxygen,
                 c.gas.pressure, c.gas.relative_humidity, c.gas.vpd))
             closed = StomatalState(zero(typeof(g.absorbed_par)))
             calls = (

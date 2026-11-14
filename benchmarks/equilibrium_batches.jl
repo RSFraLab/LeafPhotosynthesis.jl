@@ -15,7 +15,7 @@ function measure_equilibrium(leaf, pattern, d, solver, settings)
     input = [pattern[mod1(i, length(pattern))] for i in 1:n]
     output = [equilibrium_gas_exchange(leaf, first(pattern), d, solver) for _ in 1:n]
     threaded_equilibrium!(output, leaf, input, d, solver)
-    all(r -> r.converged, output) || error("CPU equilibrium failed")
+    all(is_valid, output) || error("CPU equilibrium failed")
     cpu = minimum([@elapsed threaded_equilibrium!(output, leaf, input, d, solver)
         for _ in 1:settings["cpu_samples"]])
     cpu_iterations = sum(r.iterations for r in output) / n
@@ -42,9 +42,9 @@ function measure_equilibrium(leaf, pattern, d, solver, settings)
         copyto!(output, device_output)
         CUDA.synchronize()
     end
-    all(r -> r.converged, output) || error("GPU equilibrium failed")
+    all(is_valid, output) || error("GPU equilibrium failed")
     for (actual, wanted) in zip(output[indices], expected)
-        isapprox(actual.carbon.net_assimilation, wanted.carbon.net_assimilation;
+        isapprox(actual.exchange.net_assimilation, wanted.exchange.net_assimilation;
             rtol = 8solver.flux_rtol, atol = 8solver.flux_atol) || error("CPU/GPU mismatch")
     end
     gpu_iterations = sum(r.iterations for r in output) / n

@@ -87,7 +87,7 @@ function setup_flexas_2002(::Type{FT}; g_sw_mmol::Union{Nothing,FT} = nothing, e
         electron_transport = cyto_et,
         stoichiometry = cyto_stoich,
         limitation = MinimumLimitation(),
-        compensation = SignedAssimilation(),
+        assimilation_sign = SignedAssimilation(),
     )
     validate_fluorescence_coupling(
         fl_cyto, cyto_photo, exp_cfg["temperature_K"], exp_cfg["ambient_oxygen_Pa"],
@@ -115,7 +115,7 @@ function setup_flexas_2002(::Type{FT}; g_sw_mmol::Union{Nothing,FT} = nothing, e
         electron_transport = fvcb_et,
         stoichiometry = fvcb_stoich,
         limitation = MinimumLimitation(),
-        compensation = SignedAssimilation(),
+        assimilation_sign = SignedAssimilation(),
     )
 
     unquenched_fl = RateCompetitionFluorescence(;
@@ -237,7 +237,7 @@ function evaluate_flexas_point(
             cotton_fs_over_fo = nothing,
             drought_fs_over_fo = nothing,
             unquenched_fs_over_fo = nothing,
-            net_assimilation = ge_dark.carbon.net_assimilation,
+            net_assimilation = ge_dark.net_assimilation,
             biochemical_co2 = ge_dark.biochemical_co2,
             psii_open_fraction = one(FT),
             psii_photochemical_yield = nothing,
@@ -252,11 +252,11 @@ function evaluate_flexas_point(
     ge_cyto = gas_exchange(case.cyto_photo, genv, case.stomatal_state, case.diffusion, static_exc)
     isfinite(ge_cyto.biochemical_co2) || error("Nonfinite Cytochrome Cc at PPFD = $incident_par")
     site_cyto = LeafEnvironment(T, q_abs, ge_cyto.biochemical_co2, oxygen_Pa)
-    r_cyto = fluorescence(case.fl_cyto, photosystem_flux_inputs(case.cyto_photo, site_cyto, static_exc))
-    fluorescence_valid(r_cyto) || error("Invalid Cytochrome fluorescence at PPFD = $incident_par")
+    r_cyto = fluorescence(case.fl_cyto, fluorescence_inputs(case.cyto_photo, site_cyto, static_exc))
+    is_valid(r_cyto) || error("Invalid Cytochrome fluorescence at PPFD = $incident_par")
     p_pam = pam_fluorescence(case.pam_pam2000, case.fl_cyto, r_cyto, case.alpha2_dark, case.alpha1_dark)
     p_psii = pam_fluorescence(case.pam_ideal, case.fl_cyto, r_cyto, case.alpha2_dark, case.alpha1_dark)
-    (pam_fluorescence_valid(p_pam) && pam_fluorescence_valid(p_psii)) ||
+    (is_valid(p_pam) && is_valid(p_psii)) ||
         error("Invalid PAM observation at PPFD = $incident_par")
 
     # Coupled state-transition (qT) partition and prescribed-conductance CO2 diffusion.
@@ -272,8 +272,8 @@ function evaluate_flexas_point(
         cc_qt = ge_iter.biochemical_co2
     end
     site_qt = LeafEnvironment(T, q_abs, cc_qt, oxygen_Pa)
-    r_qt = fluorescence(case.fl_cyto, photosystem_flux_inputs(case.cyto_photo, site_qt, exc_qt))
-    fluorescence_valid(r_qt) || error("Invalid qT fluorescence at PPFD = $incident_par")
+    r_qt = fluorescence(case.fl_cyto, fluorescence_inputs(case.cyto_photo, site_qt, exc_qt))
+    is_valid(r_qt) || error("Invalid qT fluorescence at PPFD = $incident_par")
     p_qt = pam_fluorescence(
         case.pam_pam2000,
         case.fl_cyto,
@@ -283,16 +283,16 @@ function evaluate_flexas_point(
         case.alpha2_dark,
         case.alpha1_dark,
     )
-    pam_fluorescence_valid(p_qt) || error("Invalid qT PAM observation at PPFD = $incident_par")
+    is_valid(p_qt) || error("Invalid qT PAM observation at PPFD = $incident_par")
 
     ge_fvcb = gas_exchange(case.fvcb_photo, genv, case.stomatal_state, case.diffusion)
     isfinite(ge_fvcb.biochemical_co2) || error("Nonfinite FvCB Cc at PPFD = $incident_par")
     site_fvcb = LeafEnvironment(T, q_abs, ge_fvcb.biochemical_co2, oxygen_Pa)
-    fvcb_inp = psii_flux_inputs(case.fvcb_photo, site_fvcb)
+    fvcb_inp = fluorescence_inputs(case.fvcb_photo, site_fvcb)
     r_cot = fluorescence(case.cotton_fl, fvcb_inp)
     r_drt = fluorescence(case.drought_fl, fvcb_inp)
     r_unq = fluorescence(case.unquenched_fl, fvcb_inp)
-    all(fluorescence_valid, (r_cot, r_drt, r_unq)) ||
+    all(is_valid, (r_cot, r_drt, r_unq)) ||
         error("Invalid empirical fluorescence at PPFD = $incident_par")
 
     return (;
@@ -304,7 +304,7 @@ function evaluate_flexas_point(
         cotton_fs_over_fo = FT(r_cot.fluorescence_yield / case.empirical_fo_yield),
         drought_fs_over_fo = FT(r_drt.fluorescence_yield / case.empirical_fo_yield),
         unquenched_fs_over_fo = FT(r_unq.fluorescence_yield / case.empirical_fo_yield),
-        net_assimilation = ge_cyto.carbon.net_assimilation,
+        net_assimilation = ge_cyto.net_assimilation,
         biochemical_co2 = ge_cyto.biochemical_co2,
         psii_open_fraction = r_cyto.psii_open_fraction,
         psii_photochemical_yield = r_cyto.psii_photochemical_yield,

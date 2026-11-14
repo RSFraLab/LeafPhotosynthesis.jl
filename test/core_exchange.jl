@@ -18,7 +18,7 @@ end
         result = @inferred leaf_tendencies(leaf, env, state, diffusion)
         @test result.conductance_tendency isa FT
         @test all(x -> x isa FT, values(result.oxygen))
-        @test result.oxygen.net_release ≈ result.gas_exchange.carbon.net_assimilation
+        @test result.oxygen.net_release ≈ result.gas_exchange.net_assimilation
         disabled = LeafModel(; photosynthesis = leaf.photosynthesis,
             stomata = NoStomatalDynamics(), oxygen = NoOxygenExchange())
         skipped = @inferred leaf_tendencies(disabled, env, state, diffusion)
@@ -31,14 +31,14 @@ end
         @test oxygen_exchange(NoOxygenExchange(), OxygenFluxInputs(FT(NaN), FT(NaN), FT(NaN))) === nothing
 
         @testset "Diffusive supply and biochemical demand" begin
-            for co2 in (zero(FT), r.gamma_star / FT(2), r.gamma_star, env.co2),
+            for co2 in (zero(FT), r.gamma_star / FT(2), r.gamma_star, env.ambient_co2),
                 light in (zero(FT), FT(1), env.absorbed_par), gs in FT.((0.001, 0.02, 0.5))
                 forcing = GasExchangeEnvironment(env.temperature, light, co2, env.oxygen,
                     env.pressure, env.relative_humidity, env.vpd)
                 exchange = @inferred gas_exchange(leaf, forcing, StomatalState(gs), diffusion)
                 @test abs(exchange.diffusion_residual) <= tol
                 @test exchange.biochemical_co2 >= zero(FT)
-                @test exchange.carbon.net_assimilation isa FT
+                @test exchange.net_assimilation isa FT
                 # Independently find the coupled root by bracketing in BigFloat.
                 electrons = BigFloat(electron_transport(leaf.photosynthesis.electron_transport, light, r.jmax))
                 ca, gamma, rd = BigFloat(co2), BigFloat(r.gamma_star), BigFloat(r.respiration)
@@ -60,14 +60,14 @@ end
                 end
                 @test isapprox(exchange.biochemical_co2, (lo + hi) / 2; rtol = 64eps(FT), atol = tol)
                 @test isapprox(diffusion.boundary_co2 * diffusion.mole_to_micromole / env.pressure *
-                    (co2 - exchange.surface_co2), exchange.carbon.net_assimilation; atol = tol)
+                    (co2 - exchange.surface_co2), exchange.net_assimilation; atol = tol)
                 @test isapprox(diffusion.mesophyll_co2 * diffusion.mole_to_micromole / env.pressure *
-                    (exchange.intercellular_co2 - exchange.biochemical_co2), exchange.carbon.net_assimilation; atol = tol)
+                    (exchange.intercellular_co2 - exchange.biochemical_co2), exchange.net_assimilation; atol = tol)
             end
         end
 
         @testset "Oxygen and carbon budgets including compensation and darkness" begin
-            for co2 in (zero(FT), r.gamma_star, env.co2), light in (zero(FT), env.absorbed_par)
+            for co2 in (zero(FT), r.gamma_star, env.ambient_co2), light in (zero(FT), env.absorbed_par)
                 site = LeafEnvironment(env.temperature, light, co2, env.oxygen)
                 oxygen = @inferred oxygen_exchange(leaf, site)
                 carbon = photosynthesize(leaf, site)
@@ -92,12 +92,12 @@ end
             dark = OxygenFluxInputs(zero(FT), zero(FT), r.respiration)
             @test oxygen_exchange(altered, dark).net_release ≈ -r.respiration / FT(0.8)
             @test_throws MethodError oxygen_exchange(oxygen, bonan_leaf(FT, p).photosynthesis,
-                LeafEnvironment(env.temperature, env.absorbed_par, env.co2, env.oxygen))
+                LeafEnvironment(env.temperature, env.absorbed_par, env.ambient_co2, env.oxygen))
         end
 
         @testset "Prognostic versus instantaneous stomatal response" begin
             s = settings["stomata"]
-            drivers = StomatalDrivers(result.gas_exchange.carbon.net_assimilation,
+            drivers = StomatalDrivers(result.gas_exchange.net_assimilation,
                 result.gas_exchange.surface_co2, env.pressure, env.relative_humidity, env.vpd)
             medlyn = Medlyn{FT}(; minimum_conductance = s["minimum_conductance"], slope = s["medlyn_slope"],
                 diffusivity_ratio = diffusion.diffusivity_ratio, micromole_to_mole = s["micromole_to_mole"],
@@ -119,7 +119,7 @@ end
                     derivative = -(start - goal) / dynamic.opening_timescale * exp(-time / dynamic.opening_timescale)
                     @test stomatal_tendency(dynamic, StomatalState(current), drivers) ≈ derivative
                 end
-                night = StomatalDrivers(-r.respiration, env.co2, env.pressure, env.relative_humidity, env.vpd)
+                night = StomatalDrivers(-r.respiration, env.ambient_co2, env.pressure, env.relative_humidity, env.vpd)
                 @test target_conductance(target, night) == s["minimum_conductance"]
             end
             @test_throws ArgumentError PrognosticStomata(; target = medlyn,

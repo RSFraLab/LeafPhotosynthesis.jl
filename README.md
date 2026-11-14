@@ -38,7 +38,7 @@ transport = ElectronTransportParameters(;
 leaf = LeafModel(; photosynthesis = C3Photosynthesis(; temperature,
     electron_transport = transport,
     stoichiometry = C3Stoichiometry(; electrons_per_carboxylation = 4.0, oxygenation_cost = 2.0),
-    limitation = MinimumLimitation(), compensation = SignedAssimilation()))
+    limitation = MinimumLimitation(), assimilation_sign = SignedAssimilation()))
 
 # Leaf temperature (K), absorbed PAR (μmol photons m⁻² s⁻¹), CO₂ and O₂ at the site (Pa).
 environment = LeafEnvironment(298.15, 1000.0, 28.0, 21000.0)

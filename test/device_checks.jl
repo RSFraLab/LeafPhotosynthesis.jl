@@ -10,7 +10,7 @@ function check_leaf_batches(to_device, synchronize_device, parameter_path)
                 incident_par = row.incident_par, internal_co2 = row.internal_co2,
                 temperature_celsius = row.temperature_celsius) for row in rows]
             lit = last(environments)
-            dark = LeafEnvironment{FT}(lit.temperature, zero(FT), lit.co2, lit.oxygen)
+            dark = LeafEnvironment{FT}(lit.temperature, zero(FT), lit.biochemical_co2, lit.oxygen)
             append!(environments, [dark, lit, dark])
             expected = photosynthesize.(Ref(leaf), environments)
             for order in (collect(eachindex(environments)), reverse(collect(eachindex(environments))))
@@ -39,7 +39,7 @@ function check_core_batches(to_device, synchronize_device, parameter_path)
             settings = read_bonan_parameters(FT, joinpath(dirname(parameter_path), "core_exchange.toml"))
             leaf, diffusion = core_leaf(FT, p, settings)
             env = core_environment(FT, p, settings)
-            dark = GasExchangeEnvironment(env.temperature, zero(FT), env.co2, env.oxygen,
+            dark = GasExchangeEnvironment(env.temperature, zero(FT), env.ambient_co2, env.oxygen,
                 env.pressure, env.relative_humidity, env.vpd)
             inputs = [dark, env, dark, env]
             states = StomatalState.(FT.((0.01, 0.02, 0.2, 0.5))) |> collect
@@ -60,7 +60,7 @@ function check_core_batches(to_device, synchronize_device, parameter_path)
                 @test eltype(actual) == eltype(expected)
                 for (a, e) in zip(actual, expected)
                     @test isapprox(a.conductance_tendency, e.conductance_tendency; atol = 128eps(FT), rtol = 128eps(FT))
-                    @test isapprox(a.gas_exchange.carbon.net_assimilation, e.gas_exchange.carbon.net_assimilation;
+                    @test isapprox(a.gas_exchange.net_assimilation, e.gas_exchange.net_assimilation;
                         atol = 128eps(FT), rtol = 128eps(FT))
                     @test abs(a.gas_exchange.diffusion_residual) <= 128eps(FT) * p["biochemistry"]["vcmax_ref"]
                     if model.oxygen isa NoOxygenExchange
@@ -93,9 +93,9 @@ function check_equilibrium_batches(to_device, synchronize_device, parameter_path
                 for ca in FT.((0, 4, 40, 100)) for vpd in FT.((0, 1200, 10000))]
             base = leaf.photosynthesis
             for target in targets, limitation in (MinimumLimitation(), QuadraticLimitation(FT(0.95))),
-                compensation in (SignedAssimilation(), NonnegativeAssimilation())
+                assimilation_sign in (SignedAssimilation(), NonnegativeAssimilation())
                 model = C3Photosynthesis(; temperature = base.temperature, electron_transport = base.electron_transport,
-                    stoichiometry = base.stoichiometry, limitation, compensation)
+                    stoichiometry = base.stoichiometry, limitation, assimilation_sign)
                 for order in (eachindex(inputs), reverse(eachindex(inputs)))
                     ordered = inputs[order]
                     expected = equilibrium_gas_exchange.(Ref(model), Ref(SteadyStateStomata(target)),
@@ -105,17 +105,19 @@ function check_equilibrium_batches(to_device, synchronize_device, parameter_path
                     synchronize_device()
                     actual = Array(actual_device)
                     @test eltype(actual) == eltype(expected)
-                    @test all(r -> r.converged && r.status == EquilibriumConverged, actual)
-                    for key in (:biochemical_co2, :intercellular_co2, :surface_co2, :stomatal_conductance, :conductance)
-                        @test all(isapprox(getproperty(a, key), getproperty(e, key);
+                    @test all(r -> is_valid(r) && r.status == EquilibriumConverged, actual)
+                    @test all(isapprox(a.stomatal_conductance, e.stomatal_conductance;
+                        atol = 8solver.co2_atol, rtol = 8solver.co2_rtol + 128eps(FT)) for (a, e) in zip(actual, expected))
+                    for key in (:biochemical_co2, :intercellular_co2, :surface_co2, :conductance)
+                        @test all(isapprox(getproperty(a.exchange, key), getproperty(e.exchange, key);
                             atol = 8solver.co2_atol, rtol = 8solver.co2_rtol + 128eps(FT)) for (a, e) in zip(actual, expected))
                     end
-                    for key in keys(first(expected).carbon)
-                        @test all(isapprox(a.carbon[key], e.carbon[key];
+                    for key in keys(carbon_fluxes(first(expected).exchange))
+                        @test all(isapprox(a.exchange[key], e.exchange[key];
                             atol = 8solver.flux_atol, rtol = 8solver.flux_rtol + 128eps(FT)) for (a, e) in zip(actual, expected))
                     end
-                    @test all(abs(a.diffusion_residual) <= solver.flux_atol + solver.flux_rtol *
-                        (abs(a.carbon.net_assimilation) + abs(a.diffusion_residual)) for a in actual)
+                    @test all(abs(a.exchange.diffusion_residual) <= solver.flux_atol + solver.flux_rtol *
+                        (abs(a.exchange.net_assimilation) + abs(a.exchange.diffusion_residual)) for a in actual)
                 end
             end
             states = StomatalState.(range(FT(0.01), FT(1); length = length(inputs)))
@@ -142,8 +144,8 @@ function check_equilibrium_batches(to_device, synchronize_device, parameter_path
                 to_device([invalid]), Ref(diffusion), Ref(solver))
             synchronize_device()
             failed = only(Array(failed_device))
-            @test failed.status == EquilibriumInvalidInput && !failed.converged
-            @test isnan(failed.carbon.net_assimilation)
+            @test failed.status == EquilibriumInvalidInput && !is_valid(failed)
+            @test isnan(failed.exchange.net_assimilation)
         end
     end
 end
@@ -160,10 +162,10 @@ function check_turnover_batches(to_device, synchronize_device, parameter_path)
             for limitation in (MinimumLimitation(), QuadraticLimitation(p["carbon_assimilation"]["curvature"]))
                 model = C3Photosynthesis(; temperature = base.temperature,
                     electron_transport = base.electron_transport, stoichiometry = base.stoichiometry,
-                    limitation, compensation = SignedAssimilation())
+                    limitation, assimilation_sign = SignedAssimilation())
                 disabled = LeafModel(; photosynthesis = model, oxygen = NoOxygenExchange())
-                lit = LeafEnvironment(env.temperature, env.absorbed_par, env.co2, env.oxygen)
-                dark = LeafEnvironment(env.temperature, zero(FT), env.co2, env.oxygen)
+                lit = LeafEnvironment(env.temperature, env.absorbed_par, env.ambient_co2, env.oxygen)
+                dark = LeafEnvironment(env.temperature, zero(FT), env.ambient_co2, env.oxygen)
                 compensation = LeafEnvironment(env.temperature, env.absorbed_par, rates.gamma_star, env.oxygen)
                 below = LeafEnvironment(env.temperature, env.absorbed_par, zero(FT), env.oxygen)
                 inputs = [dark, lit, compensation, below, dark]

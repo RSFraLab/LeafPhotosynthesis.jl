@@ -18,7 +18,7 @@ function setup_fluorescence(::Type{FT}) where {FT}
         electron_transport = transport,
         p.stoichiometry,
         p.limitation,
-        p.compensation,
+        p.assimilation_sign,
     )
     # No oxygen diagnostic is needed to obtain realized linear electron flow.
     leaf = LeafModel(; photosynthesis)
@@ -47,7 +47,7 @@ function setup_fluorescence(::Type{FT}) where {FT}
 end
 
 function fluorescence_row(environment, carbon, inputs, unquenched, regulated)
-    fluorescence_valid(unquenched) && fluorescence_valid(regulated) ||
+    is_valid(unquenched) && is_valid(regulated) ||
         error("Incompatible fluorescence rates: $(unquenched.status), $(regulated.status)")
     # Only valid dark yields are absent. Invalid sources never become plot gaps.
     yield_value(result, key) =
