@@ -21,7 +21,10 @@ struct NoOxygenExchange <: AbstractOxygenExchange end
 
 Specify dimensionless stoichiometric coefficients for PSII water-splitting O₂
 evolution, Rubisco photorespiratory O₂ uptake, and mitochondrial respiratory O₂
-uptake (`respiratory_quotient` is CO₂ released per O₂ consumed).
+uptake (`respiratory_quotient` is CO₂ released per O₂ consumed). Throws
+`ArgumentError` unless `electrons_per_oxygen`, `co2_per_oxygenation` and
+`respiratory_quotient` are finite and positive and `oxygen_per_oxygenation` is finite and
+nonnegative.
 
 # Examples
 ```jldoctest
@@ -40,8 +43,13 @@ Base.@kwdef struct CoreOxygenExchange{FT<:Real} <: AbstractOxygenExchange
     oxygen_per_oxygenation::FT
     co2_per_oxygenation::FT
     respiratory_quotient::FT
-    CoreOxygenExchange{FT}(fields::Vararg{Any,4}) where {FT<:Real} =
-        new{FT}(continuous_fields(FT, CoreOxygenExchange{FT}, fields)...)
+    function CoreOxygenExchange{FT}(fields::Vararg{Any,4}) where {FT<:Real}
+        p = new{FT}(continuous_fields(FT, CoreOxygenExchange{FT}, fields)...)
+        is_positive(p.electrons_per_oxygen) && is_nonnegative(p.oxygen_per_oxygenation) &&
+            is_positive(p.co2_per_oxygenation) && is_positive(p.respiratory_quotient) ||
+            throw(ArgumentError("CoreOxygenExchange requires finite electrons_per_oxygen > 0, oxygen_per_oxygenation ≥ 0, co2_per_oxygenation > 0 and respiratory_quotient > 0"))
+        return p
+    end
 end
 CoreOxygenExchange(fields::Vararg{Real,4}) =
     CoreOxygenExchange{scalar_type(CoreOxygenExchange, fields...)}(fields...)
@@ -74,12 +82,26 @@ Compute gross O₂ evolution, photorespiratory O₂ uptake, mitochondrial
 respiratory O₂ uptake, and net O₂ release [μmol O₂ m⁻² leaf s⁻¹] (`nothing` for
 [`NoOxygenExchange`](@ref)).
 
+With [`OxygenFluxInputs`](@ref), gross O₂ evolution is the given linear electron flow divided
+by `electrons_per_oxygen`.
+
 When coupled to a signed [`C3Photosynthesis`](@ref) or
-[`CytochromePhotosynthesis`](@ref) model, realized linear electron flow and
-photorespiratory turnover are evaluated prior to net carbon cancellation so the
-compensation point causes no `0/0` singularity.
+[`CytochromePhotosynthesis`](@ref) model, the budget is computed from the realized
+carboxylation ``v_c`` and oxygenation ``v_o`` (= photorespiratory CO₂ / `co2_per_oxygenation`),
+evaluated prior to net carbon cancellation so the compensation point causes no `0/0`
+singularity. Gross O₂ evolution is the O₂ whose reductant the carbon cycles consume:
+``v_c + (o_{po} - c_{po}) v_o``, one O₂ per CO₂ reduced to carbohydrate and, per
+oxygenation, the O₂ taken up (`oxygen_per_oxygenation`, ``o_{po}``) less the CO₂ released
+(`co2_per_oxygenation`, ``c_{po}``) by the photorespiratory cycle; with the canonical
+1.5 and 0.5 this is ``v_c + v_o`` (two NADPH per carboxylation and per oxygenation,
+Johnson & Berry 2021, Eqs. 7–9). It does not depend on the electron stoichiometry of the
+photosynthesis model: electrons beyond the NADPH demand (an ATP-limited FvCB stoichiometry
+such as ``e_c = 4.5``) are taken to return to O₂ without net O₂ exchange. Net O₂ release is
+therefore ``v_c - c_{po} v_o - R_d / RQ``, equal to net CO₂ uptake when `respiratory_quotient`
+is one. The realized `linear_electron_flow` is still reported.
 """
 @inline function oxygen_exchange(p::CoreOxygenExchange, x::OxygenFluxInputs)
+    require_compatible(oxygen_exchange, p, x)
     gross = x.linear_electron_flow / p.electrons_per_oxygen
     photorespiration = p.oxygen_per_oxygenation * x.rubisco_oxygenation
     respiration = x.respiration / p.respiratory_quotient
@@ -98,17 +120,22 @@ end
     env::LeafEnvironment,
     excitation::AbstractExcitation = BroadbandExcitation(),
 ) where {L}
-    # Gross O₂ evolution comes from PSII water oxidation (realized linear_electron_flow).
+    require_compatible(oxygen_exchange, p, model, env, excitation)
     turnover = biochemical_turnover(model, env, excitation)
     oxygenation = turnover.photorespiratory_co2 / p.co2_per_oxygenation
-    inputs = OxygenFluxInputs(turnover.linear_electron_flow, oxygenation, turnover.respiration)
-    ox = oxygen_exchange(p, inputs)
-    OutFT = typeof(ox.net_release + turnover.carboxylation)
-    return typed_result(OutFT, (;
-        ox...,
+    gross = turnover.carboxylation +
+        (p.oxygen_per_oxygenation - p.co2_per_oxygenation) * oxygenation
+    photorespiration = p.oxygen_per_oxygenation * oxygenation
+    respiration = turnover.respiration / p.respiratory_quotient
+    result = (;
+        gross_production = gross,
+        photorespiratory_uptake = photorespiration,
+        respiratory_uptake = respiration,
+        net_release = gross - photorespiration - respiration,
         turnover.carboxylation,
         rubisco_oxygenation = oxygenation,
         turnover.linear_electron_flow,
         turnover_electron_flows(model, turnover)...,
-    ))
+    )
+    return typed_result(result_type(result), result)
 end

@@ -140,8 +140,11 @@ end
                 @test result.status == EquilibriumInvalidInput && !result.converged
                 @test isnan(result.carbon.net_assimilation)
             end
+            # R3a (F4): a zero minimum conductance is valid; in light the solution is the open
+            # root or the closed-stomata limit, never an invalid input.
             zero_target = BallBerry(zero(FT), first(targets).slope, first(targets).micromole_to_mole)
-            @test equilibrium_gas_exchange(base, SteadyStateStomata(zero_target), env, d, solver).status == EquilibriumInvalidInput
+            zero_g0 = equilibrium_gas_exchange(base, SteadyStateStomata(zero_target), env, d, solver)
+            @test zero_g0.converged && zero_g0.status in (EquilibriumConverged, EquilibriumStomataClosed)
             for target in targets
                 drivers = StomatalDrivers(zero(FT), zero(FT), env.pressure, env.relative_humidity, env.vpd)
                 @test target_conductance(target, drivers) == target.minimum_conductance

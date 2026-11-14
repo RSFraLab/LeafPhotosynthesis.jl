@@ -37,7 +37,8 @@ absorbed PAR [μmol photons m⁻² leaf s⁻¹] and capacity `jmax` [μmol elect
 
 `BroadbandExcitation()` delivers the fraction `psii_fraction` of `absorbed_par` to PSII;
 prescribed excitation conventions bypass broadband `psii_fraction`. Every convention
-returns typed `NaN` when [`valid_excitation`](@ref) is `false`.
+returns typed `NaN` when [`valid_excitation`](@ref) is `false`; parameters, light and
+excitation of different binary precisions are a `MethodError`.
 """
 @inline function electron_transport(
     p::ElectronTransportParameters,
@@ -45,6 +46,7 @@ returns typed `NaN` when [`valid_excitation`](@ref) is `false`.
     jmax,
     input::BroadbandExcitation = BroadbandExcitation(),
 )
+    require_compatible(electron_transport, p, absorbed_par, jmax, input)
     light_supply = p.psii_fraction * p.psii_yield * absorbed_par
     res = colimit(light_supply, jmax, p.limitation)
     valid_excitation(input, absorbed_par) || return oftype(res, NaN)
@@ -57,13 +59,11 @@ end
     jmax,
     input::PrescribedPSIIExcitation,
 )
-    base_zero = zero(p.psii_yield) + zero(absorbed_par) + zero(jmax)
-    if compatible_scalar(typeof(input.photons), typeof(absorbed_par))
-        S = promote_type(typeof(base_zero), typeof(input.photons))
-        valid_excitation(input, absorbed_par) || return S(NaN)
-        return S(colimit(p.psii_yield * input.photons, jmax, p.limitation))
-    end
-    return oftype(base_zero, NaN)
+    require_compatible(electron_transport, p, absorbed_par, jmax, input)
+    res = colimit(p.psii_yield * input.photons, jmax, p.limitation)
+    S = promote_type(typeof(res), typeof(absorbed_par))
+    valid_excitation(input, absorbed_par) || return S(NaN)
+    return S(res)
 end
 
 @inline function electron_transport(
@@ -72,13 +72,11 @@ end
     jmax,
     input::PrescribedDualExcitation,
 )
-    base_zero = zero(p.psii_yield) + zero(absorbed_par) + zero(jmax)
-    if compatible_scalar(typeof(input.psii_photons), typeof(absorbed_par))
-        S = promote_type(typeof(base_zero), typeof(input.psii_photons))
-        valid_excitation(input, absorbed_par) || return S(NaN)
-        return S(colimit(p.psii_yield * input.psii_photons, jmax, p.limitation))
-    end
-    return oftype(base_zero, NaN)
+    require_compatible(electron_transport, p, absorbed_par, jmax, input)
+    res = colimit(p.psii_yield * input.psii_photons, jmax, p.limitation)
+    S = promote_type(typeof(res), typeof(absorbed_par))
+    valid_excitation(input, absorbed_par) || return S(NaN)
+    return S(res)
 end
 
 """
@@ -89,27 +87,24 @@ centers prior to multiplication by photochemical yield, or typed `NaN` when
 [`valid_excitation`](@ref) fails.
 """
 @inline function psii_excitation(p, absorbed_par, input::BroadbandExcitation)
+    require_compatible(psii_excitation, p, absorbed_par, input)
     res = p.psii_fraction * absorbed_par
     valid_excitation(input, absorbed_par) || return oftype(res, NaN)
     return res
 end
 
 @inline function psii_excitation(p, absorbed_par, input::PrescribedPSIIExcitation)
-    if compatible_scalar(typeof(input.photons), typeof(absorbed_par))
-        S = promote_type(typeof(absorbed_par), typeof(input.photons))
-        valid_excitation(input, absorbed_par) || return S(NaN)
-        return S(input.photons)
-    end
-    return oftype(absorbed_par, NaN)
+    require_compatible(psii_excitation, p, absorbed_par, input)
+    S = promote_type(typeof(absorbed_par), typeof(input.photons))
+    valid_excitation(input, absorbed_par) || return S(NaN)
+    return S(input.photons)
 end
 
 @inline function psii_excitation(p, absorbed_par, input::PrescribedDualExcitation)
-    if compatible_scalar(typeof(input.psii_photons), typeof(absorbed_par))
-        S = promote_type(typeof(absorbed_par), typeof(input.psii_photons))
-        valid_excitation(input, absorbed_par) || return S(NaN)
-        return S(input.psii_photons)
-    end
-    return oftype(absorbed_par, NaN)
+    require_compatible(psii_excitation, p, absorbed_par, input)
+    S = promote_type(typeof(absorbed_par), typeof(input.psii_photons))
+    valid_excitation(input, absorbed_par) || return S(NaN)
+    return S(input.psii_photons)
 end
 
 """
@@ -123,16 +118,15 @@ centers prior to multiplication by PSI photochemical yield, or typed `NaN` when
 non-photosynthetic pigment absorption prevents inferring PSI photons as `PAR - Q₂`.
 """
 @inline function psi_excitation(p, absorbed_par, input::BroadbandExcitation)
+    require_compatible(psi_excitation, p, absorbed_par, input)
     res = (one(p.psii_fraction) - p.psii_fraction) * absorbed_par
     valid_excitation(input, absorbed_par) || return oftype(res, NaN)
     return res
 end
 
 @inline function psi_excitation(p, absorbed_par, input::PrescribedDualExcitation)
-    if compatible_scalar(typeof(input.psi_photons), typeof(absorbed_par))
-        S = promote_type(typeof(absorbed_par), typeof(input.psi_photons))
-        valid_excitation(input, absorbed_par) || return S(NaN)
-        return S(input.psi_photons)
-    end
-    return oftype(absorbed_par, NaN)
+    require_compatible(psi_excitation, p, absorbed_par, input)
+    S = promote_type(typeof(absorbed_par), typeof(input.psi_photons))
+    valid_excitation(input, absorbed_par) || return S(NaN)
+    return S(input.psi_photons)
 end

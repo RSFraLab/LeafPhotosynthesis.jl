@@ -167,8 +167,7 @@ accounting for connected-units exciton sharing (`K_U2`) and sustained quenching 
     p::PSIIRateParameters{FT},
     psii_open_fraction::FTQ = one(FT),
 ) where {FT<:Real,FTQ<:Real}
-    compatible_scalar(FT, FTQ) ||
-        throw(MethodError(psii_maximum_photochemical_yield, (p, psii_open_fraction)))
+    require_compatible(psii_maximum_photochemical_yield, p, psii_open_fraction)
     S = promote_type(FT, FTQ)
     d0 = p.fluorescence_rate + p.constitutive_heat_rate + p.sustained_quenching_rate
     s_base = d0 + p.exciton_transfer_rate
@@ -214,15 +213,22 @@ CoupledPhotosystemInputs(fields::Vararg{Real,5}) =
     CytochromeFluorescenceResult{FT}
 
 Store scalar PSII and PSI fluorescence fluxes, quantum yields, open-center
-fractions, dynamic quenching `psii_quenching_rate` (`K_N`), and internal
-Stern–Volmer `npq` for [`CytochromeFluorescence`](@ref).
+fractions and dynamic quenching `psii_quenching_rate` (`K_N`) for
+[`CytochromeFluorescence`](@ref), with two Stern–Volmer quenching indices of PSII:
+- `npq`: the PAM index ``(F_m - F_m')/F_m' = K_N / (K_{F2} + K_{D2} + K_{N,\\mathrm{sus}})``
+  of an ideal PSII-only observer with equal dark and light cross-sections, referenced to
+  the dark-adapted ``F_m``, which includes the sustained quenching ``K_{N,\\mathrm{sus}}`` (the
+  same reference as [`pam_fluorescence`](@ref)'s `apparent_npq`).
+- `total_quenching_ratio`: ``(K_N + K_{N,\\mathrm{sus}}) / (K_{F2} + K_{D2})``, all regulated
+  and sustained heat dissipation relative to PSII without any non-photochemical quenching.
+The two agree when ``K_{N,\\mathrm{sus}} = 0``.
 
 `psii_photon_flux`, `psi_photon_flux`, and `total_photon_flux` represent
 internal leaf emission rates [μmol photons m⁻² one-sided leaf s⁻¹] prior to
 within-leaf optical escape and reabsorption. Check [`fluorescence_valid`](@ref)
 before consuming fluxes or yields.
 """
-struct CytochromeFluorescenceResult{FT<:Real} <: AbstractLeafScalar
+Base.@kwdef struct CytochromeFluorescenceResult{FT<:Real} <: AbstractLeafScalar
     status::FluorescenceStatus
     boundary_roundoff::Bool
     psii_photon_flux::FT
@@ -241,13 +247,14 @@ struct CytochromeFluorescenceResult{FT<:Real} <: AbstractLeafScalar
     psi_open_fraction::FT
     psii_quenching_rate::FT
     npq::FT
-    CytochromeFluorescenceResult{FT}(fields::Vararg{Any,18}) where {FT<:Real} =
+    total_quenching_ratio::FT
+    CytochromeFluorescenceResult{FT}(fields::Vararg{Any,19}) where {FT<:Real} =
         new{FT}(continuous_fields(FT, CytochromeFluorescenceResult{FT}, fields)...)
 end
 CytochromeFluorescenceResult(
     status::FluorescenceStatus,
     boundary_roundoff::Bool,
-    scalars::Vararg{Real,16},
+    scalars::Vararg{Real,17},
 ) = CytochromeFluorescenceResult{scalar_type(CytochromeFluorescenceResult, scalars...)}(
     status, boundary_roundoff, scalars...,
 )
@@ -263,7 +270,7 @@ CytochromeFluorescenceResult(
         flux, flux, flux,
         nan, nan, nan, nan,
         nan, nan, nan, nan,
-        nan, nan, nan, nan, nan,
+        nan, nan, nan, nan, nan, nan,
     )
 end
 
@@ -271,7 +278,7 @@ end
     model::CytochromeFluorescence{FTM},
     x::CoupledPhotosystemInputs{FTX},
 ) where {FTM<:Real,FTX<:Real}
-    compatible_scalar(FTM, FTX) || throw(MethodError(fluorescence, (model, x)))
+    require_compatible(fluorescence, model, x)
     S = promote_type(FTM, FTX)
     q2_exc, q1_exc = S(x.psii_excitation), S(x.psi_excitation)
     j2, j1, q2_open = S(x.linear_electron_flow), S(x.psi_electron_flow), S(x.psii_open_fraction)
@@ -302,9 +309,9 @@ end
     # 1. PSI excitation partitioning (oxidized P700⁺ quenches closed traps at K_X1).
     phi_p1 = j1 / q1_exc
     phi_p1_max = S(psi_maximum_photochemical_yield(model.psi))
-    isfinite(phi_p1) && phi_p1 < one(S) && phi_p1 - phi_p1_max <= model.yield_tolerance ||
+    isfinite(phi_p1) && exceeds(one(S), phi_p1) && is_at_most(phi_p1 - phi_p1_max, model.yield_tolerance) ||
         return unavailable_cytochrome_fluorescence(S, FluorescenceIncompatibleRates)
-    boundary1 = phi_p1 > phi_p1_max
+    boundary1 = exceeds(phi_p1, phi_p1_max)
     kf1 = S(model.psi.fluorescence_rate)
     kd1 = S(model.psi.constitutive_heat_rate)
     kp1 = S(model.psi.maximum_photochemical_rate)
@@ -328,7 +335,7 @@ end
 
     # 2. PSII connected-units feedback quenching K_N >= 0 and excitation partitioning.
     phi_p2 = j2 / q2_exc
-    q2_open > zero(S) && isfinite(phi_p2) && zero(S) < phi_p2 < one(S) ||
+    exceeds(q2_open, zero(S)) && is_open_fraction(phi_p2) ||
         return unavailable_cytochrome_fluorescence(S, FluorescenceIncompatibleRates)
 
     kf2 = S(model.psii.fluorescence_rate)
@@ -345,9 +352,9 @@ end
     m0_hat = d0_hat + kp_hat * (d0_hat + q2_open * ku_hat)
     phi_p2_max = (q2_open * kp_hat) / m0_hat
 
-    phi_p2 - phi_p2_max <= model.yield_tolerance ||
+    is_at_most(phi_p2 - phi_p2_max, model.yield_tolerance) ||
         return unavailable_cytochrome_fluorescence(S, FluorescenceIncompatibleRates)
-    boundary2 = phi_p2 > phi_p2_max
+    boundary2 = exceeds(phi_p2, phi_p2_max)
 
     kn = if boundary2
         zero(S)
@@ -356,7 +363,7 @@ end
         # avoiding S_1 - S_base cancellation near kn = 0, rate^2 overflow in Float32,
         # and sqrt(p0_hat) derivative blow-up at p0_hat = 0 (since b_hat >= phi_p2 > 0).
         raw_p0 = q2_open * kp_hat - phi_p2 * m0_hat
-        p0_hat = raw_p0 > zero(raw_p0) ? raw_p0 : zero(S)
+        p0_hat = exceeds(raw_p0, zero(raw_p0)) ? raw_p0 : zero(S)
         kn_hat = if exact_zero_scalar(p0_hat)
             zero(S)
         else
@@ -364,22 +371,23 @@ end
             two = one(S) + one(S)
             four = two + two
             disc = b_hat * b_hat + four * (phi_p2 * p0_hat)
-            radical = disc > zero(disc) ? sqrt(disc) : zero(S)
-            b_hat >= zero(S) ? (two * p0_hat) / (b_hat + radical) :
+            radical = exceeds(disc, zero(disc)) ? sqrt(disc) : zero(S)
+            is_at_most(zero(S), b_hat) ? (two * p0_hat) / (b_hat + radical) :
                                (radical - b_hat) / (two * phi_p2)
         end
         s_base * kn_hat
     end
 
     kdiss2 = d0 + kn
-    isfinite(kn) && kn >= zero(S) && isfinite(kdiss2) && kdiss2 > zero(S) ||
+    is_nonnegative(kn) && is_positive(kdiss2) ||
         return unavailable_cytochrome_fluorescence(S, FluorescenceIncompatibleRates)
 
     rem2 = one(S) - phi_p2
     phi_f2 = rem2 * (kf2 / kdiss2)
     phi_d2 = rem2 * (kd2 / kdiss2)
     phi_n2 = rem2 * ((kns + kn) / kdiss2)
-    npq = (kn + kns) / (kf2 + kd2)
+    npq = kn / (kf2 + kd2 + kns)
+    total_quenching_ratio = (kn + kns) / (kf2 + kd2)
 
     psii_flux = q2_exc * phi_f2
     psi_flux = q1_exc * phi_f1
@@ -387,7 +395,7 @@ end
     q_total = q2_exc + q1_exc
     total_yield = total_flux / q_total
 
-    all(isfinite, (psii_flux, psi_flux, total_flux, total_yield, npq)) ||
+    all(isfinite, (psii_flux, psi_flux, total_flux, total_yield, npq, total_quenching_ratio)) ||
         return unavailable_cytochrome_fluorescence(S, FluorescenceIncompatibleRates)
 
     return CytochromeFluorescenceResult{S}(
@@ -409,6 +417,7 @@ end
         q1_open,
         kn,
         npq,
+        total_quenching_ratio,
     )
 end
 
@@ -425,6 +434,7 @@ turnover at biochemical-site `site.co2` (`Cc`).
     site::LeafEnvironment{FT},
     excitation::AbstractExcitation = BroadbandExcitation(),
 ) where {T,E,S,L,FT<:Real}
+    require_compatible(photosystem_flux_inputs, p, site, excitation)
     turnover = biochemical_turnover(p, site, excitation)
     q2 = psii_excitation(p.electron_transport, site.absorbed_par, excitation)
     q1 = psi_excitation(p.electron_transport, site.absorbed_par, excitation)

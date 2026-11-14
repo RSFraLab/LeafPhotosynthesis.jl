@@ -7,14 +7,19 @@ Compose concrete `photosynthesis` ([`AbstractPhotosynthesis`](@ref)), `stomata`
 components into an immutable leaf model.
 
 Explicit no-op defaults (`NoStomatalDynamics()`, `NoOxygenExchange()`) disable
-optional processes without introducing hidden scientific parameter values.
+optional processes without introducing hidden scientific parameter values. Components of
+different binary precisions are a `MethodError`.
 """
 struct LeafModel{P<:AbstractPhotosynthesis,S<:AbstractStomatalModel,O<:AbstractOxygenExchange} <:
        AbstractLeafScalar
     photosynthesis::P
     stomata::S
     oxygen::O
+    LeafModel{P,S,O}(fields::Vararg{Any,3}) where {P<:AbstractPhotosynthesis,S<:AbstractStomatalModel,O<:AbstractOxygenExchange} =
+        new{P,S,O}(component_fields(LeafModel{P,S,O}, fields)...)
 end
+LeafModel(photosynthesis::AbstractPhotosynthesis, stomata::AbstractStomatalModel, oxygen::AbstractOxygenExchange) =
+    LeafModel{typeof(photosynthesis),typeof(stomata),typeof(oxygen)}(photosynthesis, stomata, oxygen)
 LeafModel(; photosynthesis, stomata = NoStomatalDynamics(), oxygen = NoOxygenExchange()) =
     LeafModel(photosynthesis, stomata, oxygen)
 
@@ -70,6 +75,7 @@ target and tendency, and optional [`oxygen_exchange`](@ref) diagnostics at
     diffusion::AbstractLeafDiffusion,
     excitation::AbstractExcitation = BroadbandExcitation(),
 )
+    require_compatible(leaf_tendencies, leaf, env, state, diffusion, excitation)
     exchange = gas_exchange(leaf, env, state, diffusion, excitation)
     drivers = StomatalDrivers(
         exchange.carbon.net_assimilation, exchange.surface_co2,

@@ -9,6 +9,7 @@ include("../fluorescence_batches.jl")
 include("../excitation_fixture.jl")
 include("../excitation_batches.jl")
 include("../cytochrome_batches.jl")
+include("../closed_stomata_batches.jl")
 
 # Do not silently skip this explicitly requested GPU acceptance test.
 CUDA.functional(true) || error("A functional CUDA device is required")
@@ -26,4 +27,7 @@ end
 end
 @testset "Cytochrome CUDA batches" begin
     check_cytochrome_batches(CuArray, CUDA.synchronize)
+end
+@testset "Closed-stomata CUDA batches" begin
+    check_closed_stomata_batches(CuArray, CUDA.synchronize)
 end

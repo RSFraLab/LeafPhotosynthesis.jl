@@ -244,7 +244,8 @@ end
                 photo.stoichiometry, photo.limitation, photo.compensation)
             @test isnan(state_transition_partition(rule, fl_conn, bad_et_photo, s_hi))
             @test isnan(state_transition_partition(rule, fl_conn, min_et_photo, s_hi))
-            @test isnan(state_transition_partition(rule, fl_conn, photo, LeafEnvironment(other_ft(298.15), other_ft(500), other_ft(28), other_ft(21000))))
+            # Precision rule (R3a, M2): another binary precision is a MethodError, not NaN.
+            @test_throws MethodError state_transition_partition(rule, fl_conn, photo, LeafEnvironment(other_ft(298.15), other_ft(500), other_ft(28), other_ft(21000)))
             for bad_s in (
                 LeafEnvironment(zero(FT), FT(500), FT(28), O2_Pa),
                 LeafEnvironment(T_K, -one(FT), FT(28), O2_Pa),

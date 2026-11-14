@@ -140,7 +140,8 @@ function cytochrome_oracle(photo::CytochromePhotosynthesis, fl::CytochromeFluore
     phi_f2 = (q2_open * (kf2 / s2) + (big(1) - q2_open) * (kf2 / s1)) * inv_one_minus_u2
     phi_d2 = (q2_open * (kd2 / s2) + (big(1) - q2_open) * (kd2 / s1)) * inv_one_minus_u2
     phi_n2 = (q2_open * ((kns + kn) / s2) + (big(1) - q2_open) * ((kns + kn) / s1)) * inv_one_minus_u2
-    npq = (kn + kns) / (kf2 + kd2)
+    npq = kn / (kf2 + kd2 + kns)
+    total_quenching_ratio = (kn + kns) / (kf2 + kd2)
     f2_flux = q2_exc * phi_f2
     f1_flux = q1_exc * phi_f1
     f_tot = f2_flux + f1_flux
@@ -148,7 +149,7 @@ function cytochrome_oracle(photo::CytochromePhotosynthesis, fl::CytochromeFluore
 
     return (; anet, j1_avail, j2_avail, q2_open, eta, j2_real, j1_real, j_cef, dark = false,
         phi_p2, phi_f2, phi_d2, phi_n2, phi_p1, phi_f1, phi_d1, phi_n1,
-        phi_f_tot, q1_open, kn, npq, f2_flux, f1_flux, f_tot)
+        phi_f_tot, q1_open, kn, npq, total_quenching_ratio, f2_flux, f1_flux, f_tot)
 end
 
 function cytochrome_allocations(photo, fl, site, gas_env, state, diff, solver, leaf)
@@ -351,6 +352,7 @@ end
                     @test isapprox(res.psi_open_fraction, oracle.q1_open; rtol, atol)
                     @test isapprox(res.psii_quenching_rate, oracle.kn; rtol, atol)
                     @test isapprox(res.npq, oracle.npq; rtol, atol)
+                    @test isapprox(res.total_quenching_ratio, oracle.total_quenching_ratio; rtol, atol)
                     @test isapprox(res.psii_photon_flux, oracle.f2_flux; rtol, atol)
                     @test isapprox(res.psi_photon_flux, oracle.f1_flux; rtol, atol)
                     @test isapprox(res.total_photon_flux, oracle.f_tot; rtol, atol)
@@ -475,13 +477,22 @@ end
         # Super-PAR sum, wrong FT, non-finite, single-photosystem, and PSII-starved (Phi_P2 > 1) rejected across all entry points.
         @test !valid_excitation(PrescribedDualExcitation(FT(500), FT(400)), FT(800))
         other_ft = FT === Float32 ? Float64 : Float32
-        @test !valid_excitation(PrescribedDualExcitation(other_ft(100), other_ft(100)), FT(800))
+        # Precision rule (R3a, M2): another binary precision is a MethodError, not NaN.
+        other_exc = PrescribedDualExcitation(other_ft(100), other_ft(100))
+        @test_throws MethodError valid_excitation(other_exc, FT(800))
+        @test_throws MethodError photosynthesize(photo, lit_site, other_exc)
+        @test_throws MethodError biochemical_turnover(photo, lit_site, other_exc)
+        @test_throws MethodError oxygen_exchange(case.cyto_leaf, lit_site, other_exc)
+        @test_throws MethodError gas_exchange(photo, gas_env, state, case.diffusion, other_exc)
+        @test_throws MethodError assimilation_sensitivity(photo, gas_env, state, case.diffusion, other_exc)
+        @test_throws MethodError equilibrium_gas_exchange(photo, case.cyto_leaf.stomata,
+            gas_env, case.diffusion, case.solver, other_exc)
+        @test_throws MethodError photosystem_flux_inputs(photo, lit_site, other_exc)
         for bad_exc in (
             PrescribedDualExcitation(FT(500), FT(400)),
             PrescribedDualExcitation(-one(FT), FT(100)),
             PrescribedDualExcitation(FT(NaN), FT(100)),
             PrescribedDualExcitation(FT(Inf), FT(100)),
-            PrescribedDualExcitation(other_ft(100), other_ft(100)),
             PrescribedDualExcitation(zero(FT), FT(50)),   # zero PSII photons, lit PSI
             PrescribedDualExcitation(FT(50), zero(FT)),   # lit PSII, zero PSI photons
             PrescribedDualExcitation(one(FT), FT(50)),    # PSII-starved far-red (J_P680,avail > Q2)
@@ -564,13 +575,19 @@ end
                 @test allnan(assimilation_sensitivity(p, gas(bad..., pa), state, case.diffusion))
             end
             for (pressure, gs) in ((zero(FT), FT(0.2)), (-one(FT), FT(0.2)), (FT(NaN), FT(0.2)),
-                    (pa, zero(FT)), (pa, FT(-0.1)), (pa, FT(Inf)), (pa, FT(NaN)))
+                    (pa, FT(-0.1)), (pa, FT(Inf)), (pa, FT(NaN)))
                 bad_exchange = gas_exchange(p, gas(t0, ca, o2, pressure), StomatalState(gs), case.diffusion)
                 @test allnan(bad_exchange.carbon) && isnan(bad_exchange.surface_co2)
                 @test allnan(assimilation_sensitivity(
                     p, gas(t0, ca, o2, pressure), StomatalState(gs), case.diffusion,
                 ))
             end
+            # R3a (F4): closed stomata in light are a valid sealed-leaf steady state.
+            closed = gas_exchange(p, gas(t0, ca, o2, pa), StomatalState(zero(FT)), case.diffusion)
+            @test isfinite(closed.biochemical_co2) && closed.conductance == zero(FT)
+            @test all(isfinite, values(assimilation_sensitivity(
+                p, gas(t0, ca, o2, pa), StomatalState(zero(FT)), case.diffusion,
+            )))
         end
     end
 end

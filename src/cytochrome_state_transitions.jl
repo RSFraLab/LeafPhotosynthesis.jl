@@ -54,24 +54,18 @@ Eqs. 28, 30, Table 2), returning `NaN` on invalid inputs without throwing.
     co2::FTC,
     oxygen::FTO,
 ) where {FTR<:Real,FTT<:Real,FTC<:Real,FTO<:Real}
+    require_compatible(dark_balanced_psii_partition, fl, p, temperature, co2, oxygen)
     rates = biochemical_rates(p.temperature, temperature, oxygen)
-    T = typeof(zero(FTR) + rates.vcmax + rates.vqmax + rates.gamma_star + temperature + co2 + oxygen)
-    nan = T(NaN)
-    compatible_scalar(FTR, FTT) &&
-        compatible_scalar(FTR, FTC) &&
-        compatible_scalar(FTR, FTO) &&
-        compatible_scalar(FTR, typeof(p.electron_transport.psi_maximum_yield)) &&
-        compatible_scalar(FTR, typeof(p.stoichiometry.electrons_per_carboxylation)) &&
-        compatible_scalar(FTR, typeof(rates.vcmax)) || return nan
-    p.electron_transport.limitation isa SerialLimitation || return nan
     phi1_max = psi_maximum_photochemical_yield(fl)
-    primal_scalar(abs(p.electron_transport.psi_maximum_yield - phi1_max)) <= primal_scalar(fl.yield_tolerance) || return nan
-    valid_site(temperature, co2, oxygen) || return nan
-    valid_biochemistry(p, rates) &&
-        !(iszero(primal_scalar(co2)) && iszero(primal_scalar(rates.gamma_star))) || return nan
     eta = psi_to_psii_electron_ratio(rates, co2, p.stoichiometry)
     phi2_max = psii_maximum_photochemical_yield(fl, one(FTR))
-    return T(phi1_max / (phi1_max + eta * phi2_max))
+    beta = phi1_max / (phi1_max + eta * phi2_max)
+    T = typeof(beta + rates.vcmax + rates.vqmax + rates.gamma_star + temperature + co2 + oxygen)
+    valid = p.electron_transport.limitation isa SerialLimitation &&
+        is_at_most(abs(p.electron_transport.psi_maximum_yield - phi1_max), fl.yield_tolerance) &&
+        valid_site(temperature, co2, oxygen) && valid_biochemistry(p, rates) &&
+        !(is_zero(co2) && is_zero(rates.gamma_star))
+    return valid ? T(beta) : T(NaN)
 end
 
 @inline function dark_balanced_psii_partition(
@@ -100,24 +94,17 @@ invalid or incompatible inputs without throwing.
     p::CytochromePhotosynthesis,
     site::LeafEnvironment{FT},
 ) where {FTR<:Real,FTF<:Real,FT<:Real}
+    require_compatible(state_transition_partition, rule, fl, p, site)
     rates = biochemical_rates(p.temperature, site.temperature, site.oxygen)
+    phi1_max = psi_maximum_photochemical_yield(fl)
+    valid = p.electron_transport.limitation isa SerialLimitation &&
+        is_at_most(abs(p.electron_transport.psi_maximum_yield - phi1_max), fl.yield_tolerance) &&
+        valid_site(site) && is_nonnegative(site.absorbed_par) && valid_biochemistry(p, rates) &&
+        !(is_zero(site.co2) && is_zero(rates.gamma_star))
     T = typeof(
         zero(FTR) + zero(FTF) + rates.vcmax + rates.vqmax + rates.gamma_star +
         site.temperature + site.absorbed_par + site.co2 + site.oxygen,
     )
-    nan = T(NaN)
-    compatible_scalar(FTR, FTF) &&
-        compatible_scalar(FTR, FT) &&
-        compatible_scalar(FTR, typeof(p.electron_transport.psi_maximum_yield)) &&
-        compatible_scalar(FTR, typeof(p.stoichiometry.electrons_per_carboxylation)) &&
-        compatible_scalar(FTR, typeof(rates.vcmax)) || return nan
-    p.electron_transport.limitation isa SerialLimitation || return nan
-    phi1_max = psi_maximum_photochemical_yield(fl)
-    primal_scalar(abs(p.electron_transport.psi_maximum_yield - phi1_max)) <= primal_scalar(fl.yield_tolerance) || return nan
-    par_p = primal_scalar(site.absorbed_par)
-    valid_site(site) && isfinite(par_p) && par_p >= zero(par_p) || return nan
-    valid_biochemistry(p, rates) &&
-        !(iszero(primal_scalar(site.co2)) && iszero(primal_scalar(rates.gamma_star))) || return nan
 
     # Dimensionless PSII rate ratios bounded in [0, 1] (zero rate^2 overflow in Float32).
     psii = fl.psii
@@ -147,8 +134,8 @@ invalid or incompatible inputs without throwing.
         b_coef = w_v * (m1 + mu + m2) - w_q * m2
         c_pos = w_v * m2
         rad2 = b_coef * b_coef + 4 * a_coef * c_pos
-        disc = rad2 > zero(rad2) ? sqrt(rad2) : zero(rad2)
-        b_coef >= zero(b_coef) ? (2 * c_pos) / (b_coef + disc) : (-b_coef + disc) / (2 * a_coef)
+        disc = exceeds(rad2, zero(rad2)) ? sqrt(rad2) : zero(rad2)
+        is_at_most(zero(b_coef), b_coef) ? (2 * c_pos) / (b_coef + disc) : (-b_coef + disc) / (2 * a_coef)
     end
     beta_opt = one(T) - alpha1_opt
 
@@ -156,13 +143,15 @@ invalid or incompatible inputs without throwing.
     c1, c2 = cytochrome_carbon_coefficients(rates, p.stoichiometry)
     km = site.co2 + rates.kc * (one(T) + site.oxygen / rates.ko)
     j_psi_c = (rates.vcmax / km) * (c1 * site.co2 + c2 * rates.gamma_star)
-    q2_sat = rates.vqmax > zero(rates.vqmax) ?
-        max(rates.vqmax - j_psi_c, zero(T)) / rates.vqmax : zero(T)
+    q2_sat = exceeds(rates.vqmax, zero(rates.vqmax)) ?
+        primal_max(rates.vqmax - j_psi_c, zero(T)) / rates.vqmax : zero(T)
     num_sat = m1 + q2_sat * mu
     beta_sat = num_sat / (num_sat + m2)
 
-    beta_raw = max(beta_opt, beta_sat)
-    return T(clamp(beta_raw, T(rule.minimum_psii_fraction), T(rule.maximum_psii_fraction)))
+    beta_raw = primal_max(beta_opt, beta_sat)
+    R = promote_type(T, typeof(beta_raw))
+    valid || return R(NaN)
+    return R(primal_clamp(beta_raw, R(rule.minimum_psii_fraction), R(rule.maximum_psii_fraction)))
 end
 
 @inline state_transition_partition(
@@ -196,7 +185,7 @@ across all IEEE-754 binades.
         return PrescribedDualExcitation(nan, nan)
     end
     half = inv(oftype(beta, 2))
-    if beta >= half
+    if is_at_most(half, beta)
         q2 = beta * q_abs
         q1 = q_abs - q2
     else

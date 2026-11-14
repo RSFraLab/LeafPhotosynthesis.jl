@@ -55,6 +55,7 @@ LeafPhotosynthesis.EquilibriumIterationLimit
 LeafPhotosynthesis.EquilibriumPrecisionLimit
 LeafPhotosynthesis.EquilibriumInvalidInput
 LeafPhotosynthesis.EquilibriumInvalidBracket
+LeafPhotosynthesis.EquilibriumStomataClosed
 equilibrium_gas_exchange
 ```
 

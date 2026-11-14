@@ -44,7 +44,14 @@ The example's numerical settings are explicit in its TOML, separately for FP32/F
 The bracket is intentionally conservative and may remain wider than the root error
 after rapid Newton convergence; the width is not a claimed uncertainty estimate.
 
-Positive minimum conductance is required. Fully sealed leaves need CO₂ storage.
+A zero minimum conductance `g0` is allowed (Medlyn fits commonly use it). A closed leaf
+needs CO₂ storage only when it respires on balance: in darkness, or in light below the
+light compensation point, no steady state exists and the solver returns
+`EquilibriumInvalidBracket`. In light the model's CO₂ compensation point Γ (respiration
+included) exists, and the result is the limit `g0 → 0⁺`: the open-stomata root in
+(Γ, Ca) when `Ca − Γ > (P/u) r Ca / gain` (`EquilibriumConverged`), otherwise the
+closed-stomata steady state with zero conductance, zero net assimilation and `Cc = Γ`
+(`EquilibriumStomataClosed`, `converged = true`).
 Humidity and energy balance are prescribed here, so this is not a complete Bonan 12.1
 reproduction. Prognostic stomata use the same target family with independent opening
 and closing timescales; tests show their long-time approach to the coupled equilibrium
@@ -71,7 +78,9 @@ an explicit convention and leaf-area aggregation outside this kernel.
 
 Without an existing exchange solution, this function calls the analytical
 minimum-limitation/signed-diffusion closure. To use another supported equilibrium
-configuration, pass its converged solution and corresponding gs as the fifth argument.
+configuration, pass its converged solution as the sixth argument (after `excitation`)
+and its `stomatal_conductance` as `state`; an exchange that is not a root for the passed
+excitation and state gives `NaN`.
 It differentiates steady CO₂ supply–demand at independently varied gs, not the empirical
 stomatal target law. The optimization law should decide how to use that gradient.
 

@@ -5,13 +5,19 @@
 Specify dimensionless C3 stoichiometric coefficients in the electron-limited
 denominator ``e_c (C_c + c_o Γ^*)``.
 
-Both parameters must be supplied explicitly from parameter files.
+Both parameters must be supplied explicitly from parameter files. Throws
+`ArgumentError` unless `electrons_per_carboxylation > 0` and `oxygenation_cost ≥ 0` are
+finite.
 """
 Base.@kwdef struct C3Stoichiometry{FT<:Real} <: AbstractLeafScalar
     electrons_per_carboxylation::FT
     oxygenation_cost::FT
-    C3Stoichiometry{FT}(fields::Vararg{Any,2}) where {FT<:Real} =
-        new{FT}(continuous_fields(FT, C3Stoichiometry{FT}, fields)...)
+    function C3Stoichiometry{FT}(fields::Vararg{Any,2}) where {FT<:Real}
+        s = new{FT}(continuous_fields(FT, C3Stoichiometry{FT}, fields)...)
+        is_positive(s.electrons_per_carboxylation) && is_nonnegative(s.oxygenation_cost) ||
+            throw(ArgumentError("C3Stoichiometry requires finite electrons_per_carboxylation > 0 and oxygenation_cost ≥ 0"))
+        return s
+    end
 end
 C3Stoichiometry(fields::Vararg{Real,2}) =
     C3Stoichiometry{scalar_type(C3Stoichiometry, fields...)}(fields...)
@@ -38,7 +44,7 @@ struct NonnegativeAssimilation <: AbstractLeafScalar end
 end
 @inline co2_excess(co2, gamma_star, ::SignedAssimilation) = co2 - gamma_star
 @inline co2_excess(co2, gamma_star, ::NonnegativeAssimilation) =
-    max(co2 - gamma_star, zero(co2 - gamma_star))
+    primal_max(co2 - gamma_star, zero(co2 - gamma_star))
 
 # Electrons consumed per unit of carboxylation capacity [e⁻ Pa]: the light-limited
 # capacity is electrons / electron_demand, e (C + a Γ*) for C3 linear electron flow.
@@ -73,6 +79,7 @@ capacities before multiplying by CO₂ excess so realized turnover remains
 well-defined across `Γ*`.
 """
 @inline function carbon_assimilation(r, co2, oxygen, electrons, s, limitation, compensation)
+    require_compatible(carbon_assimilation, r, co2, oxygen, electrons, s, limitation)
     excess = co2_excess(co2, r.gamma_star, compensation)
     rubisco = r.vcmax * excess / (co2 + r.kc * (one(oxygen) + oxygen / r.ko))
     light = electrons * excess / electron_demand(r, co2, s)

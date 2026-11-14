@@ -75,11 +75,52 @@ gas-exchange domain, specificity convention and zero-O₂ limitations.
 ## Numerical and hardware contract
 
 Same-FT inputs and parameters must give the same FT in every numerical diagnostic.
-The core must infer concrete return types, allocate no per-leaf heap storage after
-compilation, and avoid host indexing, printing, exceptions, or file I/O in hot methods.
-Host constructors may validate parameters. Mathematical input domains are documented;
-caller-side validation precedes large batch launches. Invalid physics must not be
-silently replaced by plausible default values.
+The number type of a result is the promotion of the values it holds, so a dual number in
+any parameter (a co-limitation curvature, a stoichiometry) or forcing value carries
+through. The core must infer concrete return types, allocate no per-leaf heap storage
+after compilation, and avoid host indexing, printing, exceptions, or file I/O in hot
+methods. Mathematical input domains are documented; caller-side validation precedes large
+batch launches. Invalid physics must not be silently replaced by plausible default values.
+
+**Precision rule.** Every continuous scalar reachable from the arguments of an entry
+point or component function (the model and its components, environment, state, drivers,
+diffusion, excitation) must have one binary precision; dual numbers count with the
+precision of their values, so `ForwardDiff.Dual{T,Float64}` mixes with `Float64`. A
+mismatch is a `MethodError` of the called function, raised at its entry by
+`require_compatible`. The check reads only types and is folded away when the method is
+compiled, so it costs nothing in a kernel; no precision mismatch is turned into `NaN` or
+promoted silently. Composite constructors (`C3Photosynthesis`, `CytochromePhotosynthesis`,
+the temperature bundles, `LeafModel`, and every struct with components) apply the same
+rule on the host, so a `Float32` model cannot hold a `Float64` component. The converting
+form `T{FT}(…)` converts floats; an integer, `Bool` or rational in a continuous field is a
+`MethodError` in every constructor form.
+
+**Domains and branches on primal values.** Every domain check and every branch at a kink
+reads primal values (`is_positive`, `is_nonnegative`, `is_fraction`, `exceeds`,
+`is_at_most`, `primal_min`, `primal_max`, `primal_clamp`), so whether an input is valid
+never depends on a derivative seed (ForwardDiff ≥ 1.0 orders dual numbers with equal
+values by their tangents). At a tie a kink returns the one-sided derivative ForwardDiff
+0.10 would: `MinimumLimitation` the first capacity (Rubisco), `NonnegativeAssimilation`
+zero at `Cc = Γ*`, a stomatal target its minimum conductance at `A = 0`. The exception is
+the exact-darkness test of the analytic diffusion root, which also looks at the tangent so
+that a dual light of value zero propagates its derivative; it does not change validity.
+
+**What may throw.** Nothing callable inside a kernel throws for a value. Structs split in
+two classes:
+- *Per-leaf, per-time-step quantities*, which a canopy model builds inside a broadcast,
+  never throw for a value; invalid values lead to `NaN` results (or an invalid status)
+  through the validity predicates of the entry points: `LeafEnvironment`,
+  `GasExchangeEnvironment`, `StomatalState`, `StomatalDrivers`, the excitations,
+  `SeriesDiffusion` and `WaterVaporDiffusion` (conductances vary with wind and leaf size),
+  the rate bundles `C3Rates` and `CytochromeRates`, the input bundles `OxygenFluxInputs`,
+  `PSIIFluxInputs` and `CoupledPhotosystemInputs`, and the result structs.
+- *Fixed parameters*, built once on the host, may reject invalid values in their
+  constructor with an `ArgumentError`: temperature laws and bundles, electron-transport
+  and Cytochrome parameters, stoichiometries, limitations, compensation-point laws,
+  stomatal targets and models, oxygen exchange, solver settings, fluorescence models and
+  quenching laws, rate parameters of the photosystems, state-transition rules, PAM
+  observers, and the composite models. Validation that needs forcing (rates at a
+  temperature, ATP balance at an O₂) stays in the entry points' predicates.
 
 Scalar kernels should work in ClimaCore broadcasts and standalone GPU kernels.
 Device selection and array layouts belong to adapters/callers. CUDA and Metal support
@@ -87,9 +128,25 @@ are acceptance targets, not claims established by using parametric types. Requir
 real backend tests, including reordered dark/lit populations and cross-device numerical
 comparisons. FP32 and FP64 are CPU/CUDA targets; Apple GPU work should target FP32.
 Continuous scalar fields and environments accept `ForwardDiff.Dual` tangents alongside
-`Float32` and `Float64`, while rejecting mixed binary float precisions and discrete
-integer or rational types; model kinks at clipping and limitation transitions are
-explicit and tested against 256-bit `BigFloat` reference derivatives.
+`Float32` and `Float64`, under the precision rule above, and reject discrete integer or
+rational types; model kinks at clipping and limitation transitions are explicit and
+tested against 256-bit `BigFloat` reference derivatives.
+
+## Closed stomata
+
+Zero conductance is a valid input wherever a steady state exists. At prescribed
+conductance (`gas_exchange`, `gs = 0`) each branch ``A = m (C - Γ^*)/(C + k) - R_d`` meets
+a zero supply where ``(m - R_d) C = m Γ^* + R_d k``: if every branch has ``m > R_d``, the
+sealed leaf in light sits at the CO₂ compensation point of the model,
+``Γ = \max_i (m_i Γ^* + R_d k_i)/(m_i - R_d)``, with zero net assimilation; if a branch
+has ``m ≤ R_d`` (darkness, or light below the light compensation point) respiration
+would accumulate CO₂ in the sealed leaf without bound, no steady state exists and the
+result is `NaN`. In the equilibrium solver a zero minimum conductance ``g_0`` of
+Ball–Berry or Medlyn is the limit ``g_0 → 0^+``: no steady state without a compensation
+point (`EquilibriumInvalidBracket`); the open-stomata root in ``(Γ, C_a)`` when
+``C_a - Γ > (P/u) r C_a / \mathrm{gain}``; otherwise the closed-stomata limit at ``Γ``
+(`EquilibriumStomataClosed`). Only a leaf that respires on balance needs CO₂ storage to
+be described; that is outside this quasi-steady core.
 
 ## Teaching contract
 

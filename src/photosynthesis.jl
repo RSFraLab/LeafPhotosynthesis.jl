@@ -49,7 +49,8 @@ Compose Farquhar–von Caemmerer–Berry C3 biochemistry from concrete `temperat
 `electron_transport`, `stoichiometry`, `limitation`, and `compensation` components.
 
 `C3Photosynthesis` holds immutable parameters only, with no per-leaf arrays,
-scratch buffers, or hidden empirical defaults.
+scratch buffers, or hidden empirical defaults. Components of different binary
+precisions are a `MethodError`.
 """
 Base.@kwdef struct C3Photosynthesis{T,E,S,L,C} <: AbstractC3Photosynthesis{L,C}
     temperature::T
@@ -57,7 +58,10 @@ Base.@kwdef struct C3Photosynthesis{T,E,S,L,C} <: AbstractC3Photosynthesis{L,C}
     stoichiometry::S
     limitation::L
     compensation::C
+    C3Photosynthesis{T,E,S,L,C}(fields::Vararg{Any,5}) where {T,E,S,L,C} =
+        new{T,E,S,L,C}(component_fields(C3Photosynthesis{T,E,S,L,C}, fields)...)
 end
+C3Photosynthesis(fields::Vararg{Any,5}) = C3Photosynthesis{map(typeof, fields)...}(fields...)
 
 """
     LeafEnvironment{FT}(; temperature, absorbed_par, co2, oxygen)
@@ -80,12 +84,8 @@ LeafEnvironment(fields::Vararg{Real,4}) =
 # Physical domain of a biochemical site: positive finite temperature [K] and finite,
 # nonnegative CO₂ and O₂ partial pressures [Pa]. Absorbed light is checked with the
 # excitation by `valid_excitation`.
-@inline function valid_site(temperature, co2, oxygen)
-    t_p, co2_p, o2_p = map(primal_scalar, (temperature, co2, oxygen))
-    return isfinite(t_p) && t_p > zero(t_p) &&
-        isfinite(co2_p) && co2_p >= zero(co2_p) &&
-        isfinite(o2_p) && o2_p >= zero(o2_p)
-end
+@inline valid_site(temperature, co2, oxygen) =
+    is_positive(temperature) && is_nonnegative(co2) && is_nonnegative(oxygen)
 @inline valid_site(env) = valid_site(env.temperature, env.co2, env.oxygen)
 
 # Domain of a leaf entry point at prescribed biochemical-site gases.
@@ -106,21 +106,24 @@ end
 @inline electron_state(::C3Photosynthesis, r, supply, co2) =
     (true, supply.electron_transport, (;))
 
-@inline valid_biochemistry(::C3Photosynthesis, r) = true
+# Parameter domain at the prescribed-CO₂ entry points, as for the Cytochrome model: finite
+# rates, nonnegative capacities and respiration, positive Michaelis constants, Γ* ≥ 0
+# (Γ* = 0 at zero O₂ with `OxygenScaledCompensationPoint`), and a valid stoichiometry.
+@inline function valid_biochemistry(p::C3Photosynthesis, r)
+    s = p.stoichiometry
+    return is_positive(s.electrons_per_carboxylation) && is_nonnegative(s.oxygenation_cost) &&
+        all(is_nonnegative, (r.vcmax, r.jmax, r.respiration, r.gamma_star)) &&
+        is_positive(r.kc) && is_positive(r.ko)
+end
 
 @inline function valid_equilibrium_biochemistry(p::C3Photosynthesis, r)
     s = p.stoichiometry
-    return all(x -> isfinite(x) && x > zero(x), (s.electrons_per_carboxylation, s.oxygenation_cost)) &&
-        all(isfinite, (r.vcmax, r.jmax, r.respiration, r.kc, r.ko, r.gamma_star)) &&
-        min(primal_scalar(r.vcmax), primal_scalar(r.jmax), primal_scalar(r.respiration)) >= zero(primal_scalar(r.vcmax)) &&
-        min(r.kc, r.ko, r.gamma_star) > zero(r.kc)
+    return is_positive(s.electrons_per_carboxylation) && is_positive(s.oxygenation_cost) &&
+        all(is_nonnegative, (r.vcmax, r.jmax, r.respiration)) &&
+        all(is_positive, (r.kc, r.ko, r.gamma_star))
 end
 
 @inline turnover_electron_flows(::C3Photosynthesis, turnover) = (;)
-
-# Output type of a leaf result: the promotion of parameters, forcing and electron supply.
-@inline leaf_result_type(p, r, supply, forcing...) =
-    typeof(r.vcmax + p.stoichiometry.electrons_per_carboxylation + +(forcing...) + sum(supply))
 
 """
     photosynthesize(photosynthesis, environment, excitation=BroadbandExcitation())
@@ -143,15 +146,15 @@ give `NaN` in every field.
     env::LeafEnvironment,
     excitation::AbstractExcitation = BroadbandExcitation(),
 )
+    require_compatible(photosynthesize, p, env, excitation)
     r, electrons, supply = light_supply(p, env, excitation)
-    OutFT = leaf_result_type(p, r, supply, env.co2, env.oxygen)
     valid_co2, transport, extras = electron_state(p, r, supply, env.co2)
     carbon = carbon_assimilation(
         r, env.co2, env.oxygen, electrons,
         p.stoichiometry, p.limitation, p.compensation,
     )
     valid = valid_co2 && valid_leaf(p, r, env, excitation)
-    return checked_result(OutFT, valid, (; carbon..., electron_transport = transport, extras...))
+    return checked_result(valid, (; carbon..., electron_transport = transport, extras...))
 end
 
 @inline function biochemical_turnover(
@@ -159,13 +162,13 @@ end
     env::LeafEnvironment,
     excitation::AbstractExcitation = BroadbandExcitation(),
 ) where {L}
+    require_compatible(biochemical_turnover, p, env, excitation)
     r, electrons, supply = light_supply(p, env, excitation)
-    OutFT = leaf_result_type(p, r, supply, env.co2, env.oxygen)
     valid_co2, transport, extras = electron_state(p, r, supply, env.co2)
     turnover = biochemical_turnover(
         r, env.co2, env.oxygen, electrons,
         p.stoichiometry, p.limitation, p.compensation,
     )
     valid = valid_co2 && valid_leaf(p, r, env, excitation)
-    return checked_result(OutFT, valid, (; turnover..., electron_transport = transport, extras...))
+    return checked_result(valid, (; turnover..., electron_transport = transport, extras...))
 end

@@ -3,7 +3,7 @@
 @inline function colimit_slope(a, b, da, db, ::MinimumLimitation)
     S = typeof(a + b)
     DS = typeof(da + db)
-    return a <= b ? (S(a), DS(da)) : (S(b), DS(db))
+    return is_at_most(a, b) ? (S(a), DS(da)) : (S(b), DS(db))
 end
 
 @inline function colimit_slope(a, b, da, db, ::SerialLimitation)
@@ -38,7 +38,7 @@ end
     x, y, q = a / scale, b / scale, value / scale
     two = one(x) + one(x)
     disc = (x - y)^2 + two * two * (one(p.curvature) - p.curvature) * x * y
-    denominator = disc > zero(disc) ? sqrt(disc) : zero(disc)
+    denominator = exceeds(disc, zero(disc)) ? sqrt(disc) : zero(disc)
     derivative = DS((da * (y - q) + db * (x - q)) / denominator)
     return value, derivative
 end
@@ -52,7 +52,7 @@ end
 end
 
 @inline excess_slope(co2, gamma, ::SignedAssimilation) = one(co2)
-@inline excess_slope(co2, gamma, ::NonnegativeAssimilation) = co2 > gamma ? one(co2) : zero(co2)
+@inline excess_slope(co2, gamma, ::NonnegativeAssimilation) = exceeds(co2, gamma) ? one(co2) : zero(co2)
 
 @inline function assimilation_and_slope(r, co2, oxygen, electrons, s, limitation, compensation)
     capacity, derivative = capacity_and_slope(r, co2, oxygen, electrons, s, limitation)
@@ -71,5 +71,7 @@ O₂, and available electron supply.
 At [`MinimumLimitation`](@ref) or [`NonnegativeAssimilation`](@ref) kinks, return
 a consistent one-sided derivative.
 """
-@inline carbon_assimilation_derivative(r, co2, oxygen, electrons, s, limitation, compensation) =
-    last(assimilation_and_slope(r, co2, oxygen, electrons, s, limitation, compensation))
+@inline function carbon_assimilation_derivative(r, co2, oxygen, electrons, s, limitation, compensation)
+    require_compatible(carbon_assimilation_derivative, r, co2, oxygen, electrons, s, limitation)
+    return last(assimilation_and_slope(r, co2, oxygen, electrons, s, limitation, compensation))
+end

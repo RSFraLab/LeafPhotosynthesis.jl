@@ -385,48 +385,41 @@ end
         end
         Other=FT==Float32 ? Float64 : Float32
         mismatch=PrescribedPSIIExcitation(Other(env.absorbed_par/2))
-        @test !(@inferred valid_excitation(mismatch, env.absorbed_par))
-        @test (@inferred electron_transport(
+        # Precision rule (R3a, M2): an excitation of another binary precision is a
+        # MethodError of every entry point, not a NaN result.
+        @test_throws MethodError valid_excitation(mismatch, env.absorbed_par)
+        @test_throws MethodError electron_transport(
             p.electron_transport,
             env.absorbed_par,
             one(FT),
             mismatch,
-        )) isa FT
-        for output in (
-            (@inferred photosynthesize(case.leaf, site, mismatch)),
-            (@inferred biochemical_turnover(case.leaf, site, mismatch)),
-            (@inferred oxygen_exchange(case.leaf, site, mismatch)),
-            (@inferred assimilation_sensitivity(
-                p,
-                env,
-                case.state,
-                case.diffusion,
-                mismatch,
-                exchange,
-            )),
         )
-            @test all(x->x isa FT&&isnan(x), values(output))
-        end
-        mismatch_exchange=@inferred gas_exchange(
+        @test_throws MethodError photosynthesize(case.leaf, site, mismatch)
+        @test_throws MethodError biochemical_turnover(case.leaf, site, mismatch)
+        @test_throws MethodError oxygen_exchange(case.leaf, site, mismatch)
+        @test_throws MethodError assimilation_sensitivity(
+            p,
+            env,
+            case.state,
+            case.diffusion,
+            mismatch,
+            exchange,
+        )
+        @test_throws MethodError gas_exchange(
             case.leaf,
             env,
             case.state,
             case.diffusion,
             mismatch,
         )
-        @test all(x->x isa FT&&isnan(x), values(mismatch_exchange.carbon))
-        mismatch_equilibrium=@inferred equilibrium_gas_exchange(
+        @test_throws MethodError equilibrium_gas_exchange(
             case.steady,
             env,
             case.diffusion,
             case.solver,
             mismatch,
         )
-        @test mismatch_equilibrium.status===EquilibriumInvalidInput
-        @test mismatch_equilibrium.biochemical_co2 isa FT
-        mismatch_flux=@inferred psii_flux_inputs(p, site, mismatch)
-        @test mismatch_flux isa PSIIFluxInputs{FT}
-        @test isnan(mismatch_flux.psii_excitation)&&isnan(mismatch_flux.linear_electron_flow)
+        @test_throws MethodError psii_flux_inputs(p, site, mismatch)
         @test !valid_excitation(PrescribedPSIIExcitation(one(FT)), zero(FT))
         @test valid_excitation(PrescribedPSIIExcitation(zero(FT)), zero(FT))
         broadband_only=BroadbandOnlyElectrons(

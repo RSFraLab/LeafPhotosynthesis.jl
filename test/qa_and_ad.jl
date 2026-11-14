@@ -192,7 +192,7 @@ end
         # Positive controls confirming exact arity/order of result constructors on Float64
         @test RateCompetitionResult(FluorescenceLit, false, ntuple(_ -> 0.5, 7)...) isa RateCompetitionResult{Float64}
         @test EquilibriumSolution((net_assimilation = 1.0,), ntuple(_ -> 1.0, 9)..., 1, EquilibriumConverged, true) isa EquilibriumSolution{Float64}
-        @test CytochromeFluorescenceResult(FluorescenceLit, false, ntuple(_ -> 0.5, 16)...) isa CytochromeFluorescenceResult{Float64}
+        @test CytochromeFluorescenceResult(FluorescenceLit, false, ntuple(_ -> 0.5, 17)...) isa CytochromeFluorescenceResult{Float64}
         @test PAMFluorescenceResult(FluorescenceLit, ntuple(_ -> 0.5, 11)...) isa PAMFluorescenceResult{Float64}
 
         # Required-keyword constructors still reject empty call with UndefKeywordError
@@ -657,8 +657,20 @@ end
                 ),
                 0.0,
             )
-            @test dg_da > 0
-            @test isapprox(dg_da, dg_da_ref; rtol = 1e-12)
+            # R3a (M3): the branch at A = 0 is decided on the primal value, whatever the
+            # seed; the derivative there is that of the g0 branch (zero), and the right
+            # derivative is the limit from A > 0.
+            dg_da_minus = ForwardDiff.derivative(
+                a -> target_conductance(st64, StomatalDrivers(-a, 38.0, 101325.0, 0.65, 1200.0)),
+                0.0,
+            )
+            @test dg_da == 0 && dg_da_minus == 0
+            dg_da_right = ForwardDiff.derivative(
+                a -> target_conductance(st64, StomatalDrivers(a, 38.0, 101325.0, 0.65, 1200.0)),
+                nextfloat(0.0),
+            )
+            @test dg_da_right > 0
+            @test isapprox(dg_da_right, dg_da_ref; rtol = 1e-12)
         end
 
         # Exact darkness (absorbed_par == 0.0): physical initial light-response slopes

@@ -66,8 +66,11 @@ The reported CO₂ sites are distinct: leaf surface, intercellular space, and bi
 site. Finite mesophyll resistance makes Ci different from Cc. The returned diffusion
 residual compares supply and demand; tests also compare the analytic root with an
 independent high-precision bracketed solution. Sub-compensation conditions retain
-signed fluxes. Sealed leaves require CO₂ storage and are outside this quasi-steady
-closure: supply strictly positive conductances.
+signed fluxes. Closed stomata (`gs = 0`) are supported where a steady state exists: in
+light the sealed leaf reaches the CO₂ compensation point of the model (net assimilation
+zero, respiration included), returned analytically. Only a leaf that respires on balance
+(darkness, or light below the light compensation point) would need CO₂ storage; there no
+steady state exists and every field is `NaN`.
 
 `leaf_tendencies` assembles gas exchange, the current stomatal target/tendency, and
 optional oxygen diagnostics. It implements the prescribed-conductance path needed
@@ -84,12 +87,16 @@ net O₂ release is positive, whereas net CO₂ uptake is positive in photosynth
 The respiratory quotient is CO₂ released per O₂ consumed. Stoichiometric values
 are explicit parameters; see [Gauthier et al. (2018)](https://pmc.ncbi.nlm.nih.gov/articles/PMC5933133/).
 
-The C3 adapter assumes linear electron flow supplies carbon metabolism and
-photorespiration only. It derives realized turnover from the limiting biochemical
-capacity, not from potential electron transport. This retains nonzero gross fluxes
-at the compensation point without dividing by a vanishing net assimilation rate.
-For canonical stoichiometry and RQ=1, net O₂ release equals net CO₂ uptake; the tests
-check this identity and the separate gross terms. Changing RQ changes that relation.
+The coupled method computes the budget from realized carboxylation and oxygenation:
+gross O₂ evolution is `vc + (o_po − c_po) vo` (`vc + vo` for the canonical 1.5 and 0.5,
+two NADPH per carboxylation and per oxygenation), independent of the electron
+stoichiometry of the photosynthesis model. Electrons beyond that NADPH demand (an
+ATP-limited FvCB stoichiometry such as `e_c = 4.5`) are taken to return to O₂ without net
+O₂ exchange. It derives realized turnover from the limiting biochemical capacity, not
+from potential electron transport. This retains nonzero gross fluxes at the compensation
+point without dividing by a vanishing net assimilation rate. With RQ = 1, net O₂ release
+equals net CO₂ uptake for every valid electron stoichiometry; the tests check this
+identity and the separate gross terms. Changing RQ changes that relation.
 
 The adapter requires signed assimilation. A clipped sub-compensation curve cannot
 provide the same carbon/oxygen budget. Gamma-star must match the prescribed O₂

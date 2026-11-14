@@ -44,10 +44,14 @@ ConstantQuenching(fields::Vararg{Real,1}) =
     quenching_rate(law, saturation)
 
 Evaluate the dimensionless regulated non-photochemical quenching rate constant
-`K_N` at excitation `saturation` (`∈ [0, 1]`).
+`K_N` at excitation `saturation` (`∈ [0, 1]`); a `saturation` outside `[0, 1]` (or `NaN`)
+gives `NaN`.
 """
-@inline quenching_rate(q::ConstantQuenching, saturation) =
-    oftype(q.rate + zero(saturation), q.rate)
+@inline function quenching_rate(q::ConstantQuenching, saturation)
+    require_compatible(quenching_rate, q, saturation)
+    T = typeof(q.rate + zero(saturation))
+    return is_fraction(saturation) ? T(q.rate) : T(NaN)
+end
 
 """
     SaturationQuenching(maximum_rate, exponent, half_saturation)
@@ -78,7 +82,9 @@ SaturationQuenching(fields::Vararg{Real,3}) =
     SaturationQuenching{scalar_type(SaturationQuenching, fields...)}(fields...)
 
 @inline function quenching_rate(q::SaturationQuenching, saturation)
+    require_compatible(quenching_rate, q, saturation)
     T = promote_type(typeof(q.maximum_rate), typeof(saturation))
+    is_fraction(saturation) || return T(NaN)
     exact_zero_scalar(saturation) && return zero(T)
     power = saturation^q.exponent
     # Normalize the denominator to avoid both maximum_rate * (1 + beta) overflow
@@ -238,7 +244,7 @@ prior to within-leaf optical escape. Check [`fluorescence_valid`](@ref) before
 consuming outputs; `boundary_roundoff` flags tolerated roundoff above the
 maximum photochemical yield.
 """
-struct RateCompetitionResult{FT<:Real} <: AbstractLeafScalar
+Base.@kwdef struct RateCompetitionResult{FT<:Real} <: AbstractLeafScalar
     status::FluorescenceStatus
     boundary_roundoff::Bool
     photon_flux::FT
@@ -281,7 +287,7 @@ returns `nothing`).
     p::RateCompetitionFluorescence{FTP},
     x::PSIIFluxInputs{FTX},
 ) where {FTP<:Real,FTX<:Real}
-    compatible_scalar(FTP, FTX) || throw(MethodError(fluorescence, (p, x)))
+    require_compatible(fluorescence, p, x)
     S = promote_type(FTP, FTX)
     q, j = S(x.psii_excitation), S(x.linear_electron_flow)
     qp, jp = primal_scalar(q), primal_scalar(j)
@@ -295,19 +301,19 @@ returns `nothing`).
     end
     phi = j / q
     phi0 = S(maximum_photochemical_yield(p))
-    isfinite(phi) && phi < one(S) && phi - phi0 <= p.yield_tolerance ||
+    isfinite(phi) && exceeds(one(S), phi) && is_at_most(phi - phi0, p.yield_tolerance) ||
         return unavailable_fluorescence(S, FluorescenceIncompatibleRates)
-    boundary = phi > phi0
+    boundary = exceeds(phi, phi0)
     saturation = boundary ? zero(S) : (phi0 - phi) / phi0
     kn = S(quenching_rate(p.quenching, saturation))
     base = S(p.fluorescence_rate + p.constitutive_heat_rate + kn)
     total = S(p.maximum_photochemical_rate + base)
-    isfinite(kn) && kn >= zero(S) && isfinite(total) ||
+    is_nonnegative(kn) && isfinite(total) ||
         return unavailable_fluorescence(S, FluorescenceIncompatibleRates)
     maximum_yield = S(p.maximum_photochemical_rate / total)
-    phi - maximum_yield <= p.yield_tolerance ||
+    is_at_most(phi - maximum_yield, p.yield_tolerance) ||
         return unavailable_fluorescence(S, FluorescenceIncompatibleRates)
-    boundary |= phi > maximum_yield
+    boundary |= exceeds(phi, maximum_yield)
     remaining = one(S) - phi
     f = S(remaining * (p.fluorescence_rate / base))
     d = S(remaining * (p.constitutive_heat_rate / base))
@@ -332,6 +338,7 @@ After solving gas exchange, verify solver convergence first and pass a
     site::LeafEnvironment{FT},
     excitation::AbstractExcitation = BroadbandExcitation(),
 ) where {T,E,S,L,FT<:Real}
+    require_compatible(psii_flux_inputs, p, site, excitation)
     turnover = biochemical_turnover(p, site, excitation)
     q2 = psii_excitation(p.electron_transport, site.absorbed_par, excitation)
     OutFT = promote_type(typeof(q2), typeof(turnover.linear_electron_flow))
@@ -377,8 +384,7 @@ function validate_fluorescence_coupling(
     p::RateCompetitionFluorescence{FTP},
     e::ElectronTransportParameters{FTE},
 ) where {FTP<:Real,FTE<:Real}
-    compatible_scalar(FTP, FTE) ||
-        throw(MethodError(validate_fluorescence_coupling, (p, e)))
+    require_compatible(validate_fluorescence_coupling, p, e)
     S = promote_type(FTP, FTE)
     expected = S(fluorescence_low_light_yield(p))
     exp_p = primal_scalar(expected)

@@ -216,29 +216,16 @@ function check_excitation_batches(to_device, synchronize)
         )
         @test isempty(Array(empty_result))
         @test isconcretetype(eltype(empty_result))
-        # FT mismatch is rejected on device without widening results or throwing.
+        # Precision rule (R3a, M2): an excitation of another binary precision is rejected by
+        # its type, a MethodError before any kernel runs; nothing is widened or turned into NaN.
         Other=FT==Float32 ? Float64 : Float32
-        mismatch=to_device(PrescribedPSIIExcitation.(Other.(getfield.(inputs, :photons))))
-        rejected=photosynthesize.(Ref(case.leaf), ds, mismatch)
-        rejected_eq=equilibrium_gas_exchange.(
-            Ref(case.steady),
-            df,
-            Ref(case.diffusion),
-            Ref(case.solver),
-            mismatch,
+        mismatch=PrescribedPSIIExcitation.(Other.(getfield.(inputs, :photons)))
+        @test !LeafPhotosynthesis.same_precision(case.leaf, first(sites), first(mismatch))
+        @test_throws MethodError photosynthesize(case.leaf, first(sites), first(mismatch))
+        @test_throws MethodError equilibrium_gas_exchange(
+            case.steady, first(forcings), case.diffusion, case.solver, first(mismatch),
         )
-        rejected_flux=psii_flux_inputs.(Ref(p), ds, mismatch)
-        synchronize()
-        @test all(row->all(x->x isa FT&&isnan(x), values(row)), Array(rejected))
-        @test all(
-            row->row.status===EquilibriumInvalidInput&&!row.converged,
-            Array(rejected_eq),
-        )
-        @test eltype(rejected_flux)===PSIIFluxInputs{FT}
-        @test all(
-            row->isnan(row.psii_excitation)&&isnan(row.linear_electron_flow),
-            Array(rejected_flux),
-        )
+        @test_throws MethodError psii_flux_inputs(p, first(sites), first(mismatch))
         # A second explicit convention can be compiled without changing the core.
         alternate=to_device(ExtraBandTestExcitation.(getfield.(inputs, :photons)))
         alternate_carbon=photosynthesize.(Ref(case.leaf), ds, alternate)

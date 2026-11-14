@@ -23,8 +23,10 @@ CytochromeCapacity(site_density::Real, turnover_rate) =
         site_density, turnover_rate,
     )
 
-@inline temperature_response(c::CytochromeCapacity, temperature) =
-    c.site_density * temperature_response(c.turnover_rate, temperature)
+@inline function temperature_response(c::CytochromeCapacity, temperature)
+    require_compatible(temperature_response, c, temperature)
+    return c.site_density * temperature_response(c.turnover_rate, temperature)
+end
 
 """
     CytochromeTemperatureResponse(; vcmax, vqmax, respiration, kc, ko, gamma_star,
@@ -47,7 +49,11 @@ Base.@kwdef struct CytochromeTemperatureResponse{V,Q,R,C,O,G,NL,NC} <: AbstractL
     gamma_star::G
     linear_atp_per_electron::NL
     cyclic_atp_per_electron::NC
+    CytochromeTemperatureResponse{V,Q,R,C,O,G,NL,NC}(fields::Vararg{Any,8}) where {V,Q,R,C,O,G,NL,NC} =
+        new{V,Q,R,C,O,G,NL,NC}(component_fields(CytochromeTemperatureResponse{V,Q,R,C,O,G,NL,NC}, fields)...)
 end
+CytochromeTemperatureResponse(fields::Vararg{Any,8}) =
+    CytochromeTemperatureResponse{map(typeof, fields)...}(fields...)
 
 """
     CytochromeRates{FT}(; vcmax, vqmax, respiration, kc, ko, gamma_star,
@@ -77,27 +83,33 @@ end
 CytochromeRates(fields::Vararg{Real,8}) =
     CytochromeRates{scalar_type(CytochromeRates, fields...)}(fields...)
 
-@inline biochemical_rates(p::CytochromeTemperatureResponse, temperature) = CytochromeRates(
-    temperature_response(p.vcmax, temperature),
-    temperature_response(p.vqmax, temperature),
-    temperature_response(p.respiration, temperature),
-    temperature_response(p.kc, temperature),
-    temperature_response(p.ko, temperature),
-    temperature_response(p.gamma_star, temperature),
-    temperature_response(p.linear_atp_per_electron, temperature),
-    temperature_response(p.cyclic_atp_per_electron, temperature),
-)
+@inline function biochemical_rates(p::CytochromeTemperatureResponse, temperature)
+    require_compatible(biochemical_rates, p, temperature)
+    return CytochromeRates(
+        temperature_response(p.vcmax, temperature),
+        temperature_response(p.vqmax, temperature),
+        temperature_response(p.respiration, temperature),
+        temperature_response(p.kc, temperature),
+        temperature_response(p.ko, temperature),
+        temperature_response(p.gamma_star, temperature),
+        temperature_response(p.linear_atp_per_electron, temperature),
+        temperature_response(p.cyclic_atp_per_electron, temperature),
+    )
+end
 
-@inline biochemical_rates(p::CytochromeTemperatureResponse, temperature, oxygen) = CytochromeRates(
-    temperature_response(p.vcmax, temperature),
-    temperature_response(p.vqmax, temperature),
-    temperature_response(p.respiration, temperature),
-    temperature_response(p.kc, temperature),
-    temperature_response(p.ko, temperature),
-    compensation_point(p.gamma_star, temperature, oxygen),
-    temperature_response(p.linear_atp_per_electron, temperature),
-    temperature_response(p.cyclic_atp_per_electron, temperature),
-)
+@inline function biochemical_rates(p::CytochromeTemperatureResponse, temperature, oxygen)
+    require_compatible(biochemical_rates, p, temperature, oxygen)
+    return CytochromeRates(
+        temperature_response(p.vcmax, temperature),
+        temperature_response(p.vqmax, temperature),
+        temperature_response(p.respiration, temperature),
+        temperature_response(p.kc, temperature),
+        temperature_response(p.ko, temperature),
+        compensation_point(p.gamma_star, temperature, oxygen),
+        temperature_response(p.linear_atp_per_electron, temperature),
+        temperature_response(p.cyclic_atp_per_electron, temperature),
+    )
+end
 
 """
     CytochromeStoichiometry{FT}(; electrons_per_carboxylation,
@@ -109,14 +121,20 @@ CytochromeRates(fields::Vararg{Real,8}) =
 
 Specify C3 Calvin–Benson and photorespiratory linear-electron and ATP demands
 per CO₂ event (classically `4, 8, 3, 7` in Johnson & Berry 2021, Eq. 24).
+Throws `ArgumentError` unless all four are finite and positive.
 """
 Base.@kwdef struct CytochromeStoichiometry{FT<:Real} <: AbstractLeafScalar
     electrons_per_carboxylation::FT
     electrons_per_photorespiratory_co2::FT
     atp_per_carboxylation::FT
     atp_per_photorespiratory_co2::FT
-    CytochromeStoichiometry{FT}(fields::Vararg{Any,4}) where {FT<:Real} =
-        new{FT}(continuous_fields(FT, CytochromeStoichiometry{FT}, fields)...)
+    function CytochromeStoichiometry{FT}(fields::Vararg{Any,4}) where {FT<:Real}
+        s = new{FT}(continuous_fields(FT, CytochromeStoichiometry{FT}, fields)...)
+        all(is_positive, (s.electrons_per_carboxylation, s.electrons_per_photorespiratory_co2,
+            s.atp_per_carboxylation, s.atp_per_photorespiratory_co2)) ||
+            throw(ArgumentError("CytochromeStoichiometry requires finite positive coefficients"))
+        return s
+    end
 end
 CytochromeStoichiometry(fields::Vararg{Real,4}) =
     CytochromeStoichiometry{scalar_type(CytochromeStoichiometry, fields...)}(fields...)
@@ -191,9 +209,9 @@ Base.@kwdef struct CytochromeElectronParameters{FT<:Real,L} <: AbstractLeafScala
     limitation::L
     function CytochromeElectronParameters{FT,L}(fields::Vararg{Any,3}) where {FT<:Real,L}
         p = new{FT,L}(continuous_fields(FT, CytochromeElectronParameters{FT,L}, fields)...)
-        isfinite(p.psii_fraction) && zero(FT) < p.psii_fraction < one(FT) ||
+        is_open_fraction(p.psii_fraction) ||
             throw(ArgumentError("invalid PSII fraction: coupled Z-scheme transport requires 0 < psii_fraction < 1"))
-        isfinite(p.psi_maximum_yield) && zero(FT) < p.psi_maximum_yield < one(FT) ||
+        is_open_fraction(p.psi_maximum_yield) ||
             throw(ArgumentError("invalid PSI maximum photochemical yield"))
         return p
     end
@@ -221,17 +239,19 @@ coupled Z-scheme steady-state domain and returns `NaN` fields.
     vqmax,
     excitation::AbstractExcitation = BroadbandExcitation(),
 )
+    require_compatible(cytochrome_electron_supply, p, absorbed_par, vqmax, excitation)
     # Dispatch psi_excitation/psii_excitation unconditionally so unsupported
     # excitation types (e.g. PrescribedPSIIExcitation) fail via MethodError.
     q1 = psi_excitation(p, absorbed_par, excitation)
     q2 = psii_excitation(p, absorbed_par, excitation)
-    OutFT = typeof(p.psi_maximum_yield + q1 + q2 + zero(vqmax))
     vqp = primal_scalar(vqmax)
     q1p, q2p = primal_scalar(q1), primal_scalar(q2)
     valid = valid_excitation(excitation, absorbed_par) && !isnan(vqp) && vqp >= zero(vqp) &&
         iszero(q2p) == iszero(q1p)
     psi_light = p.psi_maximum_yield * q1
-    psi_supply = OutFT(colimit(psi_light, vqmax, p.limitation))
+    colimited = colimit(psi_light, vqmax, p.limitation)
+    OutFT = promote_type(typeof(psi_light + q2 + zero(vqmax)), typeof(colimited))
+    psi_supply = OutFT(colimited)
     psi_light_p = primal_scalar(psi_light)
     q2_open = if isinf(vqp)
         one(OutFT)
@@ -246,9 +266,9 @@ coupled Z-scheme steady-state domain and returns `NaN` fields.
             OutFT(x / (x + y))
         end
     else
-        OutFT(clamp(one(psi_supply) - psi_supply / vqmax, zero(psi_supply), one(psi_supply)))
+        OutFT(primal_clamp(one(psi_supply) - psi_supply / vqmax, zero(psi_supply), one(psi_supply)))
     end
-    return checked_result(OutFT, valid, (; psi_electron_supply = psi_supply, psii_open_fraction = q2_open))
+    return checked_result(valid, (; psi_electron_supply = psi_supply, psii_open_fraction = q2_open))
 end
 
 """
@@ -257,7 +277,8 @@ end
 
 Compose steady-state C3 photosynthesis governed by Cytochrome b₆f plastoquinol
 oxidation, PSI photochemistry, and coupled linear/cyclic ATP–NADPH stoichiometry
-(Johnson & Berry 2021) from immutable component structs.
+(Johnson & Berry 2021) from immutable component structs. Components of different binary
+precisions are a `MethodError`.
 """
 Base.@kwdef struct CytochromePhotosynthesis{T,E,S,L,C} <: AbstractC3Photosynthesis{L,C}
     temperature::T
@@ -265,7 +286,11 @@ Base.@kwdef struct CytochromePhotosynthesis{T,E,S,L,C} <: AbstractC3Photosynthes
     stoichiometry::S
     limitation::L
     compensation::C
+    CytochromePhotosynthesis{T,E,S,L,C}(fields::Vararg{Any,5}) where {T,E,S,L,C} =
+        new{T,E,S,L,C}(component_fields(CytochromePhotosynthesis{T,E,S,L,C}, fields)...)
 end
+CytochromePhotosynthesis(fields::Vararg{Any,5}) =
+    CytochromePhotosynthesis{map(typeof, fields)...}(fields...)
 
 @inline function electron_demand(r::CytochromeRates, co2, s::CytochromeStoichiometry)
     c1, c2 = cytochrome_carbon_coefficients(r, s)

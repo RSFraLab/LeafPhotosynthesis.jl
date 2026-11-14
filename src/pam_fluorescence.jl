@@ -34,7 +34,7 @@ pulse-ratio indices (`apparent_photochemical_yield`, `apparent_regulated_heat_yi
 Check [`pam_fluorescence_valid`](@ref) before consuming fields; non-lit states
 carry `NaN` fields without throwing on GPU devices.
 """
-struct PAMFluorescenceResult{FT<:Real} <: AbstractLeafScalar
+Base.@kwdef struct PAMFluorescenceResult{FT<:Real} <: AbstractLeafScalar
     status::FluorescenceStatus
     fs::FT
     fm_dark::FT

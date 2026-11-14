@@ -25,6 +25,7 @@ struct BroadbandExcitation <: AbstractExcitation end
 """
     PrescribedPSIIExcitation(photons)
     PrescribedPSIIExcitation{FT}(photons)
+    PrescribedPSIIExcitation(; photons)
 
 Carry externally allocated PSII excitation `photons` [μmol photons m⁻² leaf s⁻¹]
 on the same one-sided leaf-area basis and PAR spectral interval as
@@ -32,10 +33,11 @@ on the same one-sided leaf-area basis and PAR spectral interval as
 
 Pigment and antenna allocation are already included, so broadband `psii_fraction`
 is not applied again. Invalid values are stored without throwing for GPU
-compatibility; [`valid_excitation`](@ref) rejects non-finite or negative values,
-`photons > absorbed_par`, or incompatible scalar precision.
+compatibility; [`valid_excitation`](@ref) rejects non-finite or negative values and
+`photons > absorbed_par`. A binary precision other than that of the model and
+environment is a `MethodError` of the entry point.
 """
-struct PrescribedPSIIExcitation{FT<:Real} <: AbstractExcitation
+Base.@kwdef struct PrescribedPSIIExcitation{FT<:Real} <: AbstractExcitation
     photons::FT
     PrescribedPSIIExcitation{FT}(fields::Vararg{Any,1}) where {FT<:Real} =
         new{FT}(continuous_fields(FT, PrescribedPSIIExcitation{FT}, fields)...)
@@ -53,8 +55,8 @@ PAR spectral interval as `LeafEnvironment.absorbed_par`.
 
 [`valid_excitation`](@ref) requires finite nonnegative `absorbed_par`,
 `psii_photons ≥ 0`, `psi_photons ≥ 0`, `psii_photons + psi_photons ≤ absorbed_par`
-(permitting non-photosynthetic pigment absorption when strict inequality holds),
-and compatible continuous scalar precision.
+(permitting non-photosynthetic pigment absorption when strict inequality holds).
+A binary precision other than that of the model and environment is a `MethodError`.
 """
 Base.@kwdef struct PrescribedDualExcitation{FT<:Real} <: AbstractExcitation
     psii_photons::FT
@@ -68,38 +70,23 @@ PrescribedDualExcitation(fields::Vararg{Real,2}) =
 """
     valid_excitation(excitation, total_absorbed_par) -> Bool
 
-Return `true` if `excitation` and `total_absorbed_par` satisfy the non-throwing
-domain and precision contract shared across photosynthesis, turnover, diffusion,
-oxygen, and fluorescence entry points.
+Return `true` if `excitation` and `total_absorbed_par` lie in the domain shared across
+photosynthesis, turnover, diffusion, oxygen, and fluorescence entry points: finite
+nonnegative light, and prescribed photon fluxes that are finite, nonnegative and no larger
+than `total_absorbed_par`. Different binary precisions are a `MethodError`.
 """
-@inline function valid_excitation(::BroadbandExcitation, absorbed_par)
-    p = primal_scalar(absorbed_par)
-    return isfinite(p) && p >= zero(p)
+@inline valid_excitation(input::BroadbandExcitation, absorbed_par::Real) =
+    is_nonnegative(absorbed_par)
+
+@inline function valid_excitation(input::PrescribedPSIIExcitation, absorbed_par::Real)
+    require_compatible(valid_excitation, input, absorbed_par)
+    return is_nonnegative(absorbed_par) && is_nonnegative(input.photons) &&
+        is_at_most(input.photons, absorbed_par)
 end
 
-@inline valid_excitation(::PrescribedPSIIExcitation, absorbed_par) = false
-@inline function valid_excitation(
-    input::PrescribedPSIIExcitation{FTI},
-    absorbed_par::FTA,
-) where {FTI<:Real,FTA<:Real}
-    compatible_scalar(FTI, FTA) || return false
-    pa = primal_scalar(absorbed_par)
-    pi = primal_scalar(input.photons)
-    return isfinite(pa) && pa >= zero(pa) &&
-        isfinite(pi) && zero(pi) <= pi <= pa
-end
-
-@inline valid_excitation(::PrescribedDualExcitation, absorbed_par) = false
-@inline function valid_excitation(
-    input::PrescribedDualExcitation{FTI},
-    absorbed_par::FTA,
-) where {FTI<:Real,FTA<:Real}
-    compatible_scalar(FTI, FTA) || return false
-    pa = primal_scalar(absorbed_par)
-    p2 = primal_scalar(input.psii_photons)
-    p1 = primal_scalar(input.psi_photons)
-    return isfinite(pa) && pa >= zero(pa) &&
-        isfinite(p2) && isfinite(p1) &&
-        p2 >= zero(p2) && p1 >= zero(p1) &&
-        p2 + p1 <= pa
+@inline function valid_excitation(input::PrescribedDualExcitation, absorbed_par::Real)
+    require_compatible(valid_excitation, input, absorbed_par)
+    return is_nonnegative(absorbed_par) && is_nonnegative(input.psii_photons) &&
+        is_nonnegative(input.psi_photons) &&
+        is_at_most(input.psii_photons + input.psi_photons, absorbed_par)
 end

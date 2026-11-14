@@ -7,6 +7,7 @@ abstract type AbstractCompensationPoint <: AbstractLeafScalar end
 
 """
     PrescribedCompensationPoint(response)
+    PrescribedCompensationPoint(; response)
 
 Wrap a temperature-only `Γ*` law `response` [Pa] calibrated at a fixed O₂ level.
 
@@ -14,12 +15,13 @@ The caller must supply an oxygen partial pressure compatible with `response`'s
 calibration; this component does not infer oxygen scaling and is distinct from
 the signed or clipped carbon-assimilation policy.
 """
-struct PrescribedCompensationPoint{R} <: AbstractCompensationPoint
+Base.@kwdef struct PrescribedCompensationPoint{R} <: AbstractCompensationPoint
     response::R
 end
 
 """
     OxygenScaledCompensationPoint(response, reference_oxygen)
+    OxygenScaledCompensationPoint(; response, reference_oxygen)
 
 Scale a reference `Γ*` temperature law linearly with biochemical-site oxygen:
 ``Γ^*(T, O) = Γ^*(T, O_{\\mathrm{ref}}) \\cdot O / O_{\\mathrm{ref}}``.
@@ -29,12 +31,12 @@ partial pressure `reference_oxygen` [Pa]. No ambient O₂ default or stoichiomet
 recalibration is introduced, and evaluation without an explicit `oxygen` argument
 is unsupported. The scalar law returns exact zero at `oxygen == 0`.
 """
-struct OxygenScaledCompensationPoint{R,FT<:Real} <: AbstractCompensationPoint
+Base.@kwdef struct OxygenScaledCompensationPoint{R,FT<:Real} <: AbstractCompensationPoint
     response::R
     reference_oxygen::FT
     function OxygenScaledCompensationPoint{R,FT}(fields::Vararg{Any,2}) where {R,FT<:Real}
         p = new{R,FT}(continuous_fields(FT, OxygenScaledCompensationPoint{R,FT}, fields)...)
-        isfinite(p.reference_oxygen) && p.reference_oxygen > zero(FT) ||
+        is_positive(p.reference_oxygen) ||
             throw(ArgumentError("reference oxygen must be finite and positive [Pa]"))
         return p
     end
@@ -55,10 +57,14 @@ method on `compensation_point` when adding a new [`AbstractCompensationPoint`](@
 """
 @inline compensation_point(response, temperature, oxygen) =
     temperature_response(response, temperature)
-@inline compensation_point(p::PrescribedCompensationPoint, temperature, oxygen) =
-    temperature_response(p.response, temperature)
-@inline compensation_point(p::OxygenScaledCompensationPoint, temperature, oxygen) =
-    temperature_response(p.response, temperature) * (oxygen / p.reference_oxygen)
+@inline function compensation_point(p::PrescribedCompensationPoint, temperature, oxygen)
+    require_compatible(compensation_point, p, temperature, oxygen)
+    return temperature_response(p.response, temperature)
+end
+@inline function compensation_point(p::OxygenScaledCompensationPoint, temperature, oxygen)
+    require_compatible(compensation_point, p, temperature, oxygen)
+    return temperature_response(p.response, temperature) * (oxygen / p.reference_oxygen)
+end
 
 # Only the prescribed component has an oxygen-free evaluation.
 @inline temperature_response(p::PrescribedCompensationPoint, temperature) =

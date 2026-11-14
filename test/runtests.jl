@@ -10,17 +10,18 @@
 using Test
 
 const TEST_GROUPS = [
-    "core_exchange" => ["core_exchange.jl"],
+    "core_exchange" => ["core_exchange.jl", "closed_stomata_and_domains.jl"],
     "turnover" => ["turnover.jl"],
-    "equilibrium" => ["equilibrium.jl"],
-    "oxygen" => ["oxygen_batches.jl", "oxygen_compensation.jl"],
-    "fluorescence" => ["fluorescence_batches.jl", "fluorescence.jl"],
-    "leaf" => ["reference_bonan.jl", "device_checks.jl", "leaf.jl"],
+    "equilibrium" => ["equilibrium.jl", "closed_stomata_batches.jl", "equilibrium_closed_stomata.jl"],
+    "oxygen" => ["oxygen_batches.jl", "oxygen_compensation.jl", "oxygen_budget_stoichiometry.jl"],
+    "fluorescence" => ["fluorescence_batches.jl", "fluorescence.jl", "quenching_domain.jl"],
+    "leaf" => ["reference_bonan.jl", "device_checks.jl", "leaf.jl", "temperature_domains.jl"],
     "excitation" => ["excitation_fixture.jl", "excitation_reference.jl",
         "excitation_batches.jl", "excitation.jl"],
-    "cytochrome" => ["cytochrome_batches.jl", "cytochrome.jl", "cytochrome_additions.jl"],
+    "cytochrome" => ["cytochrome_batches.jl", "cytochrome.jl", "cytochrome_additions.jl",
+        "npq_and_c3_domain.jl"],
     "flexas" => ["flexas_2002.jl"],
-    "qa" => ["qa_and_ad.jl"],
+    "qa" => ["qa_and_ad.jl", "precision_and_ties.jl"],
     "jet" => ["jet.jl"],
 ]
 

@@ -49,13 +49,22 @@ Parameterize the Ball–Berry stomatal H₂O conductance target
 ``χ_s = C_s / P`` is the leaf-surface CO₂ mole fraction (`surface_co2 / pressure`
 in [`StomatalDrivers`](@ref)), with `minimum_conductance` (`g₀` [mol H₂O m⁻² leaf s⁻¹]),
 dimensionless `slope` (`g₁`), and `micromole_to_mole` [mol μmol⁻¹] converting `A_n`.
+
+Throws `ArgumentError` unless `minimum_conductance ≥ 0`, `slope ≥ 0` and
+`micromole_to_mole > 0` are finite; `minimum_conductance = 0` is valid (see
+[`equilibrium_gas_exchange`](@ref) for the closed-stomata limit it allows).
 """
 Base.@kwdef struct BallBerry{FT<:Real} <: AbstractStomatalTarget
     minimum_conductance::FT
     slope::FT
     micromole_to_mole::FT
-    BallBerry{FT}(fields::Vararg{Any,3}) where {FT<:Real} =
-        new{FT}(continuous_fields(FT, BallBerry{FT}, fields)...)
+    function BallBerry{FT}(fields::Vararg{Any,3}) where {FT<:Real}
+        p = new{FT}(continuous_fields(FT, BallBerry{FT}, fields)...)
+        is_nonnegative(p.minimum_conductance) && is_nonnegative(p.slope) &&
+            is_positive(p.micromole_to_mole) ||
+            throw(ArgumentError("BallBerry requires finite minimum_conductance ≥ 0, slope ≥ 0 and micromole_to_mole > 0"))
+        return p
+    end
 end
 BallBerry(fields::Vararg{Real,3}) =
     BallBerry{scalar_type(BallBerry, fields...)}(fields...)
@@ -71,6 +80,11 @@ Parameterize the Medlyn stomatal H₂O conductance target
 (`g₀`), `slope` (`g₁` [Pa¹ᐟ²]), H₂O/CO₂ `diffusivity_ratio` (`r`),
 `micromole_to_mole` [mol μmol⁻¹] converting `A_n`, and positive regularization
 `vpd_floor` (`D_min` [Pa]).
+
+Throws `ArgumentError` unless `minimum_conductance ≥ 0`, `slope ≥ 0`,
+`diffusivity_ratio > 0`, `micromole_to_mole > 0` and `vpd_floor > 0` are finite.
+`diffusivity_ratio` is the same H₂O/CO₂ ratio as `SeriesDiffusion.diffusivity_ratio`; the two
+copies are not compared, so pass the same value to both.
 """
 Base.@kwdef struct Medlyn{FT<:Real} <: AbstractStomatalTarget
     minimum_conductance::FT
@@ -78,19 +92,26 @@ Base.@kwdef struct Medlyn{FT<:Real} <: AbstractStomatalTarget
     diffusivity_ratio::FT
     micromole_to_mole::FT
     vpd_floor::FT
-    Medlyn{FT}(fields::Vararg{Any,5}) where {FT<:Real} =
-        new{FT}(continuous_fields(FT, Medlyn{FT}, fields)...)
+    function Medlyn{FT}(fields::Vararg{Any,5}) where {FT<:Real}
+        p = new{FT}(continuous_fields(FT, Medlyn{FT}, fields)...)
+        is_nonnegative(p.minimum_conductance) && is_nonnegative(p.slope) &&
+            is_positive(p.diffusivity_ratio) && is_positive(p.micromole_to_mole) &&
+            is_positive(p.vpd_floor) ||
+            throw(ArgumentError("Medlyn requires finite minimum_conductance ≥ 0, slope ≥ 0, and positive diffusivity_ratio, micromole_to_mole and vpd_floor"))
+        return p
+    end
 end
 Medlyn(fields::Vararg{Real,5}) =
     Medlyn{scalar_type(Medlyn, fields...)}(fields...)
 
 """
     SteadyStateStomata(target)
+    SteadyStateStomata(; target)
 
 Wrap an [`AbstractStomatalTarget`](@ref) for steady-state stomatal target
 evaluation and coupled [`equilibrium_gas_exchange`](@ref) solves.
 """
-struct SteadyStateStomata{T<:AbstractStomatalTarget} <: AbstractStomatalModel
+Base.@kwdef struct SteadyStateStomata{T<:AbstractStomatalTarget} <: AbstractStomatalModel
     target::T
 end
 
@@ -110,7 +131,7 @@ Base.@kwdef struct PrognosticStomata{T<:AbstractStomatalTarget,FT<:Real} <: Abst
     closing_timescale::FT
     function PrognosticStomata{T,FT}(fields::Vararg{Any,3}) where {T<:AbstractStomatalTarget,FT<:Real}
         p = new{T,FT}(continuous_fields(FT, PrognosticStomata{T,FT}, fields)...)
-        all(x -> isfinite(x) && x > zero(FT), (p.opening_timescale, p.closing_timescale)) ||
+        is_positive(p.opening_timescale) && is_positive(p.closing_timescale) ||
             throw(ArgumentError("stomatal timescales must be positive and finite"))
         return p
     end
@@ -123,11 +144,13 @@ PrognosticStomata(target::AbstractStomatalTarget, opening_timescale::Real, closi
 """
     StomatalState(conductance)
     StomatalState{FT}(conductance)
+    StomatalState(; conductance)
 
 Hold leaf stomatal H₂O `conductance` [mol H₂O m⁻² leaf s⁻¹] separately from
-immutable model parameters.
+immutable model parameters. Any value is stored without throwing; entry points treat a
+negative or non-finite conductance as invalid input.
 """
-struct StomatalState{FT<:Real} <: AbstractLeafScalar
+Base.@kwdef struct StomatalState{FT<:Real} <: AbstractLeafScalar
     conductance::FT
     StomatalState{FT}(fields::Vararg{Any,1}) where {FT<:Real} =
         new{FT}(continuous_fields(FT, StomatalState{FT}, fields)...)
@@ -135,28 +158,47 @@ end
 StomatalState(fields::Vararg{Real,1}) =
     StomatalState{scalar_type(StomatalState, fields...)}(fields...)
 
+# Domain of the stomatal drivers, the same for both target laws and for the equilibrium
+# solver: finite assimilation of either sign, finite nonnegative surface CO₂ that is
+# positive whenever assimilation is (uptake from zero CO₂ has no steady state), positive
+# finite pressure, relative humidity in [0, 1] and finite VPD.
+@inline valid_stomatal_drivers(d::StomatalDrivers) =
+    is_finite(d.assimilation) && is_nonnegative(d.surface_co2) &&
+    (is_positive(d.surface_co2) || !exceeds(d.assimilation, zero(d.assimilation))) &&
+    is_positive(d.pressure) && is_fraction(d.relative_humidity) && is_finite(d.vpd)
+
 """
     target_conductance(target_or_model, drivers::StomatalDrivers)
 
 Evaluate the steady-state stomatal H₂O conductance target [mol H₂O m⁻² leaf s⁻¹]
 for `drivers`, or return `nothing` for [`NoStomatalDynamics`](@ref).
+
+Drivers outside their domain give `NaN`, never the minimum conductance: non-finite
+assimilation, negative or non-finite surface CO₂ (zero only without net uptake), non-positive
+or non-finite pressure, relative humidity outside `[0, 1]`, or non-finite VPD. Net
+assimilation ≤ 0 gives the minimum conductance `g₀`.
 """
 @inline function target_conductance(p::BallBerry, d::StomatalDrivers)
-    pos_assim = d.assimilation > zero(d.assimilation) ? d.assimilation : zero(d.assimilation)
+    require_compatible(target_conductance, p, d)
+    pos_assim = exceeds(d.assimilation, zero(d.assimilation)) ? d.assimilation : zero(d.assimilation)
     uptake = pos_assim * p.micromole_to_mole
-    S = typeof(p.minimum_conductance + uptake * d.relative_humidity * d.pressure / d.surface_co2)
+    S = typeof(p.minimum_conductance + p.slope * uptake * d.relative_humidity * d.pressure / d.surface_co2)
+    valid_stomatal_drivers(d) || return S(NaN)
     (exact_zero_scalar(uptake) || (iszero(primal_scalar(uptake)) && iszero(primal_scalar(d.surface_co2)))) &&
         return S(p.minimum_conductance)
     return S(p.minimum_conductance + p.slope * uptake * d.relative_humidity * d.pressure / d.surface_co2)
 end
 
 @inline function target_conductance(p::Medlyn, d::StomatalDrivers)
-    pos_assim = d.assimilation > zero(d.assimilation) ? d.assimilation : zero(d.assimilation)
+    require_compatible(target_conductance, p, d)
+    pos_assim = exceeds(d.assimilation, zero(d.assimilation)) ? d.assimilation : zero(d.assimilation)
     uptake = pos_assim * p.micromole_to_mole
-    S = typeof(p.minimum_conductance + p.slope + uptake * d.pressure / d.surface_co2 + d.vpd)
+    S = typeof(p.minimum_conductance + p.slope + p.diffusivity_ratio + p.vpd_floor +
+        uptake * d.pressure / d.surface_co2 + d.vpd)
+    valid_stomatal_drivers(d) || return S(NaN)
     (exact_zero_scalar(uptake) || (iszero(primal_scalar(uptake)) && iszero(primal_scalar(d.surface_co2)))) &&
         return S(p.minimum_conductance)
-    sensitivity = one(d.vpd) + p.slope / sqrt(max(d.vpd, p.vpd_floor))
+    sensitivity = one(d.vpd) + p.slope / sqrt(primal_max(d.vpd, p.vpd_floor))
     return S(p.minimum_conductance + p.diffusivity_ratio * sensitivity * uptake * d.pressure / d.surface_co2)
 end
 
@@ -169,11 +211,15 @@ end
 
 Compute the stomatal H₂O conductance rate of change ``\\mathrm{d}g_{sw}/\\mathrm{d}t``
 [mol H₂O m⁻² leaf s⁻²] without mutating `state` (`0` for [`NoStomatalDynamics`](@ref)).
+Invalid drivers (see [`target_conductance`](@ref)) or a negative or non-finite state
+conductance give `NaN`; a closed state (`conductance = 0`) is valid.
 """
 @inline function stomatal_tendency(p::PrognosticStomata, state::StomatalState, d::StomatalDrivers)
+    require_compatible(stomatal_tendency, p, state, d)
     target = target_conductance(p, d)
-    tau = target > state.conductance ? p.opening_timescale : p.closing_timescale
-    return (target - state.conductance) / tau
+    tau = exceeds(target, state.conductance) ? p.opening_timescale : p.closing_timescale
+    tendency = (target - state.conductance) / tau
+    return is_nonnegative(state.conductance) ? tendency : oftype(tendency, NaN)
 end
 
 @inline stomatal_tendency(::NoStomatalDynamics, state::StomatalState, ::StomatalDrivers) =

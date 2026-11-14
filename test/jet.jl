@@ -34,6 +34,13 @@ function jet_entry_points(::Type{FT}) where {FT}
             (assimilation_sensitivity, (c3_leaf.photosynthesis, gas, state, diffusion)),
         "psii_flux_inputs" => (psii_flux_inputs, (vdt.leaf.photosynthesis, site)),
         "fluorescence" => (fluorescence, (vdt.regulated, psii)),
+        "gas_exchange, closed stomata" => (gas_exchange, (c3_leaf, gas, StomatalState(zero(FT)), diffusion)),
+        "equilibrium_gas_exchange, zero minimum conductance" => (equilibrium_gas_exchange,
+            (c3_leaf.photosynthesis, SteadyStateStomata(BallBerry{FT}(0.0, 9.0, 1e-6)), gas, diffusion, solver)),
+        "transpiration_sensitivity" => (transpiration_sensitivity,
+            (WaterVaporDiffusion(FT(1.4)), state, FT(1400), gas.pressure)),
+        "target_conductance" => (target_conductance,
+            (c3_leaf.stomata.target, StomatalDrivers(FT(10), FT(30), gas.pressure, FT(0.6), FT(1200)))),
     ]
     cytochrome = [
         "photosynthesize" => (photosynthesize, (cyto.cyto_leaf, site)),

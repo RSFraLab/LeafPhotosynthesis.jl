@@ -39,7 +39,9 @@ QuadraticLimitation(fields::Vararg{Real,1}) =
     colimit(a, b, limitation)
 
 Combine competing rates `a` and `b` using `limitation` ([`MinimumLimitation`](@ref),
-[`SerialLimitation`](@ref), or [`QuadraticLimitation`](@ref)).
+[`SerialLimitation`](@ref), or [`QuadraticLimitation`](@ref)). Rates and curvature of
+different binary precisions are a `MethodError`. At a tie of `MinimumLimitation` the first
+rate is returned, so a derivative there is that of `a`.
 
 # Examples
 ```jldoctest
@@ -52,9 +54,13 @@ julia> colimit(6.0, 3.0, SerialLimitation())
 2.0
 ```
 """
-@inline colimit(a, b, ::MinimumLimitation) = min(a, b)
+@inline function colimit(a, b, l::MinimumLimitation)
+    require_compatible(colimit, a, b, l)
+    return primal_min(a, b)
+end
 
-@inline function colimit(a, b, ::SerialLimitation)
+@inline function colimit(a, b, l::SerialLimitation)
+    require_compatible(colimit, a, b, l)
     (isnan(a) || isnan(b) || primal_scalar(a) < zero(primal_scalar(a)) || primal_scalar(b) < zero(primal_scalar(b))) &&
         return oftype(a + b, NaN)
     isinf(a) && return oftype(a + b, b)
@@ -62,11 +68,12 @@ julia> colimit(6.0, 3.0, SerialLimitation())
     scale = max(a, b)
     iszero(primal_scalar(scale)) && return zero(a + b)
     x, y = a / scale, b / scale
-    numerator = a <= b ? a * y : b * x
+    numerator = is_at_most(a, b) ? a * y : b * x
     return numerator / (x + y)
 end
 
 @inline function colimit(a, b, p::QuadraticLimitation)
+    require_compatible(colimit, a, b, p)
     # Scale before forming products and rationalize the smaller root to avoid
     # low-light cancellation and Float32 overflow/underflow.
     scale = max(abs(a), abs(b))
@@ -75,14 +82,14 @@ end
     s = x + y
     two = one(s) + one(s)
     four = two + two
-    discriminant = if x * y >= zero(s)
+    discriminant = if is_at_most(zero(s), x * y)
         (x - y)^2 + four * (one(p.curvature) - p.curvature) * x * y
     else
         s^2 - four * p.curvature * x * y
     end
-    root = discriminant > zero(discriminant) ? sqrt(discriminant) : zero(discriminant)
-    if s >= zero(s)
-        numerator = abs(a) <= abs(b) ? a * y : b * x
+    root = exceeds(discriminant, zero(discriminant)) ? sqrt(discriminant) : zero(discriminant)
+    if is_at_most(zero(s), s)
+        numerator = is_at_most(abs(a), abs(b)) ? a * y : b * x
         return numerator * (two / (s + root))
     end
     return scale * ((s - root) / (two * p.curvature))
