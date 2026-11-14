@@ -132,3 +132,18 @@ status enums with their values (`EquilibriumStatus`, `EquilibriumConverged`,
 - Result structs (`RateCompetitionResult`, `CytochromeFluorescenceResult`,
   `PAMFluorescenceResult`) accept a mix of a float type and dual numbers on it, promoted
   as the parameter structs do (before: one exact type).
+
+### Licence and documentation
+
+- The package is licensed under Apache-2.0 (`LICENSE`, `license` field in `Project.toml`).
+- One documentation site built by `docs/make.jl` (Documenter + DocumenterVitepress) from
+  `docs/src/`: the API reference comes from the docstrings (`@docs` blocks grouped by
+  physical process); walkthroughs, the example gallery and the Flexas et al. (2002)
+  explorer are pages of the site, with the interactive Chart.js figures embedded.
+  Before: Markdown walkthroughs read on GitHub, a generated `docs/api/*.md` reference and
+  two stand-alone HTML pages. After: the hosted manual; the old GitHub Pages URLs
+  (`…/examples.html`, `…/flexas_2002.html`) move under `…/dev/`.
+- Chart data and CSV tables are produced by the documentation build and are no longer
+  committed (`docs/assets/examples-data.js`, `flexas-2002-data.js`, `docs/assets/data/`,
+  `docs/assets/figures/` removed). The browser checks that needed Playwright are replaced
+  by Julia checks in the build (`docs/gallery_data.jl`).

@@ -1,6 +1,6 @@
 # Working on LeafPhotosynthesis
 
-Read README.md, docs/design.md, and docs/session_notes.md before changing scientific code.
+Read README.md, docs/src/design.md, and docs/session_notes.md before changing scientific code.
 The user explicitly wants a small package, physical organization, easy navigation,
 concrete component types, no embedded scientific constants, and Float32/Float64 support.
 

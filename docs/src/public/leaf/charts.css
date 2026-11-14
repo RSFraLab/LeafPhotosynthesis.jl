@@ -1,0 +1,132 @@
+/* Styles of the interactive charts in the LeafPhotosynthesis.jl manual.
+   Everything is scoped to .leaf-app so the site theme is left alone. Dark variants follow
+   VitePress (html.dark) and Documenter's dark themes. */
+.leaf-app {
+  --leaf-ink: #203c36; --leaf-muted: #52675f; --leaf-green: #176a53; --leaf-line: #d7e2dc;
+  --leaf-card: #ffffff; --leaf-soft: #f4f8f5; --leaf-soft-line: #c9ddd2; --leaf-input: #ffffff;
+  --leaf-warn-bg: #fcf8f0; --leaf-warn-line: #e6d4b3; --leaf-bad-bg: #fcf3f5; --leaf-bad-line: #e4c2cb;
+  --leaf-pressed-ink: #ffffff;
+  color: var(--leaf-ink);
+  margin: 16px 0;
+}
+html.dark .leaf-app, html.theme--documenter-dark .leaf-app, html.theme--catppuccin-mocha .leaf-app,
+html.theme--catppuccin-macchiato .leaf-app, html.theme--catppuccin-frappe .leaf-app {
+  --leaf-ink: #dfe7e3; --leaf-muted: #a9b8b1; --leaf-green: #6cc9a6; --leaf-line: #3a4743;
+  --leaf-card: transparent; --leaf-soft: rgba(108, 201, 166, 0.08); --leaf-soft-line: #3d5a4f;
+  --leaf-input: #23292a; --leaf-warn-bg: rgba(230, 180, 90, 0.08); --leaf-warn-line: #6b5a35;
+  --leaf-bad-bg: rgba(220, 110, 140, 0.08); --leaf-bad-line: #6b3a47; --leaf-pressed-ink: #10201b;
+}
+.leaf-app * { box-sizing: border-box; }
+.leaf-app a { color: var(--leaf-green); }
+.leaf-app h3 { font-size: 17px; line-height: 1.35; margin: 0 0 6px; padding: 0; border: 0; color: var(--leaf-ink); }
+.leaf-app p { margin: 6px 0 12px; }
+.leaf-app label { font-size: 14px; font-weight: 600; }
+.leaf-app select, .leaf-app button {
+  font: inherit; font-size: 14px; background: var(--leaf-input); color: var(--leaf-ink);
+  border: 1px solid #afc1b7; border-radius: 6px; padding: 5px 10px; cursor: pointer;
+}
+.leaf-app :focus-visible { outline: 3px solid #bd6a25; outline-offset: 3px; }
+.leaf-app .toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+.leaf-app .quiet, .leaf-app #gallery-status, .leaf-app #status { color: var(--leaf-muted); font-size: 14px; }
+.leaf-app .leaf-error { border-left: 3px solid #b8432f; padding: 6px 12px; color: var(--leaf-ink); }
+.leaf-app details.source { margin: 10px 0 16px; }
+.leaf-app summary { font-weight: 600; color: var(--leaf-green); cursor: pointer; }
+.leaf-app details.source pre { max-height: 540px; overflow: auto; margin: 8px 0 0; padding: 14px 16px;
+  border: 1px solid var(--leaf-line); border-radius: 6px; font-size: 13px; line-height: 1.55; background: var(--leaf-soft); }
+.leaf-app details.source pre code { white-space: pre; color: var(--leaf-ink); background: none; padding: 0; }
+.leaf-app .settings { font-size: 14px; color: var(--leaf-muted); padding: 8px 14px; border-left: 3px solid #90b5a3; }
+.leaf-app .plot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin: 16px 0; }
+.leaf-app .plot-card { background: var(--leaf-card); border: 1px solid var(--leaf-line); border-radius: 9px; padding: 18px; min-width: 0; }
+.leaf-app .plot-card.wide { grid-column: 1 / -1; }
+.leaf-app .plot-card p { font-size: 14px; color: var(--leaf-muted); margin: 4px 0 12px; line-height: 1.5; }
+.leaf-app .canvas-wrap { height: 310px; position: relative; }
+.leaf-app .series-controls { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0; }
+.leaf-app .series-controls label { font-size: 12px; font-weight: 500; }
+.leaf-app input { accent-color: var(--leaf-green); }
+.leaf-app .actions { display: flex; align-items: center; flex-wrap: wrap; gap: 15px; font-size: 13px; margin-top: 10px; }
+.leaf-app .actions button { font-size: 13px; padding: 4px 10px; }
+.leaf-app .table-wrap { overflow: auto; max-height: 320px; margin-top: 10px; }
+.leaf-app table { display: table; width: 100%; border-collapse: collapse; font-size: 12px; margin: 0; }
+.leaf-app th, .leaf-app td { text-align: right; padding: 5px 9px; border: 0; border-bottom: 1px solid var(--leaf-line);
+  white-space: nowrap; background: none; color: var(--leaf-ink); }
+.leaf-app tr { background: none; border: 0; }
+.leaf-app th { position: sticky; top: 0; background: var(--leaf-soft); }
+.leaf-app caption { text-align: left; font-size: 12px; padding: 6px 0; color: var(--leaf-muted); }
+.leaf-app .results { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 16px 0; }
+.leaf-app .result { border-top: 2px solid #8bb59f; padding: 10px 0; }
+.leaf-app .result strong { display: block; font-size: 24px; }
+.leaf-app .result span { display: block; font-size: 13px; color: var(--leaf-muted); }
+
+/* Flexas et al. (2002) explorer */
+.leaf-app .hero-badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 6px; }
+.leaf-app .badge { display: inline-flex; align-items: center; font-size: 12px; font-weight: 650; padding: 3px 10px;
+  border-radius: 999px; background: var(--leaf-soft); color: var(--leaf-green); border: 1px solid var(--leaf-soft-line); }
+.leaf-app .badge.neutral { color: var(--leaf-muted); border-color: var(--leaf-line); background: none; }
+.leaf-app .control-deck { background: var(--leaf-card); border: 1px solid var(--leaf-line); border-radius: 10px; padding: 16px 18px; margin: 16px 0; display: grid; gap: 14px; }
+.leaf-app .deck-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; }
+.leaf-app .deck-label { font-size: 12px; font-weight: 750; letter-spacing: 1.2px; text-transform: uppercase; color: var(--leaf-muted); display: block; margin-bottom: 6px; }
+.leaf-app .pill-group { display: flex; flex-wrap: wrap; gap: 8px; }
+.leaf-app .pill-btn { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 8px; font-size: 13.5px; font-weight: 600;
+  border: 1px solid #c3d2c9; background: var(--leaf-input); color: var(--leaf-ink); }
+.leaf-app .pill-btn:hover { border-color: #8eb09f; }
+.leaf-app .pill-btn[aria-pressed="true"] { background: var(--leaf-green); border-color: var(--leaf-green); color: var(--leaf-pressed-ink); }
+.leaf-app .pill-rmse { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; padding: 1px 6px; border-radius: 999px; background: rgba(127, 127, 127, 0.15); color: inherit; }
+.leaf-app .toggle-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; font-size: 13px; }
+.leaf-app .toggle-bar label { font-size: 13px; font-weight: 550; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.leaf-app .segmented { display: inline-flex; border: 1px solid #b6c8be; border-radius: 7px; overflow: hidden; }
+.leaf-app .segmented button { border: 0; border-right: 1px solid var(--leaf-line); border-radius: 0; padding: 5px 11px; font-size: 12.5px; font-weight: 600; background: transparent; color: var(--leaf-muted); }
+.leaf-app .segmented button:last-child { border-right: 0; }
+.leaf-app .segmented button[aria-pressed="true"] { background: var(--leaf-ink); color: var(--leaf-pressed-ink); }
+html.dark .leaf-app .segmented button[aria-pressed="true"] { color: #10201b; }
+.leaf-app .hero-card { padding: 20px; }
+.leaf-app .canvas-wrap.hero-canvas { height: 440px; }
+.leaf-app .canvas-wrap.tall-canvas { height: 350px; }
+.leaf-app .scoreboard { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin: 14px 0; }
+.leaf-app .score-card { background: var(--leaf-card); border: 1px solid var(--leaf-line); border-top: 3px solid var(--leaf-green); border-radius: 8px; padding: 10px 12px; min-width: 0; }
+.leaf-app .score-card.warn { border-top-color: #c27d18; }
+.leaf-app .score-card.bad { border-top-color: #b83a5c; }
+.leaf-app .score-card .kicker { font-size: 11.5px; font-weight: 700; color: var(--leaf-muted); text-transform: uppercase; letter-spacing: 0.6px; display: block; }
+.leaf-app .score-card strong { display: block; font-size: 21px; font-variant-numeric: tabular-nums; margin: 3px 0 2px; }
+.leaf-app .score-card .sub { font-size: 12px; color: var(--leaf-muted); display: block; line-height: 1.35; }
+.leaf-app .diagnosis-box { background: var(--leaf-soft); border: 1px solid var(--leaf-soft-line); border-left: 4px solid var(--leaf-green);
+  border-radius: 8px; padding: 12px 16px; margin: 12px 0 6px; font-size: 14.5px; line-height: 1.6; }
+.leaf-app .diagnosis-box.warn { background: var(--leaf-warn-bg); border-color: var(--leaf-warn-line); border-left-color: #c27d18; }
+.leaf-app .diagnosis-box.bad { background: var(--leaf-bad-bg); border-color: var(--leaf-bad-line); border-left-color: #b83a5c; }
+.leaf-app .stage-bar { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin: 14px 0 18px; }
+.leaf-app .stage-btn { text-align: left; padding: 9px 11px; border-radius: 8px; background: var(--leaf-input);
+  border: 1px solid var(--leaf-line); border-top: 3px solid var(--stage-color, var(--leaf-green)); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.leaf-app .stage-btn[aria-pressed="true"] { border-color: var(--leaf-ink); border-top: 3px solid var(--stage-color, var(--leaf-green)); background: var(--leaf-soft); }
+.leaf-app .stage-btn .g-val { font-weight: 750; font-size: 14px; font-variant-numeric: tabular-nums; }
+.leaf-app .stage-btn .g-desc { font-size: 11.5px; color: var(--leaf-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.leaf-app .card-head-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 6px; }
+.leaf-app .card-head-row h3 { margin: 0; }
+.leaf-app .proof-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 18px 0; }
+.leaf-app .proof-card { background: var(--leaf-card); border: 1px solid var(--leaf-line); border-radius: 9px; padding: 18px; min-width: 0; }
+.leaf-app .proof-card p { font-size: 14px; color: var(--leaf-muted); margin: 8px 0; }
+.leaf-app .math-box { background: var(--leaf-soft); border: 1px solid var(--leaf-line); border-radius: 6px; padding: 8px 10px; margin: 10px 0; overflow-x: auto; font-size: 14px; }
+.leaf-app .summary-table-card { background: var(--leaf-card); border: 1px solid var(--leaf-line); border-radius: 9px; padding: 18px; margin: 18px 0; overflow-x: auto; }
+.leaf-app .summary-table-card table { font-size: 12.5px; }
+.leaf-app .summary-table-card th, .leaf-app .summary-table-card td { text-align: left; padding: 7px 8px; }
+.leaf-app .summary-table-card th { white-space: normal; line-height: 1.25; vertical-align: bottom; position: static; }
+.leaf-app .summary-table-card td:first-child { white-space: normal; min-width: 205px; }
+.leaf-app .summary-table-card th.num, .leaf-app .summary-table-card td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.leaf-app .summary-table-card tr.highlight-row { background: var(--leaf-soft); font-weight: 600; }
+.leaf-app .katex { font-size: 1.05em; }
+
+@media (max-width: 980px) {
+  .leaf-app .scoreboard { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .leaf-app .stage-bar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .leaf-app .proof-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+  .leaf-app .plot-grid { grid-template-columns: 1fr; }
+  .leaf-app .results { grid-template-columns: repeat(2, 1fr); }
+  .leaf-app .plot-card { padding: 14px; }
+  .leaf-app .canvas-wrap { height: 290px; }
+  .leaf-app .scoreboard { grid-template-columns: 1fr; }
+  .leaf-app .stage-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .leaf-app .canvas-wrap.hero-canvas { height: 340px; }
+  .leaf-app .canvas-wrap.tall-canvas { height: 300px; }
+  .leaf-app .pill-btn { width: 100%; justify-content: space-between; }
+}
+@media print { .leaf-app .source, .leaf-app .actions, .leaf-app .toolbar { display: none; } .leaf-app .plot-grid { display: block; } }
