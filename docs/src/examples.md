@@ -256,12 +256,16 @@ scoreboards.
 
 Single-variable empirical `KN(x)` fits (van der Tol et al. 2014 Cotton and Drought) obey
 an invariant peak-height constraint (`max Fs/Fo ≈ 1.45–1.46` across all `g`), and Cotton
-`KN(x)` inverts the drought sign at high light. Coupling `CytochromeFluorescence` with
-Walz PAM-2000 long-pass PSI sensitivity (`PAMFluorescenceObserver`, `εF1/εF2 = 2`, giving
-dark `Fv/Fm = 0.821` vs. measured `0.80–0.83`) reproduces the progressive decline in peak
-`Fs / Fo`, leftward shift in peak irradiance, high-light sub-`Fo` quenching
-(`Fs / Fo < 1`), curvilinear `Fs / Fo` vs. `g` inset, and Fig. 3C high-CO₂ reversion. See
-the [mathematical proof, diagnostics and model comparison](flexas_2002_water_stress.md).
+`KN(x)` inverts the drought sign at high light. Coupling `CytochromeFluorescence` with a
+long-pass PSI weight in the PAM signal (`PAMFluorescenceObserver`, `εF1/εF2 = 2`, carried
+over from Johnson & Berry's LI-6800 fit on *Populus fremontii*, giving dark
+`Fv/Fm = 0.821` vs. measured `0.80–0.83`) and an author-chosen non-stomatal drought schedule
+reproduces the progressive decline in peak `Fs / Fo`, a leftward shift in peak irradiance
+(the model's well-watered peak lies at higher irradiance than the digitized one), high-light
+sub-`Fo` quenching (`Fs / Fo < 1`), curvilinear `Fs / Fo` vs. `g` inset, and Fig. 3C
+high-CO₂ reversion. No parameter is fitted to the digitized points; the
+[walkthrough](@ref flexas-chosen-inputs) lists the chosen inputs. See the
+[mathematical proof, diagnostics and model comparison](flexas_2002_water_stress.md).
 
 ## [Change a parameter, rebuild the figures](@id gallery-reproduce)
 

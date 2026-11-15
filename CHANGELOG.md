@@ -9,7 +9,9 @@ entry point), and a smaller, more consistent API: one result shape, one validity
 component. Results for valid inputs are bit-identical to 0.1.1 except
 where listed below: the coupled oxygen budget (last digits, and corrected for non-canonical
 electron stoichiometry), `npq` of the Cytochrome fluorescence model when sustained quenching
-is nonzero, and the closed-stomata inputs that 0.1.1 rejected. The other behaviour changes
+is nonzero, the closed-stomata inputs that 0.1.1 rejected, the equilibrium inputs whose only
+invalid value is the humidity driver the stomatal law does not read, and a Medlyn target whose
+own diffusivity ratio differed from the diffusion's. The other behaviour changes
 concern inputs outside the physical domain and precision mismatches.
 
 ### Breaking: behaviour
@@ -65,10 +67,20 @@ concern inputs outside the physical domain and precision mismatches.
   After: `NaN`.
 - `target_conductance`, `stomatal_tendency` and the stomatal part of `leaf_tendencies` return
   `NaN` for invalid drivers (non-finite assimilation, negative or non-finite surface CO₂ or
-  zero surface CO₂ with net uptake, non-positive pressure, relative humidity outside `[0, 1]`,
-  non-finite VPD) and for a negative or non-finite stomatal state.
+  zero surface CO₂ with net uptake, non-positive pressure, and the humidity driver of the law:
+  relative humidity outside `[0, 1]` for Ball–Berry, non-finite VPD for Medlyn) and for a
+  negative or non-finite stomatal state.
   Before: `NaN` assimilation gave the minimum conductance (0.01) and a tendency of −6.3e−4;
   `Cs = −1 Pa` gave a target of −5.46. After: `NaN`.
+- Each stomatal law checks only the humidity driver it reads, in the target, the tendency,
+  `leaf_tendencies` and `equilibrium_gas_exchange` (one predicate): Ball–Berry needs a relative
+  humidity in `[0, 1]` and ignores the VPD, Medlyn needs a finite VPD and ignores the relative
+  humidity, so the unused driver may be `NaN`.
+  Before: `equilibrium_gas_exchange` required both for both laws. For the core example
+  (303.15 K, absorbed PAR 1500, `Ca = 40 Pa`), Ball–Berry with `vpd = NaN` gave
+  `EquilibriumInvalidInput`, and Medlyn with `relative_humidity = NaN` likewise. After:
+  `EquilibriumConverged`, `gs = 0.13371` and `0.19987` mol m⁻² s⁻¹, the same bits as with a
+  valid unused driver.
 - `transpiration_sensitivity` returns `NaN` outside its domain (negative or non-finite
   stomatal conductance, boundary conductance ≤ 0 or `NaN`, non-positive or non-finite
   pressure, non-finite VPD). Before: `gs = −0.1`, `P = −1` gave a transpiration of 111.1.
@@ -81,13 +93,15 @@ concern inputs outside the physical domain and precision mismatches.
   every law including `ConstantResponse`. Before: `Arrhenius` at `T = −5 K` gave `Inf`.
 - `quenching_rate` returns `NaN` for a saturation outside `[0, 1]`. Before:
   `SaturationQuenching` threw a `DomainError` at −0.1.
-- The coupled `oxygen_exchange(oxygen_model, photosynthesis, environment, excitation)` computes
+- Both `oxygen_exchange` forms, coupled (`oxygen_exchange(oxygen_model, photosynthesis,
+  environment, excitation)`) and stand-alone (`oxygen_exchange(oxygen_model, inputs)`), compute
   gross O₂ evolution from carboxylation and oxygenation, `vc + (o_po − c_po) vo` (`vc + vo`
   canonically), so that with a respiratory quotient of one net O₂ release equals net CO₂ uptake
-  for every electron stoichiometry. Before: gross O₂ was the linear electron flow divided by
-  `electrons_per_oxygen`; with `e_c = 4.5`, `a = 10.5/4.5` net O₂ was 13.19 against a net CO₂
-  uptake of 10.09. After: 10.09 and 10.09. For the canonical stoichiometry the values change
-  in the last digits only (gross ≤ 2 ulp).
+  for every electron stoichiometry, and both give the same budget, bit for bit, for the same
+  fluxes. Before: gross O₂ was the linear electron flow divided by `electrons_per_oxygen`; with
+  `e_c = 4.5`, `a = 10.5/4.5` net O₂ was 13.19 against a net CO₂ uptake of 10.09. After: 10.09
+  and 10.09. For the canonical stoichiometry the coupled values change in the last digits only
+  (gross ≤ 2 ulp). The stand-alone form takes new inputs (see call forms).
 - A precision mismatch is a `MethodError` of the called function, for every entry point and
   component function (components, environment, state, drivers, diffusion and excitation must
   share one binary precision; dual numbers over it are accepted). Before: depending on the
@@ -199,6 +213,32 @@ concern inputs outside the physical domain and precision mismatches.
   `photosynthesize(c, env, ::BroadbandExcitation)` or
   `oxygen_exchange(c, p, env, ::BroadbandExcitation)`; every entry point passes
   `BroadbandExcitation()` when no excitation is given.
+- The H₂O/CO₂ diffusivity ratio is stored once, in `SeriesDiffusion.diffusivity_ratio`; the
+  Medlyn law reads it from the diffusion, which `target_conductance` and `stomatal_tendency` now
+  take (`leaf_tendencies` and `equilibrium_gas_exchange` pass theirs).
+  Before: `Medlyn(g0, g1, 1.6, μ, Dmin)` (field `diffusivity_ratio`, a second copy that nothing
+  compared with the diffusion's), `target_conductance(target_or_model_or_leaf, drivers)`,
+  `stomatal_tendency(model_or_leaf, state, drivers)`.
+  After: `Medlyn(g0, g1, μ, Dmin)` (keyword form without `diffusivity_ratio`),
+  `target_conductance(target_or_model_or_leaf, drivers, diffusion)`,
+  `stomatal_tendency(model_or_leaf, state, drivers, diffusion)`; Ball–Berry ignores the
+  diffusion. Results are bit-identical when the two copies agreed. When they differed the
+  target used its own copy: the core example with a Medlyn ratio of 1.6 and a diffusion ratio
+  of 1.4 gave `gs = 0.20673`, now `0.17647` (the target with 1.4). An invalid ratio makes the
+  Medlyn target `NaN`.
+- The stand-alone oxygen budget takes the fluxes the coupled form uses, and
+  `CoreOxygenExchange` loses the parameter only that form used.
+  Before: `CoreOxygenExchange(electrons_per_oxygen, oxygen_per_oxygenation,
+  co2_per_oxygenation, respiratory_quotient)`, `OxygenFluxInputs(linear_electron_flow,
+  rubisco_oxygenation, respiration)`; `oxygen_exchange(CoreOxygenExchange(4.0, 1.5, 0.5, 1.0),
+  OxygenFluxInputs(80.0, 4.0, 1.0)).net_release == 13.0`.
+  After: `CoreOxygenExchange(oxygen_per_oxygenation, co2_per_oxygenation,
+  respiratory_quotient)`, `OxygenFluxInputs(carboxylation, rubisco_oxygenation, respiration)`;
+  `oxygen_exchange(CoreOxygenExchange(1.5, 0.5, 1.0), OxygenFluxInputs(16.0, 4.0, 1.0)).net_release
+  == 13.0`. With `e_c = 4.5`, `a = 10.5/4.5` (core example at 298.15 K, absorbed PAR 1600,
+  `Cc = 27 Pa`) the stand-alone form fed the realized turnover gave net O₂ 16.06 against a net
+  CO₂ uptake of 12.48; now 12.48, equal to the coupled form. The example parameter key
+  `core_exchange.toml` `oxygen.electrons_per_oxygen` is removed.
 - `carbon_assimilation(rates, co2, oxygen, electrons, stoichiometry, limitation,
   assimilation_sign)` is one generic method for both rate types (before: one method typed on `C3Rates` and
   `C3Stoichiometry`, plus an undocumented Cytochrome method).
@@ -283,9 +323,8 @@ status enums with their values (`EquilibriumStatus`, `EquilibriumConverged`,
   components mix binary precisions. Before: a `Float32` model with a `Float64`
   `QuadraticLimitation` constructed and ran in `Float64` behind a `Float32` result.
 - Fixed parameters are validated by their constructors (`ArgumentError`): `BallBerry`
-  (`g0 ≥ 0`, `slope ≥ 0`, unit factor > 0), `Medlyn` (also `diffusivity_ratio > 0`,
-  `vpd_floor > 0`), `C3Stoichiometry` (`e_c > 0`, `a ≥ 0`), `CytochromeStoichiometry` (all
-  positive), `CoreOxygenExchange`. Before: they constructed, and a `Medlyn` with a negative
+  (`g0 ≥ 0`, `slope ≥ 0`, unit factor > 0), `Medlyn` (also `vpd_floor > 0`), `C3Stoichiometry`
+  (`e_c > 0`, `a ≥ 0`), `CytochromeStoichiometry` (all positive), `CoreOxygenExchange`. Before: they constructed, and a `Medlyn` with a negative
   `vpd_floor` threw a `DomainError` inside `target_conductance` and the equilibrium solver.
 - `WaterVaporDiffusion` stores any value without throwing (a per-leaf conductance);
   `transpiration_sensitivity` returns `NaN` for an invalid one. Before: a non-positive value
@@ -314,6 +353,17 @@ status enums with their values (`EquilibriumStatus`, `EquilibriumConverged`,
   committed (`docs/assets/examples-data.js`, `flexas-2002-data.js`, `docs/assets/data/`,
   `docs/assets/figures/` removed). The browser checks that needed Playwright are replaced
   by Julia checks in the build (`docs/gallery_data.jl`).
+- The Flexas et al. (2002) walkthrough, explorer and parameter file say what was chosen and
+  what was observed (numbers, parameters and figures unchanged). Before: "zero fitted
+  parameters", the detector weighting `εF1/εF2 = 2.0` presented as a Walz PAM-2000 property,
+  model peak positions quoted as observations, and static antenna partitioning stated as a
+  finding. After: no parameter is fitted to the digitized points, and the inputs chosen by the
+  author (the non-stomatal Hill schedule 56, 4, 0.60, 0.85; `Vqmax = 174`; `gm = 0.2`;
+  `Γ* = 3.70 Pa`) are listed with the effect of the schedule (lit Figure 2 RMSE 0.097 → 0.062,
+  Inset 0.144 → 0.038); `εF1/εF2 = 2.0` is Johnson & Berry's (2021) LI-6800 /
+  *Populus fremontii* estimate carried over; observed and modelled peak positions are given
+  separately (well-watered: digitized 729, model 1050 μmol m⁻² s⁻¹, marked as a mismatch);
+  static antenna partitioning is a hypothesis suggested by the model misfit.
 
 ### Development
 
@@ -332,6 +382,8 @@ status enums with their values (`EquilibriumStatus`, `EquilibriumConverged`,
   the manual).
 - Source layout: the package-wide scalar, precision and result helpers are in
   `src/scalars.jl`, the C3 rate bundle and `biochemical_rates` in `src/biochemical_rates.jl`,
-  and `WaterVaporDiffusion` with the other diffusion types in `src/gas_diffusion.jl`. The
+  and `WaterVaporDiffusion` and `StomatalState` with the diffusion types in
+  `src/gas_diffusion.jl` (included before `src/stomatal_conductance.jl`, whose functions take a
+  `SeriesDiffusion`). The
   equilibrium solver body is no longer forced inline into its callers (time to first call of
   the 46 reviewed entry-point calls 4.2 s → 3.6 s).

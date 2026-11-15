@@ -12,8 +12,10 @@ using Test
 const TEST_GROUPS = [
     "core_exchange" => ["core_exchange.jl", "closed_stomata_and_domains.jl"],
     "turnover" => ["turnover.jl"],
-    "equilibrium" => ["equilibrium.jl", "closed_stomata_batches.jl", "equilibrium_closed_stomata.jl"],
-    "oxygen" => ["oxygen_batches.jl", "oxygen_compensation.jl", "oxygen_budget_stoichiometry.jl"],
+    "equilibrium" => ["equilibrium.jl", "closed_stomata_batches.jl", "equilibrium_closed_stomata.jl",
+        "stomatal_humidity_and_ratio.jl"],
+    "oxygen" => ["oxygen_batches.jl", "oxygen_compensation.jl", "oxygen_budget_stoichiometry.jl",
+        "oxygen_inputs_form.jl"],
     "fluorescence" => ["fluorescence_batches.jl", "fluorescence.jl", "quenching_domain.jl"],
     "leaf" => ["reference_bonan.jl", "device_checks.jl", "leaf.jl", "temperature_domains.jl",
         "result_shapes_and_component_types.jl"],

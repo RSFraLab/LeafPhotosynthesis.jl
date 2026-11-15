@@ -68,10 +68,13 @@
             @test fluorescence_result.status ==
                   (iszero(excitation.photons) ? FluorescenceDark : FluorescenceLit)
             o=case.leaf.oxygen
-            ref_oxygen=reference.electrons/BigFloat(o.electrons_per_oxygen) -
-                       BigFloat(o.oxygen_per_oxygenation)*reference.photorespiration/BigFloat(
-                o.co2_per_oxygenation,
-            ) - reference.respiration/BigFloat(o.respiratory_quotient)
+            # Gross O2 from carboxylation and oxygenation (answer 9; before: electrons / e_O,
+            # the same value for this canonical stoichiometry).
+            ref_oxygenation=reference.photorespiration/BigFloat(o.co2_per_oxygenation)
+            ref_oxygen=reference.carboxylation +
+                       (BigFloat(o.oxygen_per_oxygenation)-BigFloat(o.co2_per_oxygenation))*ref_oxygenation -
+                       BigFloat(o.oxygen_per_oxygenation)*ref_oxygenation -
+                       reference.respiration/BigFloat(o.respiratory_quotient)
             @test isapprox(oxygen.net_release, FT(ref_oxygen); rtol, atol)
             @test oxygen.linear_electron_flow===turnover.linear_electron_flow
             # Explicit broadband remains bitwise equal to the old entry points.
@@ -232,6 +235,7 @@ end
                 case.leaf,
                 case.state,
                 drivers,
+                case.diffusion,
             )
             # Existing and explicit broadband paths agree, including native statuses.
             @test gas_exchange(

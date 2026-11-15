@@ -40,7 +40,10 @@ function jet_entry_points(::Type{FT}) where {FT}
         "transpiration_sensitivity" => (transpiration_sensitivity,
             (WaterVaporDiffusion(FT(1.4)), state, FT(1400), gas.pressure)),
         "target_conductance" => (target_conductance,
-            (c3_leaf.stomata.target, StomatalDrivers(FT(10), FT(30), gas.pressure, FT(0.6), FT(1200)))),
+            (c3_leaf.stomata.target, StomatalDrivers(FT(10), FT(30), gas.pressure, FT(0.6), FT(1200)), diffusion)),
+        "stomatal_tendency" => (stomatal_tendency,
+            (c3_leaf, state, StomatalDrivers(FT(10), FT(30), gas.pressure, FT(0.6), FT(NaN)), diffusion)),
+        "oxygen_exchange, inputs" => (oxygen_exchange, (c3_leaf.oxygen, OxygenFluxInputs(FT(16), FT(4), FT(1)))),
     ]
     cytochrome = [
         "photosynthesize" => (photosynthesize, (cyto.cyto_leaf, site)),
@@ -50,6 +53,8 @@ function jet_entry_points(::Type{FT}) where {FT}
         "gas_exchange" => (gas_exchange, (cyto.cyto_leaf, gas, state, cyto.diffusion)),
         "equilibrium_gas_exchange" =>
             (equilibrium_gas_exchange, (cyto.cyto_leaf, gas, cyto.diffusion, cyto.solver)),
+        "target_conductance, Medlyn" => (target_conductance,
+            (cyto.cyto_leaf, StomatalDrivers(FT(10), FT(30), gas.pressure, FT(NaN), FT(1200)), cyto.diffusion)),
         "assimilation_sensitivity" => (assimilation_sensitivity,
             (cyto.cyto_leaf.photosynthesis, gas, state, cyto.diffusion, dual)),
         "fluorescence_inputs" => (fluorescence_inputs, (jb.photo, site, dual)),

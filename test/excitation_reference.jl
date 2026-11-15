@@ -62,7 +62,7 @@ function excitation_equilibrium_reference(p, target, env, d, q2; fixed_gs = noth
         if isnothing(fixed_gs)&&assimilation>0
             gain=target isa BallBerry ?
                  BigFloat(target.slope)*BigFloat(env.relative_humidity) :
-                 BigFloat(target.diffusivity_ratio)*(
+                 ratio*(
                 1+BigFloat(target.slope)/sqrt(
                     max(BigFloat(env.vpd), BigFloat(target.vpd_floor)),
                 )

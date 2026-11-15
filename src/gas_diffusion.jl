@@ -16,6 +16,11 @@ Parameterize series CO₂ transport across boundary-layer conductance
 conductance `mesophyll_co2` [mol CO₂ m⁻² leaf s⁻¹], with unit factor
 `mole_to_micromole` [μmol mol⁻¹].
 
+`diffusivity_ratio` is the only place the package stores the H₂O/CO₂ ratio of stomatal
+conductances (1.6 for molecular diffusion in air; there is no default): the
+[`Medlyn`](@ref) target reads it from the diffusion passed to [`target_conductance`](@ref),
+[`leaf_tendencies`](@ref) and [`equilibrium_gas_exchange`](@ref).
+
 Passing `Inf` for `boundary_co2` or `mesophyll_co2` removes that resistance. The
 conductances may vary from leaf to leaf (wind, leaf size), so any value is stored without
 throwing; [`gas_exchange`](@ref), [`assimilation_sensitivity`](@ref) and
@@ -53,6 +58,23 @@ WaterVaporDiffusion(fields::Vararg{Real,1}) =
     WaterVaporDiffusion{scalar_type(WaterVaporDiffusion, fields...)}(fields...)
 
 """
+    StomatalState(conductance)
+    StomatalState{FT}(conductance)
+    StomatalState(; conductance)
+
+Hold leaf stomatal H₂O `conductance` [mol H₂O m⁻² leaf s⁻¹] separately from
+immutable model parameters. Any value is stored without throwing; entry points treat a
+negative or non-finite conductance as invalid input.
+"""
+Base.@kwdef struct StomatalState{FT<:Real} <: AbstractLeafScalar
+    conductance::FT
+    StomatalState{FT}(fields::Vararg{Any,1}) where {FT<:Real} =
+        new{FT}(continuous_fields(FT, StomatalState{FT}, fields)...)
+end
+StomatalState(fields::Vararg{Real,1}) =
+    StomatalState{scalar_type(StomatalState, fields...)}(fields...)
+
+"""
     GasExchangeEnvironment{FT}(; temperature, absorbed_par, ambient_co2, oxygen, pressure,
         relative_humidity, vpd)
     GasExchangeEnvironment(temperature, absorbed_par, ambient_co2, oxygen, pressure,
@@ -61,7 +83,9 @@ WaterVaporDiffusion(fields::Vararg{Real,1}) =
 Represent prescribed leaf `temperature` [K], `absorbed_par` [μmol photons m⁻² leaf s⁻¹],
 the ambient CO₂ partial pressure outside the boundary layer (`ambient_co2`, `Ca` [Pa]),
 biochemical-site `oxygen` [Pa], total `pressure` [Pa], and leaf-surface
-`relative_humidity` (`∈ [0, 1]`) and `vpd` [Pa].
+`relative_humidity` (`∈ [0, 1]`) and `vpd` [Pa]. Only the stomatal target reads the
+humidity, each law its own driver (Ball–Berry `relative_humidity`, Medlyn `vpd`); the other
+may be `NaN`.
 """
 Base.@kwdef struct GasExchangeEnvironment{FT<:Real} <: AbstractLeafScalar
     temperature::FT

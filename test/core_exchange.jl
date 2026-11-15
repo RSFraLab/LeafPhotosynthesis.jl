@@ -86,8 +86,7 @@ end
                 end
             end
             oxygen = leaf.oxygen
-            altered = CoreOxygenExchange{FT}(; electrons_per_oxygen = oxygen.electrons_per_oxygen,
-                oxygen_per_oxygenation = oxygen.oxygen_per_oxygenation,
+            altered = CoreOxygenExchange{FT}(; oxygen_per_oxygenation = oxygen.oxygen_per_oxygenation,
                 co2_per_oxygenation = oxygen.co2_per_oxygenation, respiratory_quotient = FT(0.8))
             dark = OxygenFluxInputs(zero(FT), zero(FT), r.respiration)
             @test oxygen_exchange(altered, dark).net_release ≈ -r.respiration / FT(0.8)
@@ -100,27 +99,26 @@ end
             drivers = StomatalDrivers(result.gas_exchange.net_assimilation,
                 result.gas_exchange.surface_co2, env.pressure, env.relative_humidity, env.vpd)
             medlyn = Medlyn{FT}(; minimum_conductance = s["minimum_conductance"], slope = s["medlyn_slope"],
-                diffusivity_ratio = diffusion.diffusivity_ratio, micromole_to_mole = s["micromole_to_mole"],
-                vpd_floor = s["vpd_floor"])
+                micromole_to_mole = s["micromole_to_mole"], vpd_floor = s["vpd_floor"])
             for target in (leaf.stomata.target, medlyn)
                 dynamic = PrognosticStomata(; target, opening_timescale = s["opening_timescale"],
                     closing_timescale = s["closing_timescale"])
                 equilibrium = SteadyStateStomata(target)
-                goal = @inferred target_conductance(equilibrium, drivers)
+                goal = @inferred target_conductance(equilibrium, drivers, diffusion)
                 @test goal isa FT
-                @test goal == target_conductance(dynamic, drivers)
-                @test stomatal_tendency(dynamic, StomatalState(goal), drivers) == zero(FT)
-                @test stomatal_tendency(dynamic, StomatalState(goal / FT(2)), drivers) ≈ goal / FT(2) / dynamic.opening_timescale
-                @test stomatal_tendency(dynamic, StomatalState(goal * FT(2)), drivers) ≈ -goal / dynamic.closing_timescale
+                @test goal == target_conductance(dynamic, drivers, diffusion)
+                @test stomatal_tendency(dynamic, StomatalState(goal), drivers, diffusion) == zero(FT)
+                @test stomatal_tendency(dynamic, StomatalState(goal / FT(2)), drivers, diffusion) ≈ goal / FT(2) / dynamic.opening_timescale
+                @test stomatal_tendency(dynamic, StomatalState(goal * FT(2)), drivers, diffusion) ≈ -goal / dynamic.closing_timescale
                 # Independent analytic constant-target solution; check tendency along it.
                 start = goal / FT(2)
                 for time in (zero(FT), dynamic.opening_timescale, FT(2) * dynamic.opening_timescale)
                     current = goal + (start - goal) * exp(-time / dynamic.opening_timescale)
                     derivative = -(start - goal) / dynamic.opening_timescale * exp(-time / dynamic.opening_timescale)
-                    @test stomatal_tendency(dynamic, StomatalState(current), drivers) ≈ derivative
+                    @test stomatal_tendency(dynamic, StomatalState(current), drivers, diffusion) ≈ derivative
                 end
                 night = StomatalDrivers(-r.respiration, env.ambient_co2, env.pressure, env.relative_humidity, env.vpd)
-                @test target_conductance(target, night) == s["minimum_conductance"]
+                @test target_conductance(target, night, diffusion) == s["minimum_conductance"]
             end
             @test_throws ArgumentError PrognosticStomata(; target = medlyn,
                 opening_timescale = zero(FT), closing_timescale = s["closing_timescale"])

@@ -23,8 +23,8 @@ const FORMULATIONS = [
     dash: [],
     tone: "pass",
     invariantCeiling: false,
-    diagnosisTitle: "Reproduces all three Figure 2 drought signatures with zero fitted fluorescence parameters.",
-    diagnosisBody: "Decoupling open PSII traps q₂(Q₁, Vqmax) from stromal sink yield ΦP2(Q₂, Cc, Vcmax) and observing through the Walz PAM-2000 long-pass (>700 nm) PSI weight (εF1/εF2 = 2.0, dark Fv/Fm = 0.821 vs. measured 0.80–0.83) tracks progressive peak suppression, leftward peak PPFD shift, sub-Fo high-light quenching, and the curvilinear Inset (RMSE = 0.038). Note at extreme drought (g = 10, PPFD > 800): Johnson & Berry's unbounded algebraic KN dips slightly below observed Fs/Fo (0.75 vs. 0.91–0.94) because JB2021 omits a finite xanthophyll saturation ceiling KN,max.",
+    diagnosisTitle: "Shows all three Figure 2 drought signatures; nothing is fitted to the digitized points (non-stomatal schedule, Vqmax, gm and Γ* chosen by the author).",
+    diagnosisBody: "Decoupling open PSII traps q₂(Q₁, Vqmax) from stromal sink yield ΦP2(Q₂, Cc, Vcmax) and observing through a long-pass (>700 nm) PSI weight εF1/εF2 = 2.0 carried over from Johnson & Berry's LI-6800 fit on Populus fremontii (not a PAM-2000 calibration; dark Fv/Fm = 0.821 vs. measured 0.80–0.83) tracks progressive peak suppression, a leftward shift of the peak PPFD, sub-Fo high-light quenching, and the curvilinear Inset (RMSE = 0.038; 0.144 without the non-stomatal schedule). The model's well-watered peak lies at higher PPFD than the digitized one (1050 vs. 729 μmol m⁻² s⁻¹). Note at extreme drought (g = 10, PPFD > 800): Johnson & Berry's unbounded algebraic KN dips slightly below observed Fs/Fo (0.75 vs. 0.91–0.94) because JB2021 omits a finite xanthophyll saturation ceiling KN,max.",
   },
   {
     key: "pam2000_stomatal_only",
@@ -45,7 +45,7 @@ const FORMULATIONS = [
     dash: [2, 3],
     tone: "warn",
     invariantCeiling: false,
-    diagnosisTitle: "Captures qualitative drought ordering, but omits the ~39% redox-invariant Walz PAM-2000 PSI baseline.",
+    diagnosisTitle: "Captures qualitative drought ordering, but omits the ~39% redox-invariant PSI baseline of the long-pass signal (εF1/εF2 = 2.0).",
     diagnosisBody: "Evaluating internal PSII emission alone (εF1 = 0) yields dark Fv/Fm = 0.882 (above Flexas et al.'s measured 0.80–0.83) and over-expands dynamic range—peaking at Fs/Fo = 1.717 for g = 150 (vs. observed 1.448) and plunging to 0.595 at high light for g = 10.",
   },
   {
@@ -57,7 +57,7 @@ const FORMULATIONS = [
     tone: "bad",
     invariantCeiling: false,
     diagnosisTitle: "Full KN = 0 LHCII state transitions (qT) dramatically overshoot observed grapevine peaks.",
-    diagnosisBody: "Allowing StateTransitionRule to migrate 17–22% of PSII cross-section to 2×-weighted PSI keeps feedback KN = 0 throughout the Cytochrome-limited regime, producing tall low-light spikes (Fs/Fo = 1.55–2.30). Water-stressed grapevine leaves therefore operate near static antenna partitioning rather than full qT rebalancing.",
+    diagnosisBody: "Allowing StateTransitionRule to migrate 17–22% of PSII cross-section to 2×-weighted PSI keeps feedback KN = 0 throughout the Cytochrome-limited regime, producing tall low-light spikes (Fs/Fo = 1.55–2.30). This misfit suggests, as a hypothesis, that water-stressed grapevine leaves operate near static antenna partitioning rather than full qT rebalancing; other model inputs (KU2, the detector weighting, Vqmax) could also cause it.",
   },
   {
     key: "cotton_combined",
@@ -79,7 +79,7 @@ const FORMULATIONS = [
     tone: "warn",
     invariantCeiling: true,
     diagnosisTitle: "Fitted directly to Flexas (2002) by van der Tol (2014), yet still locked at an invariant 1.45 peak ceiling.",
-    diagnosisBody: "Retuning KN0 = 5.01, b = 10.0 restores high-light sub-Fo quenching and positive Inset slope, but cannot escape the 1D f(x) theorem: all six drought curves still reach the identical ~1.45 peak ceiling, leaving full Figure 2 RMSE (0.118) nearly double untuned Cytochrome + PAM-2000 (0.062).",
+    diagnosisBody: "Retuning KN0 = 5.01, b = 10.0 restores high-light sub-Fo quenching and positive Inset slope, but cannot escape the 1D f(x) theorem: all six drought curves still reach the identical ~1.45 peak ceiling, leaving full Figure 2 RMSE (0.118) nearly double that of Cytochrome + PAM-2000 with the author-chosen non-stomatal schedule (0.062), which is not fitted to the points either.",
   },
 ];
 
@@ -218,6 +218,11 @@ function getFormulationMeta(key) {
   return FORMULATIONS.find(f => f.key === key);
 }
 
+// Digitized Figure 2 peak (height and PPFD) of one conductance treatment.
+const obsRow = (tables, g) => tables.flexas_conductance_summary.find(r => Math.round(r.conductance_mmol) === g);
+const obsPeak = (tables, g) => obsRow(tables, g).observed_peak_fs_over_fo;
+const obsPeakPpfd = (tables, g) => obsRow(tables, g).observed_peak_ppfd;
+
 function getFormulationSummary(tables, key) {
   return tables.flexas_formulation_summary.find(r => r.formulation === key);
 }
@@ -283,7 +288,7 @@ function renderScoreboardAndDiagnosis(tables) {
     {
       kicker: "Lit Fig. 2 RMSE (n = 49)",
       value: fmtFixed(s.lit_fig2_rmse, 3),
-      sub: "All 6 curves (PPFD > 0), zero fitting",
+      sub: "All 6 curves (PPFD > 0), not fitted to the points",
       tone: rmseTone,
     },
     {
@@ -299,9 +304,9 @@ function renderScoreboardAndDiagnosis(tables) {
       tone: peakTone,
     },
     {
-      kicker: "Peak PPFD & Severe High-Light",
+      kicker: "Model Peak PPFD & Severe High-Light",
       value: `${Math.round(s.peak_ppfd_g150)} → ${Math.round(s.peak_ppfd_g10)}`,
-      sub: `μmol m⁻² s⁻¹ · g=10 @1400: ${fmtFixed(s.high_light_g10, 2)}`,
+      sub: `μmol m⁻² s⁻¹ (Obs: ${Math.round(obsPeakPpfd(tables, 150))} → ${Math.round(obsPeakPpfd(tables, 10))}) · g=10 @1400: ${fmtFixed(s.high_light_g10, 2)}`,
       tone: hlTone,
     },
   ];
@@ -617,7 +622,7 @@ function renderSpotlightInternalChart(cMeta, cSum, gGrid) {
     `Internal redox poise & yields · ${cMeta.label}` :
     `Feedback quenching & chloroplast CO₂ · ${cMeta.label}`;
   document.getElementById("spotlight-right-desc").textContent = isYields ?
-    `Fs/Fo peaks near PPFD ≈ ${Math.round(cSum.pam2000_combined_peak_ppfd)} μmol m⁻² s⁻¹, right where stromal ΦP2 breaks below open-trap supply q₂.` :
+    `The model's Fs/Fo peaks near PPFD ≈ ${Math.round(cSum.pam2000_combined_peak_ppfd)} μmol m⁻² s⁻¹ (digitized: ${Math.round(cSum.observed_peak_ppfd)}), right where stromal ΦP2 breaks below open-trap supply q₂.` :
     `Above PPFD ≈ ${Math.round(cSum.pam2000_combined_peak_ppfd)}, Rubisco/diffusion drawdown of Cc (right axis) induces rapid KN and apparent NPQ buildup.`;
 
   const internalSeries = isYields ? [
@@ -677,7 +682,7 @@ function renderSpotlightInternalChart(cMeta, cSum, gGrid) {
         legend: {display: false, position: "bottom", labels: {boxWidth: 20, font: {size: 10}}},
         fig2ReferenceLines: {
           insetPpfd: cSum.pam2000_combined_peak_ppfd,
-          vlineLabel: `Peak Fs/Fo (${Math.round(cSum.pam2000_combined_peak_ppfd)})`,
+          vlineLabel: `Model peak Fs/Fo (${Math.round(cSum.pam2000_combined_peak_ppfd)})`,
           basalFo: undefined,
           ceilingY: null,
         },
@@ -793,7 +798,7 @@ function renderDiagnosticSection() {
   buildDiagnosticCard(parent, {
     id: "diag-peaks",
     title: "Peak Fs / Fo vs. stomatal conductance (invariance test)",
-    description: "Digitized Figure 2 peaks decline monotonically with drought; Cytochrome + PAM-2000 tracks this decline while empirical Cotton & Drought KN(x) stay locked near 1.45–1.46.",
+    description: "Digitized Figure 2 peaks decline with drought, from 1.448 (g = 150) to 1.160 (g = 10); Cytochrome + PAM-2000 tracks this decline while empirical Cotton & Drought KN(x) stay locked near 1.45–1.46.",
     rows: tables.flexas_conductance_summary,
     xKey: "conductance_mmol",
     xLabel: "Stomatal conductance g (mmol H₂O m⁻² s⁻¹)",
@@ -879,7 +884,7 @@ function renderScoreboardTable() {
   mount.tabIndex = 0;
   mount.replaceChildren();
   const table = el("table");
-  table.append(el("caption", "Julia-computed dark Fv/Fm, lit Figure 2 RMSE (n = 49), Inset RMSE (n = 6), and drought peak metrics across six fluorescence formulations."));
+  table.append(el("caption", `Julia-computed dark Fv/Fm, lit Figure 2 RMSE (n = 49), Inset RMSE (n = 6), and model drought peak metrics across six fluorescence formulations. Digitized observations: peak Fs/Fo ${fmtFixed(obsPeak(tables, 150), 3)} → ${fmtFixed(obsPeak(tables, 10), 3)} at PPFD ${Math.round(obsPeakPpfd(tables, 150))} → ${Math.round(obsPeakPpfd(tables, 10))}.`));
   const thead = el("thead");
   const trH = el("tr");
   [
@@ -887,8 +892,8 @@ function renderScoreboardTable() {
     ["Dark Fv/Fm", true],
     ["Lit Fig. 2 RMSE (n=49)", true],
     ["Inset RMSE (n=6)", true],
-    ["Peak Fs/Fo (g=150 → 10)", true],
-    ["Peak PPFD (g=150 → 10)", true],
+    ["Model peak Fs/Fo (g=150 → 10)", true],
+    ["Model peak PPFD (g=150 → 10)", true],
     ["Inset 750 (g=10 → 150)", true],
   ].forEach(([label, isNum]) => {
     const th = el("th", label, isNum ? "num" : "");

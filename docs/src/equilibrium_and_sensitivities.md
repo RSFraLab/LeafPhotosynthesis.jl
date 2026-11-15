@@ -22,7 +22,9 @@ Ci = Cc + A(Cc) P / (u gm)
 ```
 
 `gain` is assembled once from the chosen Ball–Berry/Medlyn law and prescribed
-surface humidity/VPD. Although commonly called A–Ci iteration, this solver uses
+surface humidity (Ball–Berry) or VPD (Medlyn); each law checks only the driver it reads.
+The ratio r of the Medlyn gain and of the stomatal resistance r/gs is the one
+`diffusivity_ratio` of the `SeriesDiffusion`. Although commonly called A–Ci iteration, this solver uses
 Cc as its scalar unknown, preserving finite mesophyll resistance. A lower bound
 of zero and upper bound `Ca + max(-A(0),0) P R(g0)/u` include respiratory release
 above ambient CO₂. Trial states that exceed boundary supply give a negative bracket
@@ -54,7 +56,10 @@ light compensation point, no steady state exists and the solver returns
 included) exists, and the result is the limit `g0 → 0⁺`: the open-stomata root in
 (Γ, Ca) when `Ca − Γ > (P/u) r Ca / gain` (`EquilibriumConverged`), otherwise the
 closed-stomata steady state with zero conductance, zero net assimilation and `Cc = Γ`
-(`EquilibriumStomataClosed`, a valid solution).
+(`EquilibriumStomataClosed`, a valid solution). With `g0 = 0` the closed state is a steady
+state whenever Γ exists, so it can coexist with the open root; the solver returns the open
+root because it continues the unique solution for `g0 > 0` as `g0 → 0⁺`, so the result does
+not jump when a fitted `g0` approaches zero.
 Humidity and energy balance are prescribed here, so this is not a complete Bonan 12.1
 reproduction. Prognostic stomata use the same target family with independent opening
 and closing timescales; tests show their long-time approach to the coupled equilibrium

@@ -25,7 +25,6 @@ function setup_excitation_test(::Type{FT}) where {FT}
     medlyn=Medlyn{FT}(;
         minimum_conductance = s["minimum_conductance"],
         slope = s["medlyn_slope"],
-        diffusivity_ratio = diffusion.diffusivity_ratio,
         micromole_to_mole = s["micromole_to_mole"],
         vpd_floor = s["vpd_floor"],
     )

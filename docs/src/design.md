@@ -137,6 +137,10 @@ two classes:
   quenching laws, rate parameters of the photosystems, state-transition rules, PAM
   observers, and the composite models. Validation that needs forcing (rates at a
   temperature, ATP balance at an O₂) stays in the entry points' predicates.
+  `BallBerry` and `Medlyn` stay in this class: a target is set once per leaf type on the
+  host, so an invalid slope or minimum conductance is reported where it is entered
+  instead of as `NaN` stomatal outputs many steps later. (A per-leaf target built inside a
+  kernel works as long as its values are valid.)
 
 Scalar kernels should work in ClimaCore broadcasts and standalone GPU kernels.
 Device selection and array layouts belong to adapters/callers. CUDA and Metal support
@@ -161,8 +165,25 @@ result is `NaN`. In the equilibrium solver a zero minimum conductance ``g_0`` of
 Ball–Berry or Medlyn is the limit ``g_0 → 0^+``: no steady state without a compensation
 point (`EquilibriumInvalidBracket`); the open-stomata root in ``(Γ, C_a)`` when
 ``C_a - Γ > (P/u) r C_a / \mathrm{gain}``; otherwise the closed-stomata limit at ``Γ``
-(`EquilibriumStomataClosed`). Only a leaf that respires on balance needs CO₂ storage to
+(`EquilibriumStomataClosed`). With ``g_0 = 0`` the closed state is always a steady state
+when ``Γ`` exists, so it coexists with an open root; the solver returns the open root,
+because it continues the unique solution for ``g_0 > 0`` and so does not jump as a fitted
+``g_0`` goes to zero. Only a leaf that respires on balance needs CO₂ storage to
 be described; that is outside this quasi-steady core.
+
+## Stomatal drivers and the diffusivity ratio
+
+Each stomatal law checks only the humidity driver it reads: Ball–Berry the leaf-surface
+relative humidity (in ``[0, 1]``), Medlyn the VPD (finite). The other driver may be `NaN`,
+so a model that supplies only the driver its law uses gets a valid result; an invalid
+driver the law reads gives `NaN`, never the minimum conductance. The same predicate
+(`valid_humidity`) serves the target, the tendency, `leaf_tendencies` and the equilibrium
+solver. The H₂O/CO₂ ratio of stomatal conductances (1.6) is stored once, as
+`SeriesDiffusion.diffusivity_ratio`: the diffusion path converts the stomatal H₂O
+conductance to CO₂ with it, and the Medlyn law reads it from the same diffusion
+(`target_conductance(target, drivers, diffusion)`), so the two can no longer disagree. The
+boundary-layer conductances for CO₂ (`SeriesDiffusion.boundary_co2`) and water vapour
+(`WaterVaporDiffusion.boundary_water`) are separate inputs; no ratio between them is stored.
 
 ## Teaching contract
 

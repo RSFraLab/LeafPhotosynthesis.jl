@@ -19,7 +19,7 @@ with_forcing(env; par = env.absorbed_par, ambient_co2 = env.ambient_co2) = GasEx
         bb = c.leaf.stomata.target
         targets = (
             BallBerry{FT}(0.0, bb.slope, bb.micromole_to_mole),
-            Medlyn{FT}(0.0, 126.49, d.diffusivity_ratio, 1e-6, 1.0),
+            Medlyn{FT}(0.0, 126.49, 1e-6, 1.0),
         )
         closed_exchange = gas_exchange(photo, env, StomatalState(zero(FT)), d)
         gamma = closed_exchange.biochemical_co2
@@ -31,7 +31,7 @@ with_forcing(env; par = env.absorbed_par, ambient_co2 = env.ambient_co2) = GasEx
             @test open.exchange.biochemical_co2 > gamma && open.stomatal_conductance > zero(FT)
             drivers = StomatalDrivers(open.exchange.net_assimilation, open.exchange.surface_co2,
                 env.pressure, env.relative_humidity, env.vpd)
-            @test isapprox(open.stomatal_conductance, target_conductance(target, drivers); rtol = 64eps(FT))
+            @test isapprox(open.stomatal_conductance, target_conductance(target, drivers, d); rtol = 64eps(FT))
             @test abs(open.exchange.diffusion_residual) <= 2 * (solver.flux_atol + solver.flux_rtol * abs(open.exchange.net_assimilation))
             # Ambient CO2 below the compensation point: the closed-stomata limit at Γ.
             low = @inferred equilibrium_gas_exchange(photo, steady, with_forcing(env; ambient_co2 = FT(2)), d, solver)

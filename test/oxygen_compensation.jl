@@ -115,8 +115,10 @@ end
                         rtol,
                         atol,
                     )
+                    # Four electrons per O₂ evolved: holds for this canonical stoichiometry
+                    # (e_c = 4, a = 2); answer 9 removed the `electrons_per_oxygen` field.
                     @test isapprox(
-                        oxygen.gross_production * case.scaled.oxygen.electrons_per_oxygen,
+                        oxygen.gross_production * 4,
                         oxygen.linear_electron_flow;
                         rtol,
                         atol,

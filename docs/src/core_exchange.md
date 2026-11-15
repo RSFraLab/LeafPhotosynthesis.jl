@@ -32,8 +32,13 @@ Each plot offers FP32/FP64 selection, data inspection and downloads; the
 ## Stomatal targets and evolution
 
 `BallBerry` and `Medlyn` implement `AbstractStomatalTarget`. Their inputs are net
-assimilation, leaf-surface CO₂, pressure, and prescribed surface humidity or VPD.
-Conductance is mol H₂O m⁻² leaf s⁻¹. The Medlyn slope uses Pa^½, not kPa^½.
+assimilation, leaf-surface CO₂, pressure, and prescribed surface humidity (Ball–Berry) or
+VPD (Medlyn); each law checks only the humidity driver it reads, and the other may be `NaN`.
+Conductance is mol H₂O m⁻² leaf s⁻¹. The Medlyn slope uses Pa^½, not kPa^½. The Medlyn
+H₂O/CO₂ ratio is not a parameter of `Medlyn`: `target_conductance(target, drivers, diffusion)`
+reads it from the leaf's `SeriesDiffusion`, so the stomatal law and the diffusion path cannot
+disagree. Invalid target parameters throw an `ArgumentError` when the target is constructed
+(they are fixed parameters, set once on the host); invalid drivers give `NaN`.
 Each law has an explicit minimum conductance; negative assimilation contributes
 zero to its light-dependent opening term without clipping the carbon flux itself.
 
@@ -56,7 +61,7 @@ the caller's prescribed conductance. It does not remove stomatal resistance.
 ## Analytical diffusion at known conductance
 
 `SeriesDiffusion` specifies boundary-layer/mesophyll CO₂ conductances and the
-H₂O/CO₂ stomatal diffusivity ratio. `gas_exchange` combines these resistances,
+H₂O/CO₂ stomatal diffusivity ratio, the package's only copy of that ratio. `gas_exchange` combines these resistances,
 then solves the Rubisco and electron-limited supply–demand quadratics analytically.
 Its supported biochemical choice is `MinimumLimitation` with `SignedAssimilation`.
 Smooth co-limitation is supported in the iterative equilibrium solver, not silently
@@ -81,13 +86,15 @@ there is no humidity or energy-balance solve hidden inside it.
 ## Oxygen budget and explicit disabling
 
 `CoreOxygenExchange` separates PSII gross production, photorespiratory uptake,
-respiratory uptake, and net release. Its low-level input is actual linear electron
-flow, Rubisco oxygenation, and respiratory CO₂ release. All fluxes are per leaf area;
+respiratory uptake, and net release. Its low-level input (`OxygenFluxInputs`) is realized
+Rubisco carboxylation, Rubisco oxygenation, and respiratory CO₂ release, the same fluxes
+the coupled method takes from the photosynthesis model, so both give the same budget for
+the same fluxes. All fluxes are per leaf area;
 net O₂ release is positive, whereas net CO₂ uptake is positive in photosynthesis.
 The respiratory quotient is CO₂ released per O₂ consumed. Stoichiometric values
 are explicit parameters; see [Gauthier et al. (2018)](https://pmc.ncbi.nlm.nih.gov/articles/PMC5933133/).
 
-The coupled method computes the budget from realized carboxylation and oxygenation:
+Both methods compute the budget from carboxylation and oxygenation:
 gross O₂ evolution is `vc + (o_po − c_po) vo` (`vc + vo` for the canonical 1.5 and 0.5,
 two NADPH per carboxylation and per oxygenation), independent of the electron
 stoichiometry of the photosynthesis model. Electrons beyond that NADPH demand (an

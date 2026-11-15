@@ -68,9 +68,13 @@ end
             stomata = PrognosticStomata(case.cyto_leaf.stomata.target, FT(600), FT(900)))
         @test is_valid(leaf_tendencies(prognostic, env, state, case.diffusion))
         @test leaf_tendencies(prognostic, env, state, case.diffusion).oxygen === nothing
+        # (answer 7: the Medlyn target reads the VPD, not the relative humidity)
         humid = GasExchangeEnvironment{FT}(env.temperature, env.absorbed_par, FT(41), env.oxygen,
-            env.pressure, FT(1.5), env.vpd)
+            env.pressure, env.relative_humidity, FT(NaN))
         @test !is_valid(leaf_tendencies(prognostic, humid, state, case.diffusion))
+        ignored = GasExchangeEnvironment{FT}(env.temperature, env.absorbed_par, FT(41), env.oxygen,
+            env.pressure, FT(1.5), env.vpd)
+        @test is_valid(leaf_tendencies(prognostic, ignored, state, case.diffusion))
         @test is_valid((; a = one(FT), b = (; c = one(FT), d = nothing)))
         @test !is_valid((; a = one(FT), b = (; c = FT(NaN), d = nothing)))
         # Equilibrium statuses.
@@ -167,7 +171,8 @@ end
         (; case, env, site) = shapes_case(FT)
         steady = case.cyto_leaf
         drivers = StomatalDrivers{FT}(10.0, 30.0, env.pressure, env.relative_humidity, env.vpd)
-        @test target_conductance(steady, drivers) == target_conductance(steady.stomata.target, drivers)
+        @test target_conductance(steady, drivers, case.diffusion) ==
+            target_conductance(steady.stomata.target, drivers, case.diffusion)
         @test fluorescence_inputs(steady, site) == fluorescence_inputs(steady.photosynthesis, site)
         # A steady-state leaf has no tendency.
         @test_throws MethodError leaf_tendencies(steady, env, StomatalState(FT(0.2)), case.diffusion)

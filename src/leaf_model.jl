@@ -47,11 +47,11 @@ LeafModel(; photosynthesis, stomata = NoStomatalDynamics(), oxygen = NoOxygenExc
     excitation::AbstractExcitation = BroadbandExcitation(),
 ) = fluorescence_inputs(leaf.photosynthesis, site, excitation)
 
-@inline target_conductance(leaf::LeafModel, drivers::StomatalDrivers) =
-    target_conductance(leaf.stomata, drivers)
+@inline target_conductance(leaf::LeafModel, drivers::StomatalDrivers, diffusion::SeriesDiffusion) =
+    target_conductance(leaf.stomata, drivers, diffusion)
 
-@inline stomatal_tendency(leaf::LeafModel, state::StomatalState, drivers::StomatalDrivers) =
-    stomatal_tendency(leaf.stomata, state, drivers)
+@inline stomatal_tendency(leaf::LeafModel, state::StomatalState, drivers::StomatalDrivers, diffusion::SeriesDiffusion) =
+    stomatal_tendency(leaf.stomata, state, drivers, diffusion)
 
 @inline gas_exchange(
     leaf::LeafModel,
@@ -84,15 +84,16 @@ Return `(; gas_exchange, conductance_target, conductance_tendency, oxygen)`:
 - `conductance_target` [mol H₂O m⁻² leaf s⁻¹] and `conductance_tendency`
   [mol H₂O m⁻² leaf s⁻²] of [`target_conductance`](@ref) and [`stomatal_tendency`](@ref),
   with drivers from the gas exchange (net assimilation, surface CO₂) and `environment`
-  (pressure, relative humidity, VPD); for `NoStomatalDynamics` the target is the state
-  conductance and the tendency zero;
+  (pressure, relative humidity, VPD) and the diffusivity ratio of `diffusion`; for
+  `NoStomatalDynamics` the target is the state conductance and the tendency zero;
 - `oxygen`: the coupled [`oxygen_exchange`](@ref) at the solved `biochemical_co2`, or
   `nothing` for [`NoOxygenExchange`](@ref).
 
 Each part follows its own domain: inputs outside the gas-exchange domain give `NaN` in every
 field of `gas_exchange` and `oxygen` and, through the drivers, in the outputs of
 `PrognosticStomata`; invalid stomatal drivers alone (for example relative humidity outside
-`[0, 1]`) give `NaN` stomatal outputs only.
+`[0, 1]` with a Ball–Berry target, or a `NaN` VPD with a Medlyn target) give `NaN` stomatal
+outputs only. The humidity driver the target does not read may be `NaN`.
 """
 @inline function leaf_tendencies(
     leaf::LeafModel{<:AbstractPhotosynthesis,<:Union{PrognosticStomata,NoStomatalDynamics}},
@@ -110,7 +111,7 @@ field of `gas_exchange` and `oxygen` and, through the drivers, in the outputs of
     site = LeafEnvironment(env.temperature, env.absorbed_par, exchange.biochemical_co2, env.oxygen)
     return (;
         gas_exchange = exchange,
-        stomatal_outputs(leaf.stomata, state, drivers)...,
+        stomatal_outputs(leaf.stomata, state, drivers, diffusion)...,
         oxygen = oxygen_exchange(leaf, site, excitation),
     )
 end

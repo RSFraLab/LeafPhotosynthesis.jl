@@ -45,8 +45,7 @@ function check_core_batches(to_device, synchronize_device, parameter_path)
             states = StomatalState.(FT.((0.01, 0.02, 0.2, 0.5))) |> collect
             s = settings["stomata"]
             medlyn = Medlyn{FT}(; minimum_conductance = s["minimum_conductance"], slope = s["medlyn_slope"],
-                diffusivity_ratio = diffusion.diffusivity_ratio, micromole_to_mole = s["micromole_to_mole"],
-                vpd_floor = s["vpd_floor"])
+                micromole_to_mole = s["micromole_to_mole"], vpd_floor = s["vpd_floor"])
             dynamic_medlyn = PrognosticStomata(; target = medlyn, opening_timescale = s["opening_timescale"],
                 closing_timescale = s["closing_timescale"])
             models = (leaf, LeafModel(; photosynthesis = leaf.photosynthesis,
@@ -86,8 +85,8 @@ function check_equilibrium_batches(to_device, synchronize_device, parameter_path
             solver = core_solver(FT, settings)
             s = settings["stomata"]
             targets = (leaf.stomata.target, Medlyn{FT}(; minimum_conductance = s["minimum_conductance"],
-                slope = s["medlyn_slope"], diffusivity_ratio = diffusion.diffusivity_ratio,
-                micromole_to_mole = s["micromole_to_mole"], vpd_floor = s["vpd_floor"]))
+                slope = s["medlyn_slope"], micromole_to_mole = s["micromole_to_mole"],
+                vpd_floor = s["vpd_floor"]))
             inputs = [GasExchangeEnvironment(env.temperature, light, ca, env.oxygen,
                 env.pressure, env.relative_humidity, vpd) for light in FT.((0, 1, 1500))
                 for ca in FT.((0, 4, 40, 100)) for vpd in FT.((0, 1200, 10000))]

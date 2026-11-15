@@ -13,20 +13,26 @@
 #   van der Tol C, Berry JA, Campbell PKE, Rascher U (2014), JGR Biogeosciences 119:2312-2327,
 #   doi:10.1002/2014JG002713 (Eq. 19 Cotton and Drought fits).
 # - Mechanistic Cytochrome b6f + coupled PSII/PSI fluorescence, state transitions (qT),
-#   and long-pass (>700 nm) Walz PAM-2000 detector transfer sensitivity:
+#   and the PSI/PSII detector weighting of a long-pass (>700 nm) PAM signal (their estimate
+#   for a LI-6800, carried over here to the Walz PAM-2000):
 #   Johnson JE, Berry JA (2021), Photosynthesis Research 148:101-136,
 #   doi:10.1007/s11120-021-00840-4 (Tables 1-2, Eqs. 38-42).
+#
+# No parameter in this file was fitted to the digitized fluorescence points below. These
+# inputs were chosen by the author and have no Tempranillo-specific source in this
+# repository: the [nonstomatal_drought] schedule (56, 4, 0.60, 0.85), site_density
+# (Vqmax = 174), mesophyll_co2 (0.20) and gamma_star_ref_Pa (3.70).
 
 [grapevine_biochemistry]
 vcmax_ref = 96.0                                # micromol CO2 m^-2 leaf s^-1 at 298.15 K (Vitis vinifera cv. Tempranillo; Escalona et al. 1999)
 jmax_ref = 175.0                                # micromol e- m^-2 leaf s^-1 at 298.15 K for matched FvCB light-saturation comparison
 fvcb_curvature = 0.90                           # dimensionless non-rectangular hyperbola curvature theta_J
-site_density = 0.58                             # micromol Cyt b6f sites m^-2 leaf (Vqmax = 174 micromol e- m^-2 s^-1 at kq = 300 s^-1)
+site_density = 0.58                             # micromol Cyt b6f sites m^-2 leaf (Vqmax = 174 micromol e- m^-2 s^-1 at kq = 300 s^-1); chosen by the author, not fitted
 turnover_ref = 300.0                            # mol e- (mol Cyt b6f sites)^-1 s^-1 at 298.15 K (Johnson & Berry 2021, Table 1)
 respiration_ref = 0.80                          # micromol CO2 m^-2 leaf s^-1 dark mitochondrial respiration at 298.15 K (Flexas et al. 2002, Fig. 1B)
 kc_Pa = 26.0                                    # Rubisco Michaelis constant for CO2 [Pa] at 298.15 K (Johnson & Berry 2021, Table 1)
 ko_Pa = 17900.0                                 # Rubisco Michaelis constant for O2 [Pa] at 298.15 K (Johnson & Berry 2021, Table 1)
-gamma_star_ref_Pa = 3.70                        # Photorespiratory CO2 compensation point [Pa] at 298.15 K and 21 kPa O2
+gamma_star_ref_Pa = 3.70                        # Photorespiratory CO2 compensation point [Pa] at 298.15 K and 21 kPa O2; chosen by the author, not fitted
 reference_oxygen_Pa = 21000.0                   # Reference O2 partial pressure [Pa] for OxygenScaledCompensationPoint
 linear_atp_per_electron = 0.75                  # mol ATP (mol e-)^-1 in linear electron flow (Johnson & Berry 2021, Eq. 24)
 cyclic_atp_per_electron = 1.0                   # mol ATP (mol e-)^-1 in PSI cyclic electron flow (Johnson & Berry 2021, Eq. 24)
@@ -43,15 +49,18 @@ atp_per_photorespiratory_co2 = 7.0
 # Vitis vinifera when prolonged drought reduces stomatal conductance below ~80 mmol m^-2 s^-1
 # (Escalona et al. 1999; Flexas et al. 2002, Fig. 3A & p. 239):
 #   f(g) = floor + (1 - floor) * g^exponent / (half_conductance^exponent + g^exponent)
+# The four values were chosen by the author: not fitted to the digitized points, and with no
+# Tempranillo-specific source in this repository. They matter: with stomatal diffusion alone
+# the lit Figure 2 RMSE is 0.097 and the Inset RMSE 0.144; with this schedule 0.062 and 0.038.
 [nonstomatal_drought]
 half_conductance_mmol = 56.0                    # mmol H2O m^-2 leaf s^-1 midpoint of non-stomatal transition
 hill_exponent = 4.0                             # dimensionless onset steepness below 80-100 mmol m^-2 s^-1
-vcmax_severe_floor = 0.60                       # retained Vcmax fraction under severe drought (~38-40% reduction, matching Fig. 3A high-CO2 Amax)
-vqmax_severe_floor = 0.85                       # retained Cyt b6f fraction (potted-vine ETR capacity largely preserved; Fig. 1D)
+vcmax_severe_floor = 0.60                       # retained Vcmax fraction under severe drought (~38-40% reduction; compared with Fig. 3A high-CO2 Amax, not in this repository)
+vqmax_severe_floor = 0.85                       # retained Cyt b6f fraction (potted-vine ETR capacity largely preserved; compared with Fig. 1D, not in this repository)
 
 [diffusion]
 boundary_co2 = 2.0                              # mol CO2 m^-2 leaf s^-1 ventilated LI-6400 chamber boundary-layer conductance
-mesophyll_co2 = 0.20                            # mol CO2 m^-2 leaf s^-1 Tempranillo grapevine mesophyll conductance
+mesophyll_co2 = 0.20                            # mol CO2 m^-2 leaf s^-1 mesophyll conductance; chosen by the author, no Tempranillo-specific source
 diffusivity_ratio = 1.6                         # g_sw / g_sc molecular diffusivity ratio in air
 mole_to_micromole = 1000000.0                   # micromol mol^-1 unit conversion
 
@@ -69,9 +78,12 @@ constitutive_heat_rate = 0.55
 maximum_photochemical_rate = 14.5
 closed_quenching_rate = 14.5
 
-# Walz PAM-2000 (>700 nm long-pass filter) relative PSI/PSII detector weights
-# (Johnson & Berry 2021, Eqs. 38-42, p. 117): gives dark-adapted apparent Fv/Fm = 0.821,
-# matching Flexas et al. (2002, p. 234) measured Fv/Fm = 0.80-0.83 with zero tuning.
+# Relative PSI/PSII detector weights (observation model of Johnson & Berry 2021, Eqs. 38-42).
+# pam2000_psi_sensitivity = 2.0 is carried over from Johnson & Berry (2021), who fitted 2.0
+# (interquartile range 1.6-2.5) for a LI-6800 on Populus fremontii; it is not a calibration of
+# the Walz PAM-2000 (>700 nm long-pass filter) used by Flexas et al. (2002). With it the model
+# gives a dark-adapted apparent Fv/Fm of 0.821, inside the 0.80-0.83 measured by Flexas et al.
+# (2002, p. 234); that agreement depends on carrying the estimate over to this instrument and species.
 [pam_observer]
 psii_sensitivity = 1.0
 ideal_psi_sensitivity = 0.0
@@ -122,7 +134,8 @@ inset_g_stop_mmol = 160.0
 # native embedded Figure 2 bitmap (661 x 455 px): linear tick-centroid calibration across
 # main axes (PPFD = 0..2400, max tick residual 0.54 micromol m^-2 s^-1; Fs/Fo = 0.80..1.50,
 # max tick residual 0.0006) and Figure 2 Inset axes (g = 0..150, Fs/Fo = 0.8..1.5).
-# Strictly observational evaluation data: zero model parameters above are fitted to these points.
+# Strictly observational evaluation data: no model parameter above was fitted to these points
+# (the inputs chosen by the author are listed at the top of this file).
 [digitized_flexas_2002]
 inset_conductances_mmol = [10.0, 39.0, 55.0, 62.0, 80.0, 150.0]
 inset_fs_over_fo = [0.900, 1.029, 1.149, 1.229, 1.369, 1.449]

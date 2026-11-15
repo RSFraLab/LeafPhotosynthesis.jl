@@ -34,8 +34,12 @@ function check_closed_stomata_batches(to_device, synchronize)
             to_device(envs), Ref(diffusion), Ref(solver))) for t in targets)...)
         drivers = [StomatalDrivers{FT}(a, cs, 101325.0, rh, vpd)
             for a in (-1.0, 0.0, 10.0, NaN), cs in (0.0, 30.0, -1.0), rh in (0.6, 1.5), vpd in (1200.0, NaN)][:]
-        cpu_target = [target_conductance(bb, d) for d in drivers]
-        dev_target = Array(target_conductance.(Ref(bb), to_device(drivers)))
+        cpu_target = [target_conductance(bb, x, diffusion) for x in drivers]
+        dev_target = Array(target_conductance.(Ref(bb), to_device(drivers), Ref(diffusion)))
+        # Medlyn reads the diffusivity ratio of `diffusion` and checks only the VPD driver.
+        md = Medlyn{FT}(0.01, 126.49, 1e-6, 1.0)
+        cpu_target_md = [target_conductance(md, x, diffusion) for x in drivers]
+        dev_target_md = Array(target_conductance.(Ref(md), to_device(drivers), Ref(diffusion)))
         synchronize()
         same(a::Real, b::Real) = isnan(a) ? isnan(b) : isapprox(a, b; rtol = 64eps(FT), atol = 64eps(FT))
         same(a::NamedTuple, b::NamedTuple) = all(map(same, a, b))
@@ -45,6 +49,7 @@ function check_closed_stomata_batches(to_device, synchronize)
             same(t[1].conductance_tendency, t[2].conductance_tendency), zip(cpu_tendency, dev_tendency))
         @test all(map(same, cpu_water, dev_water))
         @test all(map(same, cpu_target, dev_target))
+        @test all(map(same, cpu_target_md, dev_target_md))
         @test all(t -> t[1].status === t[2].status && same(t[1].exchange.biochemical_co2, t[2].exchange.biochemical_co2) &&
             same(t[1].stomatal_conductance, t[2].stomatal_conductance), zip(cpu_eq, dev_eq))
         # The paths are exercised: closed stomata in light, no steady state in darkness,
@@ -52,6 +57,7 @@ function check_closed_stomata_batches(to_device, synchronize)
         @test any(x -> isfinite(x.biochemical_co2) && iszero(x.conductance), dev_exchange)
         @test any(x -> isnan(x.biochemical_co2), dev_exchange)
         @test any(isnan, dev_target) && any(isfinite, dev_target)
+        @test any(isnan, dev_target_md) && any(isfinite, dev_target_md)
         @test any(x -> x.status == EquilibriumStomataClosed, dev_eq)
         @test any(x -> x.status == EquilibriumInvalidBracket, dev_eq)
         @test any(x -> x.status == EquilibriumConverged, dev_eq)

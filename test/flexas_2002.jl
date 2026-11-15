@@ -2,8 +2,8 @@
     for FT in (Float32, Float64)
         @testset "$FT" begin
             ref = setup_flexas_2002(FT)
-            # Walz PAM-2000 (>700 nm, eps_F1 / eps_F2 = 2.0) dark-adapted apparent Fv/Fm
-            # matches Flexas et al. (2002, p. 234) measured range 0.80-0.83 without tuning.
+            # With eps_F1 / eps_F2 = 2.0 (carried over from Johnson & Berry's LI-6800 fit) the
+            # dark-adapted apparent Fv/Fm lies in Flexas et al. (2002, p. 234) measured 0.80-0.83.
             @test ref.dark_pam.fv_fm isa FT
             @test FT(0.80) < ref.dark_pam.fv_fm < FT(0.83)
             @test ref.dark_psii.fv_fm > FT(0.88)

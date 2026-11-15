@@ -21,9 +21,10 @@ three diagnostic features in Figure 2:
 
 1. **Peak suppression:** maximum ``F_s / F_o`` declines from `1.448` in
    well-watered vines (``g_{sw} = 150``) to `1.160` under severe drought (``g_{sw} = 10``).
-2. **Leftward irradiance shift:** the photosynthetic photon flux density (`PPFD`) at
-   which ``F_s / F_o`` peaks shifts from `~730–1000 μmol photons m⁻² s⁻¹` down to
-   `~108–200 μmol photons m⁻² s⁻¹`.
+2. **Leftward irradiance shift:** in the digitized curves the photosynthetic photon flux
+   density (`PPFD`) at which ``F_s / F_o`` peaks shifts from `729` (``g_{sw} = 150``) and
+   `735` (``g_{sw} = 80``) down to `331` (``g_{sw} = 39``) and `108 μmol photons m⁻² s⁻¹`
+   (``g_{sw} = 10``).
 3. **Sub-``F_o`` high-light quenching & curvilinear conductance inset:** under severe
    drought (``g_{sw} \le 39``), non-photochemical quenching pulls high-irradiance ``F_s``
    below dark ``F_o`` (``F_s / F_o < 1.0``), producing a positive curvilinear ``F_s / F_o``
@@ -111,8 +112,11 @@ distinct physical state variables:
 ### Apparent PAM fluorometry (`PAMFluorescenceObserver`)
 
 Flexas et al. (2002) recorded ``F_s / F_o`` with a Walz PAM-2000 (`>700 nm` long-pass
-filter), which weights far-red PSI emission roughly twice as strongly as PSII emission
-(``\varepsilon_{F1} / \varepsilon_{F2} = 2.0``; Johnson & Berry 2021, Eqs. 38–42):
+filter). The model weights far-red PSI emission twice as strongly as PSII emission
+(``\varepsilon_{F1} / \varepsilon_{F2} = 2.0``, observation model of Johnson & Berry 2021,
+Eqs. 38–42). This weighting is carried over from Johnson & Berry (2021), who fitted 2.0
+(interquartile range 1.6–2.5) for a LI-6800 on *Populus fremontii*; it is not a calibration
+of the PAM-2000:
 
 ```math
 \frac{F_s}{F_o}
@@ -122,12 +126,14 @@ filter), which weights far-red PSI emission roughly twice as strongly as PSII em
 
 Because oxidized ``\mathrm{P700^+}`` quenches closed PSI reaction centers at the same rate
 as open photochemistry (``K_{X1} = K_{P1} = 14.5\;\mathrm{ns^{-1}}``), PSI contributes a
-redox-invariant baseline (``\sim 39\%`` of dark ``F_o``). With zero tuning of Johnson &
-Berry's Table 1 decay rates or ``\varepsilon_{F1}/\varepsilon_{F2} = 2.0``,
-`dark_pam_levels` predicts dark-adapted apparent ``F_v / F_m = \mathbf{0.821}``—squarely
-inside Flexas et al. (2002, p. 234) measured **`0.80–0.83`**—whereas pure PSII emission
+redox-invariant baseline (``\sim 39\%`` of dark ``F_o``). With Johnson & Berry's Table 1
+decay rates and ``\varepsilon_{F1}/\varepsilon_{F2} = 2.0`` used unchanged (neither was
+fitted to Flexas et al. 2002), `dark_pam_levels` predicts dark-adapted apparent
+``F_v / F_m = \mathbf{0.821}``, inside the **`0.80–0.83`** measured by Flexas et al. (2002,
+p. 234). This agreement depends on carrying the LI-6800 / *P. fremontii* estimate of the
+detector weighting over to the PAM-2000 and grapevine. Pure PSII emission
 (``\varepsilon_{F1} = 0``) has ``F_v / F_m = 0.882`` and over-predicts well-watered
-``F_s / F_o`` (`1.66` at ``\mathrm{PPFD} = 750`` vs. observed `1.44`).
+``F_s / F_o`` (model `1.66` at ``\mathrm{PPFD} = 750``; observed `1.44`).
 
 ```@raw html
 <div class="leaf-app" data-leaf-app="figures" data-figures="flexas-mechanistic-fig2"></div>
@@ -163,14 +169,17 @@ consuming electrons:
   closure hits the photorespiratory sink floor (``J_{P700,c} \ge 76.7\;\mu\mathrm{mol\;e^-\;m^{-2}\;s^{-1}}``
   at ``C_c = \Gamma_*`` for ``V_{c\max} = 96``, and ``\approx 79.3\;\mu\mathrm{mol\;e^-\;m^{-2}\;s^{-1}}``
   as ``g_{sw} \to 0`` where day respiration ``R_d = 0.80`` holds ``C_c \approx 4.21\;\mathrm{Pa} > \Gamma_*``),
-  preventing the Figure 2 peak from shifting below `~350–400 μmol m⁻² s⁻¹` or
-  ``F_s / F_o(750)`` from dropping below `~1.08`. Reproducing peaks at `200 μmol m⁻² s⁻¹`
-  and sub-``F_o`` high-light ``F_s / F_o(750) = 0.82\text{–}1.02`` (`0.73–0.88` at
-  ``\mathrm{PPFD} = 2100``) requires the non-stomatal biochemical downregulation
-  documented in *Vitis vinifera* when prolonged drought reduces ``g_{sw}`` below
-  `80–100 mmol m⁻² s⁻¹` (Escalona et al. 1999; Flexas et al. 2002, Fig. 3A & p. 239,
-  modeled via a smooth Hill transition retaining `60%` ``V_{c\max}`` and `85%` ``B_{6f}`` as
-  ``g_{sw} \to 0``).
+  preventing the model's Figure 2 peak from shifting below `~350–400 μmol m⁻² s⁻¹` or
+  ``F_s / F_o(750)`` from dropping below `~1.08`. For the model to move the severe-drought
+  peaks down to `200 μmol m⁻² s⁻¹` (``g_{sw} = 10``; digitized: `108`) and to reach sub-``F_o``
+  high-light ``F_s / F_o(750) = 0.82\text{–}1.02`` (`0.73–0.88` at ``\mathrm{PPFD} = 2100``),
+  it needs a non-stomatal biochemical downregulation. Such downregulation is documented in
+  *Vitis vinifera* when prolonged drought reduces ``g_{sw}`` below `80–100 mmol m⁻² s⁻¹`
+  (Escalona et al. 1999; Flexas et al. 2002, Fig. 3A & p. 239). The model represents it by
+  a smooth Hill transition retaining `60%` ``V_{c\max}`` and `85%` ``B_{6f}`` as
+  ``g_{sw} \to 0``; its half-conductance, exponent and floors were chosen by the author,
+  were not fitted to the digitized points and have no Tempranillo-specific source in this
+  repository (see [inputs chosen, not fitted](@ref flexas-chosen-inputs)).
 
 ```@raw html
 <div class="leaf-app" data-leaf-app="figures" data-figures="flexas-inset-conductance"></div>
@@ -199,12 +208,14 @@ The fourth benchmark panel tests three experimental perturbations at severe wate
    Cytochrome-limited low-light regime (`Case 9`), damping the low-light ``F_s / F_o``
    rise (`1.30`). Allowing `StateTransitionRule` (`Case 10`) to migrate LHCII from PSII
    to PSI (``\beta: 0.516 \to 0.414``) maintains ``K_N = 0`` up to Rubisco saturation while
-   increasing PSI emission (weighted `2×` by the `>700 nm` PAM-2000 detector), raising
-   the low-light apparent ``F_s / F_o`` peak to `1.76` before decaying under high-light
-   feedback ``K_N`` (`1.18` at ``\mathrm{PPFD} = 1500``). Because Flexas et al. (2002)
-   observed a damped peak (`1.219`) rather than an unquenched `1.76` spike at
-   ``g_{sw} = 39``, water-stressed grapevine leaves operate much closer to static antenna
-   partitioning than full ``K_N = 0`` state-transition rebalancing.
+   increasing PSI emission (weighted `2×` by the assumed detector weighting), raising
+   the model's low-light apparent ``F_s / F_o`` peak to `1.76` before decaying under
+   high-light feedback ``K_N`` (`1.18` at ``\mathrm{PPFD} = 1500``). Flexas et al. (2002)
+   observed a damped peak (`1.219`) at ``g_{sw} = 39``, not a spike like the model's `1.76`.
+   This misfit suggests the hypothesis that water-stressed grapevine leaves operate closer
+   to static antenna partitioning than to full ``K_N = 0`` state-transition rebalancing; it
+   is not a finding, since other model inputs (for example ``K_{U2}``, the detector
+   weighting or ``V_{q\max}``) could also cause the misfit.
 3. **DTT xanthophyll-cycle inhibition (Flexas et al. 2002, Fig. 5):** evaluating
    `RateCompetitionFluorescence` with `ConstantQuenching(0)` (``K_N = 0``) removes
    energy-dependent thermal dissipation, causing ``F_s / F_o`` to climb monotonically past
@@ -218,6 +229,36 @@ The fourth benchmark panel tests three experimental perturbations at severe wate
 
 ## 5. Summary across SIF / fluorescence yield formulations
 
+### [Inputs chosen, not fitted](@id flexas-chosen-inputs)
+
+No parameter was fitted to the digitized fluorescence points. The following model inputs
+were chosen by the author and have no Tempranillo-specific source in this repository
+([flexas\_2002.toml](https://github.com/RSFraLab/LeafPhotosynthesis.jl/blob/main/examples/parameters/flexas_2002.toml)):
+
+- the non-stomatal Hill schedule `[nonstomatal_drought]`: `half_conductance_mmol = 56.0`
+  (mmol H₂O m⁻² s⁻¹), `hill_exponent = 4.0`, `vcmax_severe_floor = 0.60` and
+  `vqmax_severe_floor = 0.85`;
+- ``V_{q\max} = 174\;\mu\mathrm{mol\;e^-\;m^{-2}\;s^{-1}}`` (`site_density = 0.58`
+  μmol sites m⁻² at ``k_q = 300\;\mathrm{s^{-1}}``);
+- ``g_m = 0.2\;\mathrm{mol\;CO_2\;m^{-2}\;s^{-1}}`` (`mesophyll_co2 = 0.20`);
+- ``\Gamma_* = 3.70\;\mathrm{Pa}`` at `298.15 K` and `21 kPa` O₂ (`gamma_star_ref_Pa = 3.70`).
+
+The schedule matters: with stomatal diffusion alone the lit Figure 2 RMSE is `0.097` and
+the Inset RMSE `0.144`; with the schedule they are `0.062` and `0.038` (the two
+Cytochrome + PAM rows below). The detector weighting
+``\varepsilon_{F1}/\varepsilon_{F2} = 2.0`` is carried over from Johnson & Berry (2021)
+(LI-6800, *P. fremontii*), and their Table 1 rate constants are used unchanged.
+
+### Peak positions
+
+The digitized Figure 2 curves peak at `PPFD = 729, 735, 516, 322, 331, 108 μmol m⁻² s⁻¹`
+for ``g_{sw} = 150, 80, 62, 55, 39, 10`` (at ``g_{sw} = 39`` the points at `331` and `441`
+tie). The model (`CytochromeFluorescence` + `PAMFluorescenceObserver`, stomatal +
+non-stomatal) peaks at `1050, 675, 525, 475, 325, 200 μmol m⁻² s⁻¹` on its `25 μmol m⁻² s⁻¹`
+grid. Its well-watered peak lies `~320 μmol m⁻² s⁻¹` above the digitized one, a mismatch.
+
+### Formulations
+
 | Formulation in `LeafPhotosynthesis.jl` | Dark ``F_v / F_m`` | Lit Fig. 2 `RMSE` (``n = 49``) | Inset `RMSE` (``n = 6``) | Peak ``F_s / F_o`` vs. ``g_{sw}`` | High-light ``F_s / F_o < 1`` under severe drought |
 | --- | --- | --- | --- | --- | --- |
 | `ConstantQuenching(0)` (DTT / ``K_N = 0``) | `0.800` | — (DTT control) | — | None (climbs to `4.47`) | No (matches DTT-infiltrated leaves only, Fig. 5) |
@@ -226,7 +267,7 @@ The fourth benchmark panel tests three experimental perturbations at severe wate
 | `CytochromeFluorescence` (pure PSII, ``\varepsilon_{F1}=0``) | `0.882` | `0.180` | `0.168` | Yes (`1.72 → 1.36`), over-amplified | Yes (`0.60` at `1400`) |
 | `CytochromeFluorescence` + `StateTransitionRule` (`qT`) + PAM-2000 | `0.821` | `0.402` | `0.493` | Overshoots (`2.30 → 1.55`) | Yes (`0.91` at `1400`) |
 | `CytochromeFluorescence` + `PAMFluorescenceObserver` (``\varepsilon_{F1}/\varepsilon_{F2}=2.0``, stomatal only) | **`0.821`** | `0.097` | `0.144` | Partial (`1.44 → 1.29`, floor at ``\Gamma_*``) | Floor near `0.95` (`1.08` at `750`) |
-| `CytochromeFluorescence` + `PAMFluorescenceObserver` (``\varepsilon_{F1}/\varepsilon_{F2}=2.0``, stomatal + Escalona/Flexas non-stomatal) | **`0.821`** | **`0.062`** | **`0.038`** | **Yes (`1.44 → 1.22` vs. obs. `1.45 → 1.16`)** | **Yes (`0.75` at `1400`, `0.82` at `750`)** |
+| `CytochromeFluorescence` + `PAMFluorescenceObserver` (``\varepsilon_{F1}/\varepsilon_{F2}=2.0``, stomatal + Escalona/Flexas non-stomatal) | **`0.821`** | **`0.062`** | **`0.038`** | **Yes** for the height (`1.44 → 1.22` vs. obs. `1.45 → 1.16`); **mismatch** in position at ``g_{sw} = 150`` (model `1050`, digitized `729`) | **Yes (`0.75` at `1400`, `0.82` at `750`)** |
 
 ## 6. Scope limits
 

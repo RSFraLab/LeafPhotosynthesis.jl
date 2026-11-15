@@ -103,7 +103,7 @@ end
         @test_throws ArgumentError CytochromeElectronParameters(1.0, 0.95, SerialLimitation())
         @test_throws ArgumentError CytochromeElectronParameters(0.5, NaN, SerialLimitation())
 
-        med_valid = Medlyn(0.01, 4.0, 1.6, 1e-6, 50.0)
+        med_valid = Medlyn(0.01, 4.0, 1e-6, 50.0)
         @test_throws ArgumentError PrognosticStomata(med_valid, 0.0, 600.0)
         @test_throws ArgumentError PrognosticStomata(med_valid, 300.0, -5.0)
         @test_throws ArgumentError PrognosticStomata(med_valid, Inf, 600.0)
@@ -139,8 +139,8 @@ end
             @test_throws MethodError LeafEnvironment(bad, bad, bad, bad)
             @test_throws MethodError LeafEnvironment(; temperature = bad, absorbed_par = bad, biochemical_co2 = bad, oxygen = bad)
             @test_throws MethodError LeafEnvironment{BT}(298.15, 800.0, 28.0, 21000.0)
-            @test_throws MethodError CoreOxygenExchange(bad, bad, bad, bad)
-            @test_throws MethodError CoreOxygenExchange{BT}(4.0, 1.5, 0.5, 1.0)
+            @test_throws MethodError CoreOxygenExchange(bad, bad, bad)
+            @test_throws MethodError CoreOxygenExchange{BT}(1.5, 0.5, 1.0)
             @test_throws MethodError OxygenFluxInputs(bad, bad, bad)
             @test_throws MethodError OxygenFluxInputs{BT}(10.0, 2.0, 1.0)
             @test_throws MethodError ConstantQuenching(bad)
@@ -153,8 +153,8 @@ end
             @test_throws MethodError StomatalDrivers{BT}(10.0, 35.0, 101325.0, 0.6, 1200.0)
             @test_throws MethodError BallBerry(bad, bad, bad)
             @test_throws MethodError BallBerry{BT}(0.01, 9.0, 1e-6)
-            @test_throws MethodError Medlyn(bad, bad, bad, bad, bad)
-            @test_throws MethodError Medlyn{BT}(0.01, 4.0, 1.6, 1e-6, 50.0)
+            @test_throws MethodError Medlyn(bad, bad, bad, bad)
+            @test_throws MethodError Medlyn{BT}(0.01, 4.0, 1e-6, 50.0)
             @test_throws MethodError PrognosticStomata(med_valid, bad, bad)
             @test_throws MethodError StomatalState(bad)
             @test_throws MethodError StomatalState{BT}(0.2)
@@ -204,7 +204,7 @@ end
         @test_throws MethodError LeafEnvironment(298.15f0, 800.0, 28.0, 21000.0)
         @test_throws MethodError GasExchangeEnvironment(298.15f0, 800.0, 40.0, 21000.0, 101325.0, 0.6, 1200.0)
         @test_throws MethodError PrescribedDualExcitation(300.0f0, 300.0)
-        @test_throws MethodError Medlyn(0.01f0, 4.0, 1.6, 1e-6, 50.0)
+        @test_throws MethodError Medlyn(0.01f0, 4.0, 1e-6, 50.0)
         @test_throws MethodError SeriesDiffusion(1.4f0, 0.1, 1.6, 1e6)
         @test_throws MethodError SeriesDiffusion(; boundary_co2 = 1.4f0, mesophyll_co2 = 0.1, diffusivity_ratio = 1.6, mole_to_micromole = 1e6)
         @test_throws MethodError PSIIRateParameters(0.05f0, 0.55, 4.0, 2.0, 0.0)
@@ -258,8 +258,8 @@ end
         jb = setup_johnson_berry_2021(Float64)
         cyto_steady = LeafModel(;
             photosynthesis = jb.photo,
-            stomata = SteadyStateStomata(Medlyn(0.01, 4.0, 1.6, 1e-6, 50.0)),
-            oxygen = CoreOxygenExchange(4.0, 1.5, 0.5, 1.0),
+            stomata = SteadyStateStomata(Medlyn(0.01, 4.0, 1e-6, 50.0)),
+            oxygen = CoreOxygenExchange(1.5, 0.5, 1.0),
         )
 
         sites_vec = [
@@ -390,8 +390,8 @@ end
         end
 
         # 2. Equilibrium gas exchange AD (Medlyn & BallBerry; SafeguardedNewton even with coarse tol & Bisection; warm-start)
-        med64 = SteadyStateStomata(Medlyn(0.01, 4.0, 1.6, 1e-6, 50.0))
-        med_bf = SteadyStateStomata(Medlyn(BigFloat("0.01"), BigFloat(4), BigFloat("1.6"), BigFloat("1e-6"), BigFloat(50)))
+        med64 = SteadyStateStomata(Medlyn(0.01, 4.0, 1e-6, 50.0))
+        med_bf = SteadyStateStomata(Medlyn(BigFloat("0.01"), BigFloat(4), BigFloat("1e-6"), BigFloat(50)))
         bb64 = SteadyStateStomata(c3_prog.stomata.target)
         bb_bf = SteadyStateStomata(c3_prog_bf.stomata.target)
 
@@ -592,7 +592,7 @@ end
         d_med_g1 = ForwardDiff.derivative(
             g1 -> equilibrium_gas_exchange(
                 c3_prog.photosynthesis,
-                SteadyStateStomata(Medlyn(0.01, g1, 1.6, 1e-6, 50.0)),
+                SteadyStateStomata(Medlyn(0.01, g1, 1e-6, 50.0)),
                 GasExchangeEnvironment(x_eq...),
                 diff64,
                 coarse_newton,
@@ -602,7 +602,7 @@ end
         d_med_g1_ref = _bigfloat_deriv(
             g1 -> equilibrium_gas_exchange(
                 c3_prog_bf.photosynthesis,
-                SteadyStateStomata(Medlyn(BigFloat("0.01"), g1, BigFloat("1.6"), BigFloat("1e-6"), BigFloat(50))),
+                SteadyStateStomata(Medlyn(BigFloat("0.01"), g1, BigFloat("1e-6"), BigFloat(50))),
                 GasExchangeEnvironment(BigFloat.(x_eq)...),
                 diff_bf,
                 tight_bf_solver,
@@ -615,9 +615,10 @@ end
         drivers_zero = StomatalDrivers(0.0, 40.0, 101325.0, 0.65, 1200.0)
         d_tau = ForwardDiff.derivative(
             tau -> stomatal_tendency(
-                PrognosticStomata(Medlyn(0.01, 4.0, 1.6, 1e-6, 50.0), 300.0, tau),
+                PrognosticStomata(Medlyn(0.01, 4.0, 1e-6, 50.0), 300.0, tau),
                 StomatalState(0.12),
                 drivers_zero,
+                diff64,
             ),
             600.0,
         )
@@ -649,13 +650,14 @@ end
         # Compensation-point boundary assimilation == 0.0 in stomatal target_conductance
         for (st64, st_bf) in ((med64.target, med_bf.target), (bb64.target, bb_bf.target))
             dg_da = ForwardDiff.derivative(
-                a -> target_conductance(st64, StomatalDrivers(a, 38.0, 101325.0, 0.65, 1200.0)),
+                a -> target_conductance(st64, StomatalDrivers(a, 38.0, 101325.0, 0.65, 1200.0), diff64),
                 0.0,
             )
             dg_da_ref = _bigfloat_right_deriv(
                 a -> target_conductance(
                     st_bf,
                     StomatalDrivers(a, BigFloat(38), BigFloat(101325), BigFloat("0.65"), BigFloat(1200)),
+                    diff_bf,
                 ),
                 0.0,
             )
@@ -663,12 +665,12 @@ end
             # seed; the derivative there is that of the g0 branch (zero), and the right
             # derivative is the limit from A > 0.
             dg_da_minus = ForwardDiff.derivative(
-                a -> target_conductance(st64, StomatalDrivers(-a, 38.0, 101325.0, 0.65, 1200.0)),
+                a -> target_conductance(st64, StomatalDrivers(-a, 38.0, 101325.0, 0.65, 1200.0), diff64),
                 0.0,
             )
             @test dg_da == 0 && dg_da_minus == 0
             dg_da_right = ForwardDiff.derivative(
-                a -> target_conductance(st64, StomatalDrivers(a, 38.0, 101325.0, 0.65, 1200.0)),
+                a -> target_conductance(st64, StomatalDrivers(a, 38.0, 101325.0, 0.65, 1200.0), diff64),
                 nextfloat(0.0),
             )
             @test dg_da_right > 0

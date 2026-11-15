@@ -61,7 +61,9 @@ end
     @test_throws MethodError assimilation_sensitivity(c64.leaf.photosynthesis, c64.gas, c32.state, c64.diffusion)
     @test_throws MethodError transpiration_sensitivity(WaterVaporDiffusion(1.4), c32.state, 1400.0, 101325.0)
     @test_throws MethodError target_conductance(c64.leaf.stomata.target,
-        StomatalDrivers(10f0, 30f0, 101325f0, 0.6f0, 1200f0))
+        StomatalDrivers(10f0, 30f0, 101325f0, 0.6f0, 1200f0), c64.diffusion)
+    @test_throws MethodError target_conductance(c64.leaf.stomata.target,
+        StomatalDrivers(10.0, 30.0, 101325.0, 0.6, 1200.0), c32.diffusion)
     @test_throws MethodError temperature_response(c32.leaf.photosynthesis.temperature.kc, 298.15)
     jb64, jb32 = c64.jb, c32.jb
     site32 = LeafEnvironment(298.15f0, 800f0, 25f0, 21000f0)
@@ -95,7 +97,8 @@ end
         tie = colimit(Dual{:t}(1.0, seed), Dual{:t}(1.0, 2seed), MinimumLimitation())
         @test ForwardDiff.partials(tie)[1] == seed        # first capacity at a tie
         bb = BallBerry(0.01, 9.0, 1e-6)
-        g = target_conductance(bb, StomatalDrivers(Dual{:t}(0.0, seed), 38.0, 1e5, 0.7, 1000.0))
+        g = target_conductance(bb, StomatalDrivers(Dual{:t}(0.0, seed), 38.0, 1e5, 0.7, 1000.0),
+            SeriesDiffusion(1.0, 0.2, 1.6, 1e6))
         @test ForwardDiff.partials(g)[1] == 0              # g0 branch at A = 0
         r = biochemical_rates(leaf.photosynthesis.temperature, 298.15, 21000.0)
         cc = Dual{:t}(r.gamma_star, seed)
@@ -108,8 +111,8 @@ end
 @testset "Nothing callable in a kernel throws for a value" begin
     for FT in (Float32, Float64)
         c = precision_case(FT)
-        medlyn = Medlyn{FT}(0.01, 126.5, 1.6, 1e-6, 1.0)
-        @test isfinite(target_conductance(medlyn, StomatalDrivers{FT}(10.0, 30.0, 101325.0, 0.6, -5.0)))
+        medlyn = Medlyn{FT}(0.01, 126.5, 1e-6, 1.0)
+        @test isfinite(target_conductance(medlyn, StomatalDrivers{FT}(10.0, 30.0, 101325.0, 0.6, -5.0), c.diffusion))
         bad_env = GasExchangeEnvironment(c.gas.temperature, c.gas.absorbed_par, c.gas.ambient_co2,
             c.gas.oxygen, c.gas.pressure, c.gas.relative_humidity, FT(NaN))
         @test equilibrium_gas_exchange(c.leaf.photosynthesis, SteadyStateStomata(medlyn), bad_env,
@@ -120,14 +123,15 @@ end
         @test WaterVaporDiffusion(FT(-1)) isa WaterVaporDiffusion{FT}
         @test StomatalState(FT(-1)) isa StomatalState{FT}
         # Fixed parameters are validated on the host.
-        @test_throws ArgumentError Medlyn{FT}(0.01, 126.5, 1.6, 1e-6, -1.0)
-        @test_throws ArgumentError Medlyn{FT}(0.01, 126.5, 1.6, 1e-6, 0.0)
-        @test_throws ArgumentError Medlyn{FT}(-0.01, 126.5, 1.6, 1e-6, 1.0)
+        @test_throws ArgumentError Medlyn{FT}(0.01, 126.5, 1e-6, -1.0)
+        @test_throws ArgumentError Medlyn{FT}(0.01, 126.5, 1e-6, 0.0)
+        @test_throws ArgumentError Medlyn{FT}(-0.01, 126.5, 1e-6, 1.0)
         @test_throws ArgumentError BallBerry{FT}(-0.01, -9.0, 1e-6)
         @test_throws ArgumentError BallBerry{FT}(0.01, 9.0, 0.0)
         @test_throws ArgumentError C3Stoichiometry{FT}(0.0, -2.0)
         @test_throws ArgumentError CytochromeStoichiometry{FT}(4.0, 8.0, 0.0, 7.0)
-        @test_throws ArgumentError CoreOxygenExchange{FT}(0.0, 1.5, 0.5, 0.0)
+        @test_throws ArgumentError CoreOxygenExchange{FT}(1.5, 0.5, 0.0)
+        @test_throws ArgumentError CoreOxygenExchange{FT}(1.5, 0.0, 1.0)
         @test BallBerry{FT}(0.0, 9.0, 1e-6).minimum_conductance == zero(FT)
     end
 end

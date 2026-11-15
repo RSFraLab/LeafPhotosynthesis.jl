@@ -13,12 +13,11 @@ micromole_to_mole = 1.0e-6    # mol per micromol
 [diffusion]
 boundary_co2 = 1.0            # mol CO2 m^-2 leaf s^-1, prescribed
 mesophyll_co2 = 0.2           # mol CO2 m^-2 leaf s^-1, prescribed
-diffusivity_ratio = 1.6       # H2O/CO2 stomatal conductance ratio; Liu et al. Eq. 1 discussion
+diffusivity_ratio = 1.6       # H2O/CO2 stomatal conductance ratio; Liu et al. Eq. 1 discussion (also the Medlyn ratio)
 mole_to_micromole = 1.0e6     # micromol per mol
 
 # Core stoichiometry: Gauthier et al. 2018, doi:10.1104/pp.16.00741.
 [oxygen]
-electrons_per_oxygen = 4.0    # electrons per O2 from water oxidation
 oxygen_per_oxygenation = 1.5  # net O2 uptake incl. Rubisco and photorespiratory pathway
 co2_per_oxygenation = 0.5     # photorespiratory CO2 per Rubisco oxygenation
 respiratory_quotient = 1.0    # CO2 released / O2 consumed; explicit assumption

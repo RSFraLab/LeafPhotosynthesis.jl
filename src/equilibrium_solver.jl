@@ -186,20 +186,22 @@ EquilibriumSolution(
 
 # These two target laws have g_sw = g0 + gain * max(A,0) / Cs. More general
 # optimality laws must provide their own residual/closure, not pretend to be linear.
-@inline equilibrium_coefficients(p::BallBerry, env) =
+# Medlyn's H₂O/CO₂ ratio is the diffusion path's `diffusivity_ratio`.
+@inline equilibrium_coefficients(p::BallBerry, env, d) =
     (p.minimum_conductance, p.slope * env.relative_humidity * p.micromole_to_mole * env.pressure)
-@inline equilibrium_coefficients(p::Medlyn, env) =
+@inline equilibrium_coefficients(p::Medlyn, env, d) =
     (
         p.minimum_conductance,
-        p.diffusivity_ratio *
+        d.diffusivity_ratio *
         (one(env.vpd) + p.slope / sqrt(primal_max(env.vpd, p.vpd_floor))) *
         p.micromole_to_mole * env.pressure,
     )
 
-# Domain of the solver inputs; `g0` is the target's minimum conductance.
-@inline valid_equilibrium_inputs(env, d, g0) =
+# Domain of the solver inputs; `g0` is the target's minimum conductance. The humidity
+# driver is checked per law (`valid_humidity`): the one the target does not read may be NaN.
+@inline valid_equilibrium_inputs(env, d, target, g0) =
     valid_site(env) && is_nonnegative(env.absorbed_par) && is_positive(env.pressure) &&
-    is_fraction(env.relative_humidity) && is_finite(env.vpd) && valid_diffusion(d) &&
+    valid_humidity(target, env.relative_humidity, env.vpd) && valid_diffusion(d) &&
     is_nonnegative(g0)
 
 # The invalid solution has the shape of a valid one: the model's electron diagnostics are
@@ -316,7 +318,10 @@ branch, and invalid inputs or non-convergence return explicit
 [`EquilibriumStatus`](@ref) codes without throwing.
 
 The target law ``g_{sw} = g_0 + \\mathrm{gain} \\max(A_n, 0) / C_s`` accepts a zero minimum
-conductance `g₀` (common in Medlyn fits). Then the result is the limit ``g_0 → 0^+``:
+conductance `g₀` (common in Medlyn fits). With ``g_0 = 0`` the closed state is a steady
+state whenever Γ exists, so it can coexist with an open root; the solver then returns the
+open root, because the result is defined as the limit ``g_0 → 0^+`` of the unique solution
+for ``g_0 > 0`` and so does not jump when a fitted `g₀` approaches zero:
 - if net assimilation is negative at every CO₂ (darkness, or light below the light
   compensation point), no steady state exists: `EquilibriumInvalidBracket`, `NaN` fields;
 - otherwise the model's CO₂ compensation point Γ (respiration included) exists. If
@@ -336,8 +341,11 @@ Being positional, it broadcasts: `equilibrium_gas_exchange.(leaf, environments, 
 solver, BroadbandExcitation(), previous_co2)` warm-starts every leaf from its own value.
 Return an [`EquilibriumSolution`](@ref).
 
-[`Medlyn`](@ref) and `diffusion` each hold the stomatal H₂O/CO₂ diffusivity ratio; nothing
-checks that the two copies agree, so pass the same value to both.
+The humidity driver of the environment is checked per law: Ball–Berry needs a relative
+humidity in `[0, 1]` and ignores the VPD, Medlyn needs a finite VPD and ignores the relative
+humidity (the unused one may be `NaN`). The H₂O/CO₂ ratio of [`Medlyn`](@ref) is
+`diffusion.diffusivity_ratio`, the same value that converts stomatal H₂O conductance to CO₂
+conductance in the diffusion path.
 """
 function equilibrium_gas_exchange(
     p::AbstractC3Photosynthesis,
@@ -351,10 +359,10 @@ function equilibrium_gas_exchange(
     require_compatible(equilibrium_gas_exchange, p, stomata, env, d, solver, excitation, initial_co2)
     continuous_or_nothing(initial_co2) ||
         throw(MethodError(equilibrium_gas_exchange, (p, stomata, env, d, solver, excitation, initial_co2)))
-    g0, gain = equilibrium_coefficients(stomata.target, env)
+    g0, gain = equilibrium_coefficients(stomata.target, env, d)
     r, electrons, supply = light_supply(p, env, excitation)
     OutFT = working_type(p, stomata, env, d, solver, excitation)
-    valid_equilibrium_inputs(env, d, g0) && valid_excitation(excitation, env.absorbed_par) &&
+    valid_equilibrium_inputs(env, d, stomata.target, g0) && valid_excitation(excitation, env.absorbed_par) &&
         is_finite(gain) && valid_equilibrium_biochemistry(p, r) && is_nonnegative(electrons) ||
         return invalid_equilibrium(OutFT, EquilibriumInvalidInput, p, r, supply)
     is_zero(g0) && return zero_minimum_conductance_equilibrium(

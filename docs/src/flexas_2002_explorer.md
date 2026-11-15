@@ -14,7 +14,7 @@ water-stress stages in *Vitis vinifera* cv. Tempranillo.
 
 ```@raw html
 <div class="leaf-app" data-leaf-app="flexas" v-pre>
-<div class="hero-badges"><span class="badge">Zero fitted fluorescence parameters</span><span class="badge">55 digitized Fig. 2 points + 6 Inset points</span><span class="badge neutral">Julia Float64 &amp; Float32 outputs</span></div>
+<div class="hero-badges"><span class="badge">No parameter fitted to the digitized points</span><span class="badge">55 digitized Fig. 2 points + 6 Inset points</span><span class="badge neutral">Julia Float64 &amp; Float32 outputs</span></div>
 <div class="toolbar"><label for="precision">Numerical precision</label><select id="precision"><option value="Float64">Float64 · double</option><option value="Float32">Float32 · single</option></select><span id="status" role="status">Loading saved Julia output…</span></div>
 </div>
 <LeafCharts />
@@ -22,20 +22,26 @@ water-stress stages in *Vitis vinifera* cv. Tempranillo.
 
 Every curve, residual, peak and RMSE value is computed in Julia when the documentation is
 built; switching precision loads an independent `Float64` or `Float32` run. Digitized
-Flexas et al. (2002) points are strictly observational overlays. No fluorescence or PAM
-detector parameter is tuned to them (untouched Johnson & Berry 2021 rates and Walz
-PAM-2000 `εF1/εF2 = 2.0`, evaluated both with stomatal diffusion alone and with the
-independent Escalona et al. 1999 / Flexas et al. 2002 Fig. 3A gas-exchange downregulation
-schedule).
+Flexas et al. (2002) points are strictly observational overlays: no parameter was fitted to
+them. The Johnson & Berry (2021) rate constants are used unchanged, and the detector
+weighting `εF1/εF2 = 2.0` is carried over from Johnson & Berry (2021), who fitted 2.0
+(interquartile range 1.6–2.5) for a LI-6800 on *Populus fremontii*; it is not a calibration
+of the Walz PAM-2000 that Flexas et al. used. The following inputs were chosen by the author
+and have no Tempranillo-specific source in this repository: the non-stomatal Hill schedule
+(half-conductance `56 mmol H₂O m⁻² s⁻¹`, exponent `4`, floors `0.60` for `Vcmax` and `0.85`
+for Cyt b₆f), `Vqmax = 174 μmol e⁻ m⁻² s⁻¹`, `gm = 0.2 mol CO₂ m⁻² s⁻¹` and
+`Γ* = 3.70 Pa`. The schedule matters: with stomatal diffusion alone the lit Figure 2 RMSE
+is `0.097` and the Inset RMSE `0.144`; with the schedule they are `0.062` and `0.038`.
 
 ## Switch SIF formulations on top of digitized Figure 2
 
 Select any fluorescence formulation below to overlay its six drought light-response curves
 (`g = 150, 80, 62, 55, 39, 10 mmol H₂O m⁻² s⁻¹`) against the full digitized trajectories
 from Flexas et al. (2002) Figure 2. Single-variable empirical `KN(x)` models lock every
-curve to an identical peak ceiling, whereas two-state Cytochrome b₆f + Walz PAM-2000
-fluorometry tracks peak suppression, leftward peak shift, and high-light sub-`Fo`
-quenching simultaneously.
+curve to an identical peak ceiling, whereas two-state Cytochrome b₆f with the PAM observer
+tracks peak suppression, a leftward peak shift, and high-light sub-`Fo` quenching
+simultaneously. Peak positions differ: the model's well-watered peak lies at
+`PPFD = 1050 μmol m⁻² s⁻¹`, the digitized one at `729`.
 
 ```@raw html
 <div class="leaf-app" v-pre>
@@ -165,7 +171,7 @@ every sweep traverses the <strong>exact same scalar curve</strong>, locking glob
 <p>
 Johnson &amp; Berry (2021) decouple open PSII trap fraction \(q_2(Q_1, V_{q\max})\) from stromal sink yield
 \(\Phi_{P2}(Q_2, C_c, V_{c\max})\), observed through long-pass (\(&gt;700\;\mathrm{nm}\)) PSI/PSII weights
-\(\varepsilon_{F1}/\varepsilon_{F2} = 2.0\):
+\(\varepsilon_{F1}/\varepsilon_{F2} = 2.0\), carried over from their fit for a LI-6800 on <em>Populus fremontii</em>:
 </p>
 <div class="math-box">
 \[
@@ -176,7 +182,8 @@ Johnson &amp; Berry (2021) decouple open PSII trap fraction \(q_2(Q_1, V_{q\max}
 </div>
 <p>
 Redox-invariant PSI emission (\(\sim 39\%\) of dark \(F_o\)) yields dark apparent
-\(F_v / F_m = \mathbf{0.821}\) (measured: \(0.80\text{–}0.83\)), while earlier \(A_j \to A_c\) crossover under
+\(F_v / F_m = \mathbf{0.821}\) (measured: \(0.80\text{–}0.83\); the agreement depends on carrying the
+weighting over to the PAM-2000), while earlier \(A_j \to A_c\) crossover under
 drought truncates the \(q_2\)-driven rise at progressively lower \(F_s / F_o\).
 </p>
 </div>
@@ -196,8 +203,8 @@ J_{P700,c}(\Gamma_*)
 <p>
 At \(25\;^\circ\mathrm{C}\), \(J_{P700,c}(\Gamma_*) \approx 0.799\,V_{c\max}\): for \(V_{c\max} = 96\), pure
 stomatal closure cannot push \(J_{P700,c}\) below \(76.7\;\mu\mathrm{mol\;e^-\;m^{-2}\;s^{-1}}\)
-(\(\approx 79.3\) as \(g_{sw} \to 0\) with \(R_d = 0.80\)), explaining why severe grapevine drought
-(\(g_{sw} &lt; 60\)) reflects coordinated non-stomatal downregulation.
+(\(\approx 79.3\) as \(g_{sw} \to 0\) with \(R_d = 0.80\)), which is why the model needs a non-stomatal
+downregulation (an author-chosen schedule) to follow the severe-drought curves (\(g_{sw} &lt; 60\)).
 </p>
 </div>
 </div>
@@ -205,8 +212,8 @@ stomatal closure cannot push \(J_{P700,c}\) below \(76.7\;\mu\mathrm{mol\;e^-\;m
 <h3>Quantitative benchmark scoreboard (computed in Julia)</h3>
 <p class="quiet">
 Evaluated across all \(n = 49\) illuminated Figure 2 digitized observations (\(\mathrm{PPFD} &gt; 0\)) and all
-\(n = 6\) Figure 2 Inset observations (\(\mathrm{PPFD} = 750\;\mu\mathrm{mol\;m^{-2}\;s^{-1}}\)) with zero
-parameter fitting to the digitized curves.
+\(n = 6\) Figure 2 Inset observations (\(\mathrm{PPFD} = 750\;\mu\mathrm{mol\;m^{-2}\;s^{-1}}\)). No parameter
+was fitted to the digitized curves; the inputs chosen by the author are listed at the top of this page.
 </p>
 <div id="scoreboard-table-mount"></div>
 </div>

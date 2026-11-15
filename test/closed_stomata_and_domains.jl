@@ -86,32 +86,47 @@ end
 @testset "Invalid stomatal drivers give NaN, not the minimum conductance" begin
     for FT in (Float32, Float64)
         c = core_closed_case(FT)
+        d = c.diffusion
         bb = c.leaf.stomata.target
         medlyn = Medlyn{FT}(; minimum_conductance = bb.minimum_conductance, slope = 126.49,
-            diffusivity_ratio = 1.6, micromole_to_mole = 1e-6, vpd_floor = 1.0)
+            micromole_to_mole = 1e-6, vpd_floor = 1.0)
         ok = StomatalDrivers{FT}(10.0, 30.0, 101325.0, 0.6, 1200.0)
         bad = (
             StomatalDrivers{FT}(NaN, 30.0, 101325.0, 0.6, 1200.0),
             StomatalDrivers{FT}(10.0, -1.0, 101325.0, 0.6, 1200.0),
             StomatalDrivers{FT}(10.0, 0.0, 101325.0, 0.6, 1200.0),
             StomatalDrivers{FT}(10.0, 30.0, -1.0, 0.6, 1200.0),
+        )
+        # Answer 7: each law checks only the humidity driver it reads.
+        bad_humidity = (
             StomatalDrivers{FT}(10.0, 30.0, 101325.0, 5.0, 1200.0),
             StomatalDrivers{FT}(10.0, 30.0, 101325.0, -0.1, 1200.0),
+        )
+        bad_vpd = (
             StomatalDrivers{FT}(10.0, 30.0, 101325.0, 0.6, NaN),
             StomatalDrivers{FT}(-1.0, 30.0, 101325.0, 0.6, Inf),
         )
-        for target in (bb, medlyn)
-            @test isfinite(target_conductance(target, ok))
-            @test target_conductance(target, StomatalDrivers{FT}(-1.0, 30.0, 101325.0, 0.6, 1200.0)) ==
+        for (target, invalid, ignored) in ((bb, bad_humidity, bad_vpd), (medlyn, bad_vpd, bad_humidity))
+            @test isfinite(target_conductance(target, ok, d))
+            @test target_conductance(target, StomatalDrivers{FT}(-1.0, 30.0, 101325.0, 0.6, 1200.0), d) ==
                 target.minimum_conductance
-            for drivers in bad
-                @test isnan(target_conductance(target, drivers))
-                @test isnan(stomatal_tendency(c.leaf.stomata, StomatalState(FT(0.1)), drivers))
+            for drivers in (bad..., invalid...)
+                @test isnan(target_conductance(target, drivers, d))
+            end
+            for drivers in ignored
+                @test isfinite(target_conductance(target, drivers, d))
+            end
+            # The prognostic stomata of the case use Ball–Berry, which ignores the VPD.
+            for drivers in (bad..., bad_humidity...)
+                @test isnan(stomatal_tendency(c.leaf.stomata, StomatalState(FT(0.1)), drivers, d))
+            end
+            for drivers in bad_vpd
+                @test isfinite(stomatal_tendency(c.leaf.stomata, StomatalState(FT(0.1)), drivers, d))
             end
         end
-        @test isnan(stomatal_tendency(c.leaf.stomata, StomatalState(FT(-0.1)), ok))
-        @test isnan(stomatal_tendency(c.leaf.stomata, StomatalState(FT(NaN)), ok))
-        @test isfinite(stomatal_tendency(c.leaf.stomata, StomatalState(zero(FT)), ok))
+        @test isnan(stomatal_tendency(c.leaf.stomata, StomatalState(FT(-0.1)), ok, d))
+        @test isnan(stomatal_tendency(c.leaf.stomata, StomatalState(FT(NaN)), ok, d))
+        @test isfinite(stomatal_tendency(c.leaf.stomata, StomatalState(zero(FT)), ok, d))
         # An invalid exchange no longer relaxes stomata toward g0.
         for env in (
             GasExchangeEnvironment{FT}(0.0, c.env.absorbed_par, c.env.ambient_co2, c.env.oxygen, c.env.pressure, 0.6, 1200.0),

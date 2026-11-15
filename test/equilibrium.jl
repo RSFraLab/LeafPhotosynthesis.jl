@@ -35,7 +35,7 @@ function reference_equilibrium(p, target, env, diffusion; fixed_gs = nothing)
         if isnothing(fixed_gs) && a > 0
             slope = BigFloat(target.slope)
             factor = target isa BallBerry ? slope * BigFloat(env.relative_humidity) :
-                BigFloat(target.diffusivity_ratio) * (1 + slope / sqrt(max(BigFloat(env.vpd), BigFloat(target.vpd_floor))))
+                ratio * (1 + slope / sqrt(max(BigFloat(env.vpd), BigFloat(target.vpd_floor))))
             gs += factor * a * BigFloat(target.micromole_to_mole) * pressure / cs
         end
         return ca - c - a * pressure / conversion * (rb + ratio / gs + rm)
@@ -60,8 +60,8 @@ end
 function test_targets(FT, leaf, settings, d)
     s = settings["stomata"]
     return (leaf.stomata.target, Medlyn{FT}(; minimum_conductance = s["minimum_conductance"],
-        slope = s["medlyn_slope"], diffusivity_ratio = d.diffusivity_ratio,
-        micromole_to_mole = s["micromole_to_mole"], vpd_floor = s["vpd_floor"]))
+        slope = s["medlyn_slope"], micromole_to_mole = s["micromole_to_mole"],
+        vpd_floor = s["vpd_floor"]))
 end
 
 @testset "Equilibrium and analytic sensitivities" begin
@@ -102,7 +102,7 @@ end
                     @test abs(result.exchange.diffusion_residual) <= tol_a * FT(1.01)
                     drivers = StomatalDrivers(result.exchange.net_assimilation, result.exchange.surface_co2,
                         forcing.pressure, forcing.relative_humidity, forcing.vpd)
-                    @test isapprox(result.stomatal_conductance, target_conductance(target, drivers); rtol = 16eps(FT))
+                    @test isapprox(result.stomatal_conductance, target_conductance(target, drivers, diffusion); rtol = 16eps(FT))
                     b = equilibrium_gas_exchange(model, steady, forcing, diffusion, bisector)
                     @test is_valid(b)
                     @test isapprox(result.exchange.biochemical_co2, b.exchange.biochemical_co2; atol = 8tol_c, rtol = 64eps(FT))
@@ -147,7 +147,7 @@ end
             @test is_valid(zero_g0) && zero_g0.status in (EquilibriumConverged, EquilibriumStomataClosed)
             for target in targets
                 drivers = StomatalDrivers(zero(FT), zero(FT), env.pressure, env.relative_humidity, env.vpd)
-                @test target_conductance(target, drivers) == target.minimum_conductance
+                @test target_conductance(target, drivers, d) == target.minimum_conductance
             end
             @test_throws ArgumentError SafeguardedNewton(; bisection_interval = 0)
         end

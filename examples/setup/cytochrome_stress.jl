@@ -154,7 +154,6 @@ function setup_cytochrome_stress(::Type{FT}; vcmax_factor::FT = one(FT),
     medlyn = SteadyStateStomata(Medlyn{FT}(;
         minimum_conductance = s["minimum_conductance"],
         slope = s["medlyn_slope"],
-        diffusivity_ratio = core["diffusion"]["diffusivity_ratio"],
         micromole_to_mole = s["micromole_to_mole"],
         vpd_floor = s["vpd_floor"],
     ))
