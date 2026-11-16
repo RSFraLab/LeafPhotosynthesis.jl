@@ -227,6 +227,101 @@ The fourth benchmark panel tests three experimental perturbations at severe wate
 
 ---
 
+## [Connectivity ``K_{U2}``, the PSI weight and the dark level ``F_o``](@id flexas-connectivity)
+
+Two quantities set the size of the modeled signal and have no direct calibration for these
+leaves or this instrument: the exciton transfer rate between PSII units, ``K_{U2}``, and the
+PSI detector weight ``\varepsilon_{F1}/\varepsilon_{F2}``. Johnson & Berry (2021) estimated
+both, together with five other parameters, from one *Populus fremontii* leaf; the benchmark
+carries their values (`2 ns⁻¹` and `2.0`) over. This section is a sensitivity analysis with
+every other input of the benchmark held fixed: the drought schedule, ``V_{q\max}``,
+``V_{c\max}``, mesophyll conductance, the static antenna (no state transitions), zero
+sustained quenching and the Table 1 rate constants.
+
+For fixed rate constants, zero sustained quenching and a static antenna, the PSII
+fluorescence relative to ``F_o`` depends on three numbers only: the photochemical yield
+``\Phi_{P2}``, the open fraction ``q_2`` and ``K_{U2}``. Gas exchange and electron transport
+fix the first two without reference to ``K_{U2}``, which then decides how much of the closure
+of reaction centers appears as fluorescence and how much the model must assign to ``K_N``.
+Where light limits and excitation is balanced, ``\Phi_{P2} = q_2\,\Phi_{P2,\max}``, and the
+two limits are
+
+```math
+\frac{F_s}{F_o}\bigg|_{K_{U2} = 0} = q_2 + (1 - q_2)\,\frac{F_m}{F_o},
+\qquad
+\frac{F_s}{F_o}\bigg|_{K_{U2} \to \infty} = 1,
+```
+
+with ``F_m/F_o = 8.5`` for the Table 1 rate constants: separate units need no quenching and
+show the full rise, a [lake](lake_model_fluorescence.md) shows none.
+
+```@raw html
+<div class="leaf-app" data-leaf-app="figures" data-figures="flexas-connectivity flexas-connectivity-rmse"></div>
+```
+
+**Size of the signal.** For the well-watered leaf (``g_{sw} = 150``) the peak PSII
+``F_s/F_o`` is `2.53`, `1.72` and `1.22` for ``K_{U2} = 0.5``, `2` and `10 ns⁻¹`.
+
+**Below ``F_o``.** Under the same assumptions and whatever ``K_{U2}``, the PSII yield is
+below its dark level exactly when
+``K_N > K_{P2}(1 - \Phi_{P2}) - (K_{F2} + K_{D2})\,\Phi_{P2}``: a low realized photochemical
+yield relative to the absorbed excitation, with strong quenching. Low net assimilation alone
+does not suffice, because photorespiration keeps consuming electrons. Well watered, the
+curves stay above ``F_o`` up to PPFD `2100` for all three transfer rates. Under severe
+drought (``g_{sw} = 10``) they are below it from PPFD `450`, `375` and `250` on (first
+sampled points of the 25-unit grid) and end at `0.58`, `0.55` and `0.49`. No drought
+parameterization is needed for this: in our reproduction of the Case 9 simulation of
+Johnson & Berry (their Fig. 8c; chloroplast CO₂ prescribed at `20 Pa`, static antenna) the
+yield at ``K_{U2} = 2\;\mathrm{ns^{-1}}`` peaks at `1.53` ``F_o``, is below ``F_o`` from PAR
+`1640` on and ends at `0.88` ``F_o`` at PAR `2400`; at `10 ns⁻¹` it is below from PAR `940`
+on and ends at `0.72`. These crossings are our calculations, not values stated in the
+paper. Extending the same simulation to other prescribed CO₂ levels, it stays above ``F_o``
+at `40 Pa` and ends at `0.59` at `10 Pa` (tested).
+
+**A trade-off, bounded by dark ``F_v/F_m``.** RMSE of ``F_s/F_o`` over the 49 lit points of
+Figure 2 on a grid of the two quantities:
+
+| ``K_{U2}`` (ns⁻¹) | weight `0` | `2.0` | `2.5` | smallest on the grid `0`–`6` (weight) |
+| --- | --- | --- | --- | --- |
+| `0.5` | `0.588` | `0.287` | `0.246` | `0.088` (`6.0`) |
+| `1` | `0.360` | `0.151` | `0.123` | `0.047` (`6.0`) |
+| `1.5` | `0.247` | `0.088` | `0.070` | `0.049` (`4.0`) |
+| `2` | `0.180` | `0.062` | `0.055` | `0.054` (`3.0`) |
+| `3` | `0.115` | `0.070` | `0.075` | `0.068` (`1.5`) |
+| `5` | `0.107` | `0.113` | `0.118` | `0.102` (`0.5`) |
+| `10` | `0.167` | `0.164` | `0.165` | `0.163` (`1.0`) |
+
+Judged by the 49 lit points alone, a lower transfer rate with a larger PSI weight does as
+well as the carried-over pair: the smallest error per transfer rate lies between `0.047` and
+`0.068` from ``K_{U2} = 1`` to `3 ns⁻¹`. No error model for the digitized points is
+available, so these differences are not shown to be significant either way.
+
+The PSI weight is constrained by a second measurement, however. With ``c`` the PSI level
+relative to PSII ``F_o`` in the dark, the dark-adapted apparent yield is
+``F_v/F_m = (F_m/F_o - 1)/(F_m/F_o + c)`` for the PSII ``F_m/F_o``: `0.882` without PSI,
+`0.821` at weight `2.0`, `0.807` at `2.5`, `0.794` at `3.0`, `0.768` at `4.0` and `0.721` at
+`6.0`. Flexas et al. (2002, p. 234) report `0.80`–`0.83` for all leaves examined, which
+admits weights of about `1.7` to `2.8` (PSI share of dark ``F_o`` of 35–47 %) and excludes
+the low-``K_{U2}`` end of the valley. At the two grid weights inside that range (`2.0` and
+`2.5`), ``K_{U2} = 2\;\mathrm{ns^{-1}}`` has the smallest error (`0.062`, `0.055`),
+`1.5` and `3` follow (`0.070`–`0.088`), and `1` and `5` are clearly worse (`0.11`–`0.15`).
+
+Both constraints are conditional on the fixed inputs listed above, which shape
+``\Phi_{P2}``, ``q_2`` and the dark reference, and on the PSII rate constants: the
+``F_v/F_m`` bound uses ``F_m/F_o = 8.5``, and a different ``K_{D2}`` would move it. The grid
+varies the detector weight ``\varepsilon_{F1}/\varepsilon_{F2}`` and keeps
+``\alpha_1, \alpha_2`` at the actinic dark-balanced values (``\alpha_1/\alpha_2 = 0.94``),
+although the measuring beam of a fluorometer has its own absorbed fractions. Under the
+observer's assumptions these enter the normalized signal only through the product
+``\alpha_1 \varepsilon_{F1} / (\alpha_2 \varepsilon_{F2})``, which is `0.94` times the weight
+tabulated here: the ``F_v/F_m`` range above corresponds to a product of about `1.6` to
+`2.6`. Within those conditions the benchmark supports that range of the product and
+``K_{U2}`` between about `1.5` and `3 ns⁻¹`; it is not a calibration of either. A direct constraint on
+connectivity would need controlled fast-induction measurements interpreted with an explicit
+connectivity and kinetic model.
+
+---
+
 ## 5. Summary across SIF / fluorescence yield formulations
 
 ### [Inputs chosen, not fitted](@id flexas-chosen-inputs)

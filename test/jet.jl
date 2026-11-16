@@ -16,6 +16,8 @@ function jet_entry_points(::Type{FT}) where {FT}
     vdt = setup_fluorescence(FT)
     psii = fluorescence_inputs(vdt.leaf.photosynthesis, site)
 
+    lake = LakeModelFluorescence(FT(0.83), FT(19), eps(FT))
+
     cyto = setup_cytochrome_stress(FT)
     jb = setup_johnson_berry_2021(FT)
     dual = PrescribedDualExcitation(FT(400), FT(380))
@@ -34,6 +36,10 @@ function jet_entry_points(::Type{FT}) where {FT}
             (assimilation_sensitivity, (c3_leaf.photosynthesis, gas, state, diffusion)),
         "fluorescence_inputs" => (fluorescence_inputs, (vdt.leaf.photosynthesis, site)),
         "fluorescence" => (fluorescence, (vdt.regulated, psii)),
+        "fluorescence, lake model" => (fluorescence, (lake, PSIIOpenFractionInputs(psii, FT(0.6)))),
+        "lake_model_yields" => (lake_model_yields, (lake, FT(0.6), FT(1.2))),
+        "electron_flow_from_fluorescence" => (electron_flow_from_fluorescence,
+            (lake, ObservedFluorescenceInputs(FT(2), FT(0.8), FT(1), FT(0.6)))),
         "gas_exchange, closed stomata" => (gas_exchange, (c3_leaf, gas, StomatalState(zero(FT)), diffusion)),
         "equilibrium_gas_exchange, zero minimum conductance" => (equilibrium_gas_exchange,
             (c3_leaf.photosynthesis, SteadyStateStomata(BallBerry{FT}(0.0, 9.0, 1e-6)), gas, diffusion, solver)),
@@ -59,6 +65,7 @@ function jet_entry_points(::Type{FT}) where {FT}
             (cyto.cyto_leaf.photosynthesis, gas, state, cyto.diffusion, dual)),
         "fluorescence_inputs" => (fluorescence_inputs, (jb.photo, site, dual)),
         "fluorescence" => (fluorescence, (jb.fl_ku2, photosystems)),
+        "fluorescence, lake model" => (fluorescence, (lake, photosystems)),
         "state_transition_excitation" =>
             (state_transition_excitation, (jb.rule, jb.fl_ku2, jb.photo, site)),
         "pam_fluorescence" => (pam_fluorescence, (jb.pam_leaked, jb.fl_ku2, jb_result, a2, a1)),

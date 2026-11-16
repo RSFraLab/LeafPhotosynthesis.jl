@@ -23,7 +23,8 @@ const TEST_GROUPS = [
         "excitation_batches.jl", "excitation.jl"],
     "cytochrome" => ["cytochrome_batches.jl", "cytochrome.jl", "cytochrome_additions.jl",
         "npq_and_c3_domain.jl"],
-    "flexas" => ["flexas_2002.jl"],
+    "flexas" => ["flexas_2002.jl", "flexas_connectivity.jl"],
+    "lake_fluorescence" => ["lake_model_fluorescence.jl", "gu_2019.jl"],
     "qa" => ["qa_and_ad.jl", "precision_and_ties.jl"],
     "jet" => ["jet.jl"],
 ]

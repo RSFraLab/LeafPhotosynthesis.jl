@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `LakeModelFluorescence`: the PSII lake-model relations of Gu et al. (2019, *New
+  Phytologist* 223:1179–1191) between fluorescence, the open reaction-center fraction `qL`,
+  `NPQ` and linear electron flow, as a third fluorescence component beside
+  `RateCompetitionFluorescence` and `CytochromeFluorescence`. `fluorescence` evaluates it
+  from `PSIIOpenFractionInputs` or from the `CoupledPhotosystemInputs` of
+  `CytochromePhotosynthesis`; `lake_model_yields` evaluates Eqs. 14 and 16 from `qL` and
+  `NPQ`; `electron_flow_from_fluorescence` evaluates Eq. 21 from an observed flux, its
+  escape probability and PSII share (`ObservedFluorescenceInputs`).
+- `examples/gu_2019.jl` with `examples/parameters/gu_2019.toml`: Figs. 1c, 2a and 4c of the
+  paper and a comparison with `CytochromeFluorescence` on the Flexas et al. (2002) Figure 2;
+  test group `lake_fluorescence`; walkthrough "Lake-model fluorescence".
+- `examples/flexas_2002.jl`: tables `flexas_connectivity_fig2` (PSII `Fs/Fo` for three
+  exciton transfer rates `KU2`, well watered and under severe drought) and
+  `flexas_connectivity_rmse` (error against the digitized Figure 2 over a grid of `KU2`
+  and PSI detector weights, with the dark apparent `Fv/Fm` each weight implies), with a
+  walkthrough section on connectivity, the PSI weight
+  and when the modeled yield falls below the dark level `Fo`. The existing tables are
+  unchanged.
+
 ## 0.2.0
 
 One shared implementation behind the C3 and Cytochrome b₆f leaf paths, one physical input

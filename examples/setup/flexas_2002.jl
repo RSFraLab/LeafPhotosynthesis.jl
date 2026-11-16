@@ -248,11 +248,9 @@ function evaluate_flexas_point(
         )
     end
 
-    static_exc = exact_dual_excitation(case.beta_dark, q_abs)
-    ge_cyto = gas_exchange(case.cyto_photo, genv, case.stomatal_state, case.diffusion, static_exc)
-    isfinite(ge_cyto.biochemical_co2) || error("Nonfinite Cytochrome Cc at PPFD = $incident_par")
-    site_cyto = LeafEnvironment(T, q_abs, ge_cyto.biochemical_co2, oxygen_Pa)
-    r_cyto = fluorescence(case.fl_cyto, fluorescence_inputs(case.cyto_photo, site_cyto, static_exc))
+    state = flexas_cytochrome_state(case, incident_par; co2_Pa, oxygen_Pa)
+    static_exc, ge_cyto = state.excitation, state.exchange
+    r_cyto = fluorescence(case.fl_cyto, state.inputs)
     is_valid(r_cyto) || error("Invalid Cytochrome fluorescence at PPFD = $incident_par")
     p_pam = pam_fluorescence(case.pam_pam2000, case.fl_cyto, r_cyto, case.alpha2_dark, case.alpha1_dark)
     p_psii = pam_fluorescence(case.pam_ideal, case.fl_cyto, r_cyto, case.alpha2_dark, case.alpha1_dark)
@@ -314,6 +312,60 @@ function evaluate_flexas_point(
         dark = false,
     )
 end
+
+# The Cytochrome b6f leaf of `case` at `incident_par` with the gas exchange solved at the
+# stomatal conductance of the case: the static dark-balanced excitation, the gas exchange,
+# the biochemical site, and the photosystem inputs of the fluorescence models (excitations,
+# realized electron flows, open PSII fraction). None depends on the fluorescence formulation.
+function flexas_cytochrome_state(
+    case,
+    incident_par::FT;
+    co2_Pa::FT = case.settings["experiment"]["ambient_co2_Pa"],
+    oxygen_Pa::FT = case.settings["experiment"]["ambient_oxygen_Pa"],
+) where {FT<:AbstractFloat}
+    x = case.settings["experiment"]
+    T = x["temperature_K"]
+    q_abs = x["leaf_absorptance"] * incident_par
+    excitation = exact_dual_excitation(case.beta_dark, q_abs)
+    genv = GasExchangeEnvironment(
+        T, q_abs, co2_Pa, oxygen_Pa, x["pressure_Pa"], x["relative_humidity"], x["vpd_Pa"],
+    )
+    exchange = gas_exchange(case.cyto_photo, genv, case.stomatal_state, case.diffusion, excitation)
+    isfinite(exchange.biochemical_co2) || error("Nonfinite Cytochrome Cc at PPFD = $incident_par")
+    site = LeafEnvironment(T, q_abs, exchange.biochemical_co2, oxygen_Pa)
+    return (; excitation, exchange, site, inputs = fluorescence_inputs(case.cyto_photo, site, excitation))
+end
+flexas_photosystem_inputs(case, incident_par) = flexas_cytochrome_state(case, incident_par).inputs
+
+# The Cytochrome fluorescence model of `case` with another exciton transfer rate KU2 [ns^-1].
+function with_transfer_rate(case, transfer_rate::FT) where {FT<:AbstractFloat}
+    psii = case.fl_cyto.psii
+    return CytochromeFluorescence(;
+        psii = PSIIRateParameters(;
+            psii.fluorescence_rate,
+            psii.constitutive_heat_rate,
+            psii.maximum_photochemical_rate,
+            exciton_transfer_rate = transfer_rate,
+            psii.sustained_quenching_rate,
+        ),
+        psi = case.fl_cyto.psi,
+        yield_tolerance = case.fl_cyto.yield_tolerance,
+    )
+end
+
+# Fs / Fo seen by `observer` for the photosystem `inputs` and fluorescence model `fl`.
+function flexas_fs_over_fo(case, fl, observer, inputs)
+    result = fluorescence(fl, inputs)
+    is_valid(result) || error("Electron flow outside the fluorescence domain at KU2 = $(fl.psii.exciton_transfer_rate)")
+    pam = pam_fluorescence(observer, fl, result, case.alpha2_dark, case.alpha1_dark)
+    is_valid(pam) || error("Invalid PAM observation at KU2 = $(fl.psii.exciton_transfer_rate)")
+    return pam.fs / pam.fo_dark
+end
+
+# Column label of a transfer rate: 2.0 -> "2", 0.5 -> "0p5" (the shortest decimal form of
+# the value in its own precision).
+transfer_rate_label(rate) =
+    isinteger(rate) ? string(Int(rate)) : replace(string(rate), "." => "p")
 
 function flexas_rmse(::Type{FT}, predicted, observed) where {FT<:AbstractFloat}
     n = length(observed)

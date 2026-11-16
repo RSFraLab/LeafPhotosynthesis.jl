@@ -70,6 +70,7 @@ temperature responses from a parameter file with units and provenance.
 | --- | --- |
 | What do the examples produce? | [Example gallery](examples.md) |
 | How do empirical and mechanistic SIF models compare on Flexas et al. (2002)? | [Flexas explorer](flexas_2002_explorer.md), [walkthrough](flexas_2002_water_stress.md) |
+| How do the lake-model relations of Gu et al. (2019) compare with Johnson & Berry (2021)? | [Lake-model fluorescence](lake_model_fluorescence.md) |
 | What belongs in this package, and how will coupling work? | [Design decisions](design.md) |
 | Which Bonan exercises fit this package? | [Bonan examples](bonan_exercises.md) |
 | How do the optional core components fit together? | [Core gas exchange](core_exchange.md) |

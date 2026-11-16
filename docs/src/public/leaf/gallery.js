@@ -267,10 +267,46 @@ function figureSpecifications(precision) {
     description:"Mechanistic Cytochrome + PAM-2000 matches the curvilinear Flexas (2002) inset; pure PSII over-amplifies and Cotton KN(x) has negative slope.",
     rows:fx.flexas_inset_conductance,x:"conductance_mmol",xLabel:"Stomatal conductance g (mmol H₂O m⁻² s⁻¹)",yLabel:"Fs / Fo at PPFD = 750",file:csv("flexas_inset_conductance"),
     series:[{key:"pam2000_combined",label:"Cytochrome + PAM-2000 (combined)"},{key:"pam2000_stomatal_only",label:"Cytochrome + PAM-2000 (stomatal only)",dash:[6,4]},{key:"pure_psii_combined",label:"Pure PSII ΦF2 / ΦF2,o (εF1 = 0)",dash:[2,4]},{key:"empirical_cotton",label:"Empirical Cotton KN",dash:[8,3,2,3]},{key:"empirical_drought",label:"Empirical Drought KN",dash:[4,3]},{key:"observed_flexas",label:"Flexas et al. (2002) Fig. 2 Inset",color:"#222222",pointsOnly:true}]});
+  add("flexas-plots", {id:"flexas-connectivity",title:"PSII connectivity · Fs / Fo for three exciton transfer rates",
+    description:"The same gas exchange, electron flow and open fraction with KU2 = 0.5, 2 and 10 ns⁻¹: connectivity sets the size of the PSII signal. Under severe drought every curve falls below the dark level Fo = 1.",
+    rows:fx.flexas_connectivity_fig2,x:"incident_par",xLabel:"Incident PPFD (μmol photons m⁻² leaf s⁻¹)",yLabel:"PSII Fs / Fo (no PSI in the signal)",file:csv("flexas_connectivity_fig2"),
+    series:[{key:"g150_ku_0p5",label:"g = 150 · KU2 = 0.5"},{key:"g150_ku_2",label:"g = 150 · KU2 = 2 (benchmark)",dash:[8,4]},{key:"g150_ku_10",label:"g = 150 · KU2 = 10",dash:[2,3]},{key:"g10_ku_0p5",label:"g = 10 · KU2 = 0.5",dash:[8,3,2,3]},{key:"g10_ku_2",label:"g = 10 · KU2 = 2",dash:[5,3]},{key:"g10_ku_10",label:"g = 10 · KU2 = 10",dash:[3,2]}]});
+  add("flexas-plots", {id:"flexas-connectivity-rmse",title:"Error against Fig. 2 · KU2 and the PSI weight trade off",
+    description:"RMSE of Fs/Fo over the 49 lit digitized points against the PSI/PSII detector weight, one curve per transfer rate. The minima are similar from KU2 = 1 to 3 ns⁻¹, but only weights of about 1.7 to 2.8 give the dark Fv/Fm of 0.80–0.83 that was measured.",
+    rows:fx.flexas_connectivity_rmse,x:"psi_weight",xLabel:"PSI/PSII detector weight εF1/εF2",yLabel:"RMSE of Fs / Fo",file:csv("flexas_connectivity_rmse"),
+    series:[{key:"rmse_ku_0p5",label:"KU2 = 0.5 ns⁻¹"},{key:"rmse_ku_1",label:"1",dash:[8,4]},{key:"rmse_ku_1p5",label:"1.5",dash:[5,3]},{key:"rmse_ku_2",label:"2 (benchmark)"},{key:"rmse_ku_3",label:"3",dash:[2,3]},{key:"rmse_ku_5",label:"5",dash:[8,3,2,3]},{key:"rmse_ku_10",label:"10",dash:[3,2]}]});
   add("flexas-plots", {id:"flexas-controls",title:"Mechanistic controls · High-CO₂ reversion (Fig. 3C), qT, & DTT (Fig. 5)",
     description:"At g = 39 mmol m⁻² s⁻¹, 1500 ppm CO₂ in N₂ restores Fs/Fo above 1.4, qT raises the connected peak, and blocking qE (KN = 0, DTT) surges past 2.3.",
     rows:fx.flexas_controls,x:"incident_par",xLabel:"Incident PPFD (μmol photons m⁻² leaf s⁻¹)",yLabel:"Normalized steady-state Fs / Fo",file:csv("flexas_controls"),
     series:[{key:"severe_ambient_pam",label:"Severe drought · Ambient air"},{key:"high_co2_reversion_pam",label:"Fig. 3C · 1500 ppm CO₂, low O₂",dash:[6,4]},{key:"severe_qt_pam",label:"State transition qT · Ambient air",dash:[2,4]},{key:"dtt_unquenched",label:"Fig. 5 · DTT unquenched (KN = 0)",dash:[8,3,2,3]}]});
+  const gu = data.gu_2019;
+  add("gu-plots", {id:"gu-photochemical-yield",title:"Gu et al. (2019) Fig. 4c · PSII photochemical yield",
+    description:"Eq. 16 evaluated with the qL and NPQ digitized from Fig. 1c (Vitis vinifera) reproduces the plotted ΦPSII within the digitization error.",
+    rows:gu.gu_vitis_light_response,x:"incident_par",xLabel:"PAR (μmol photons m⁻² s⁻¹)",yLabel:"Electrons per PSII excitation",file:csv("gu_vitis_light_response"),
+    series:[{key:"photochemical_yield",label:"Lake model, Eq. 16"},{key:"paper_photochemical_yield",label:"Digitized Fig. 4c",pointsOnly:true}]});
+  add("gu-plots", {id:"gu-fluorescence-yield",title:"Gu et al. (2019) Fig. 4c · PSII fluorescence yield",
+    description:"The plotted ΦSIF, as digitized, lies 26–33 % above Eq. 14 with the same inputs, consistent with Eq. 14 without the term (1 − ΦPSIImax) in the bracket. The muted light response holds either way.",
+    rows:gu.gu_vitis_light_response,x:"incident_par",xLabel:"PAR (μmol photons m⁻² s⁻¹)",yLabel:"Photons per PSII excitation",file:csv("gu_vitis_light_response"),
+    series:[{key:"fluorescence_yield",label:"Lake model, Eq. 14"},{key:"paper_fluorescence_yield",label:"Digitized Fig. 4c",pointsOnly:true}]});
+  add("gu-plots", {id:"gu-sif-assimilation",title:"Gu et al. (2019) Fig. 2a · Assimilation from fluorescence",
+    description:"Electron flow from fluorescence (Eq. 21, qL = 0.5, ε = 0.8) and gross assimilation through series diffusion (Eq. 24 without chloroplast-envelope resistance, solved by the package gas exchange) for five boundary-layer + stomatal resistances.",
+    rows:gu.gu_sif_assimilation,x:"sif",xLabel:"Observed PSII fluorescence (μmol photons m⁻² s⁻¹)",yLabel:"Gross assimilation (μmol CO₂ m⁻² s⁻¹)",file:csv("gu_sif_assimilation"),
+    series:[{key:"gpp_rsb_025",label:"Resistance 0.25 Pa m² s μmol⁻¹"},{key:"gpp_rsb_050",label:"0.5",dash:[8,4]},{key:"gpp_rsb_075",label:"0.75",dash:[2,3]},{key:"gpp_rsb_100",label:"1.0",dash:[8,3,2,3]},{key:"gpp_rsb_125",label:"1.25",dash:[3,2]}]});
+  const guFlexasSeries = [{key:"observed_fs_over_fo",label:"Flexas (2002) digitized Fig. 2",pointsOnly:true,color:"#333333"},
+    {key:"johnson_berry_pam2000",label:"Johnson & Berry + PAM-2000"},
+    {key:"lake_model_open_fraction",label:"Lake antenna, q₂ of the Cytochrome b₆f model",dash:[6,4]},
+    {key:"lake_measured_open_fraction",label:"Lake relations on PAM quantities, qL(PAR) of Gu et al. Fig. 1c",dash:[2,4]}];
+  const guFlexasFigure = (id, gVal, text) => add("gu-plots", {id,
+    title:`Flexas (2002) Fig. 2 · g = ${gVal} mmol m⁻² s⁻¹ (${text})`,
+    description:"The same electron flow and PAM observer with three fluorescence formulations, at the digitized irradiances. The lake relations need an open fraction consistent with the electron flow, which neither source supplies.",
+    rows:gu.gu_flexas_fig2.filter(r => Math.round(r.conductance_mmol) === gVal),x:"incident_par",xLabel:"Incident PPFD (μmol photons m⁻² leaf s⁻¹)",yLabel:"Normalized steady-state Fs / Fo",file:csv("gu_flexas_fig2"),
+    series:guFlexasSeries});
+  guFlexasFigure("gu-flexas-g150", 150, "well watered");
+  guFlexasFigure("gu-flexas-g10", 10, "severe drought");
+  add("gu-plots", {id:"gu-flexas-inset",title:"Flexas (2002) Fig. 2 Inset · Fs / Fo at PPFD = 750",
+    description:"At one irradiance every formulation falls with drought, because all share the electron flow; only the Johnson & Berry model has the level.",
+    rows:gu.gu_flexas_inset,x:"conductance_mmol",xLabel:"Stomatal conductance g (mmol H₂O m⁻² s⁻¹)",yLabel:"Fs / Fo at PPFD = 750",file:csv("gu_flexas_inset"),
+    series:guFlexasSeries});
   return {specs, texts, equilibrium, temperatures};
 }
 

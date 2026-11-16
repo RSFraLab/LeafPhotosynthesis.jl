@@ -130,6 +130,21 @@ inset_g_start_mmol = 10.0
 inset_g_step_mmol = 5.0
 inset_g_stop_mmol = 160.0
 
+# Sensitivity of the benchmark to two quantities that Johnson & Berry (2021) estimated
+# together from one Populus fremontii leaf and that are carried over here: the exciton
+# transfer rate between PSII units, KU2 (Table 1 value 2.0 above; 0 is separate units, large
+# values approach a lake), and the PSI/PSII detector weight (2.0 above). Nothing is fitted:
+# the grid only shows how the error against the digitized points depends on them.
+[connectivity]
+transfer_rates = [0.5, 1.0, 1.5, 2.0, 3.0, 5.0, 10.0]   # KU2 [ns^-1] of the error grid
+light_response_transfer_rates = [0.5, 2.0, 10.0]        # KU2 [ns^-1] of the light-response curves
+light_response_conductances_mmol = [150.0, 10.0]        # well watered and severe drought
+psi_weight_start = 0.0                                  # PSI/PSII detector weight (psi_sensitivity / psii_sensitivity)
+psi_weight_step = 0.5
+psi_weight_stop = 6.0
+measured_fv_fm_min = 0.80                               # dark-adapted Fv/Fm of all leaves examined (Flexas et al. 2002, p. 234)
+measured_fv_fm_max = 0.83
+
 # Subpixel-digitized observational benchmark from Flexas et al. (2002, Physiol. Plant. 114:234)
 # native embedded Figure 2 bitmap (661 x 455 px): linear tick-centroid calibration across
 # main axes (PPFD = 0..2400, max tick residual 0.54 micromol m^-2 s^-1; Fs/Fo = 0.80..1.50,

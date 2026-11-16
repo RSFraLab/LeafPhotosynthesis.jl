@@ -263,9 +263,37 @@ over from Johnson & Berry's LI-6800 fit on *Populus fremontii*, giving dark
 reproduces the progressive decline in peak `Fs / Fo`, a leftward shift in peak irradiance
 (the model's well-watered peak lies at higher irradiance than the digitized one), high-light
 sub-`Fo` quenching (`Fs / Fo < 1`), curvilinear `Fs / Fo` vs. `g` inset, and Fig. 3C
-high-CO₂ reversion. No parameter is fitted to the digitized points; the
+high-CO₂ reversion. The exciton transfer rate `KU2` sets the size of the PSII signal and trades
+off against the PSI weight, which the measured dark `Fv/Fm` bounds
+([connectivity and the dark level](@ref flexas-connectivity)). No parameter is fitted to the digitized points; the
 [walkthrough](@ref flexas-chosen-inputs) lists the chosen inputs. See the
 [mathematical proof, diagnostics and model comparison](flexas_2002_water_stress.md).
+
+## [Gu et al. (2019) lake-model fluorescence](@id gallery-gu-2019)
+
+Evaluate the PSII lake-model relations of Gu et al. (2019, *New Phytologist* 223:1179–1191)
+between fluorescence, the open reaction-center fraction `qL`, `NPQ` and linear electron flow
+(`LakeModelFluorescence`): their *Vitis vinifera* light response (Figs. 1c and 4c), the
+fluorescence-to-assimilation curves of Fig. 2a, and the Flexas et al. (2002) Figure 2
+beside `CytochromeFluorescence`.
+
+```sh
+julia --project=. examples/gu_2019.jl
+```
+
+```@raw html
+<div class="leaf-app" v-pre>
+<details class="source"><summary>Read the complete Gu et al. (2019) example</summary><pre><code data-source="gu_2019"></code></pre></details>
+<div id="gu-plots" class="plot-grid"></div>
+</div>
+```
+
+The relations reproduce the paper's `ΦPSII` and Fig. 2a; its plotted `ΦSIF`, as digitized,
+is 26–33 % above its own Eq. 14. They do not predict `qL` or `NPQ`: closed with the open
+fraction of the Cytochrome b₆f model in a lake antenna, or with one transferred measured
+`qL(PAR)`, they miss the Flexas curves (`Fs / Fo` RMSE `0.24` and `0.43` against `0.062` for
+`CytochromeFluorescence`, all through the same PAM observer). See the
+[walkthrough](lake_model_fluorescence.md).
 
 ## [Change a parameter, rebuild the figures](@id gallery-reproduce)
 

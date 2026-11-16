@@ -243,7 +243,58 @@ function flexas_2002_curves(::Type{FT}) where {FT<:AbstractFloat}
         )
     end
 
+    # 8. Connectivity of the PSII antennae. The gas exchange, the electron flow and the open
+    #    PSII fraction do not depend on the exciton transfer rate KU2; the PSII fluorescence
+    #    they imply does. Light responses of PSII Fs / Fo (no PSI in the signal) for three
+    #    transfer rates, well watered and under severe drought.
+    cn = ref.settings["connectivity"]
+    curve_rates = FT.(cn["light_response_transfer_rates"])
+    curve_cases = [setup_flexas_2002(FT; g_sw_mmol = g, enable_nonstomatal = true)
+        for g in FT.(cn["light_response_conductances_mmol"])]
+    curve_columns = [Symbol("g", round(Int, Float64(case.g_sw)), "_ku_", transfer_rate_label(rate))
+        for case in curve_cases for rate in curve_rates]
+    connectivity_rows = map(ppfd_grid[2:end]) do ppfd
+        values = [flexas_fs_over_fo(case, with_transfer_rate(case, rate), case.pam_ideal,
+                flexas_photosystem_inputs(case, ppfd))
+            for case in curve_cases for rate in curve_rates]
+        (; incident_par = ppfd, NamedTuple{Tuple(curve_columns)}(Tuple(FT.(values)))...)
+    end
+
+    # 9. Root-mean-square error of Fs / Fo over the lit digitized Figure 2 points for a grid of
+    #    transfer rates and PSI/PSII detector weights: the two quantities that set the size
+    #    of the modeled signal. Each point's photosystem inputs are evaluated once. The PSI
+    #    weight also sets the dark-adapted apparent Fv/Fm, which Flexas et al. measured.
+    grid_rates = FT.(cn["transfer_rates"])
+    psi_weights = collect(cn["psi_weight_start"]:cn["psi_weight_step"]:cn["psi_weight_stop"])
+    lit_points = reduce(vcat, map(eachindex(g_levels)) do idx
+        case = cases_combined[idx]
+        [(; case, row.observed_fs_over_fo, inputs = flexas_photosystem_inputs(case, row.incident_par))
+            for row in digitized_by_g[idx] if !row.dark]
+    end)
+    rmse_columns = Tuple(Symbol("rmse_ku_", transfer_rate_label(rate)) for rate in grid_rates)
+    connectivity_rmse_rows = map(psi_weights) do weight
+        observer = PAMFluorescenceObserver(;
+            psii_sensitivity = ref.pam_pam2000.psii_sensitivity,
+            psi_sensitivity = weight * ref.pam_pam2000.psii_sensitivity,
+        )
+        errors = map(grid_rates) do rate
+            predicted = [flexas_fs_over_fo(p.case, with_transfer_rate(p.case, rate), observer, p.inputs)
+                for p in lit_points]
+            flexas_rmse(FT, predicted, [p.observed_fs_over_fo for p in lit_points])
+        end
+        dark = dark_pam_levels(observer, ref.fl_cyto, ref.alpha2_dark, ref.alpha1_dark)
+        (;
+            psi_weight = weight,
+            psi_share_of_fo = FT(one(FT) - ref.dark_psii.fo / dark.fo),
+            apparent_fv_fm = dark.fv_fm,
+            fv_fm_as_measured = cn["measured_fv_fm_min"] <= dark.fv_fm <= cn["measured_fv_fm_max"],
+            NamedTuple{rmse_columns}(Tuple(errors))...,
+        )
+    end
+
     return Dict(
+        "flexas_connectivity_fig2" => connectivity_rows,
+        "flexas_connectivity_rmse" => connectivity_rmse_rows,
         "flexas_mechanistic_fig2" => mechanistic_rows,
         "flexas_empirical_fig2" => empirical_rows,
         "flexas_inset_conductance" => inset_rows,

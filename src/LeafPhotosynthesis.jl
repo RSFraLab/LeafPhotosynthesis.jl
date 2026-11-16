@@ -29,12 +29,13 @@ export BallBerry, Medlyn, SteadyStateStomata, PrognosticStomata, NoStomatalDynam
 
 export NoFluorescence, RateCompetitionFluorescence, ConstantQuenching, SaturationQuenching,
     CytochromeFluorescence, PSIIRateParameters, PSIRateParameters,
-    StateTransitionRule, PAMFluorescenceObserver
+    LakeModelFluorescence, StateTransitionRule, PAMFluorescenceObserver
 
 export photosynthesize, biochemical_turnover, oxygen_exchange, gas_exchange,
     leaf_tendencies, equilibrium_gas_exchange, assimilation_sensitivity,
     transpiration_sensitivity, fluorescence_inputs, fluorescence,
-    validate_fluorescence_coupling, state_transition_excitation, pam_fluorescence, is_valid
+    electron_flow_from_fluorescence, validate_fluorescence_coupling,
+    state_transition_excitation, pam_fluorescence, is_valid
 
 # Supported API that is rarely typed: abstract types for new components, component-level
 # functions, rate and input bundles, result types and status values. Qualify these as
@@ -56,8 +57,9 @@ export photosynthesize, biochemical_turnover, oxygen_exchange, gas_exchange,
         EquilibriumSolution, EquilibriumStatus, EquilibriumConverged,
         EquilibriumIterationLimit, EquilibriumPrecisionLimit, EquilibriumInvalidInput,
         EquilibriumInvalidBracket, EquilibriumStomataClosed,
-        PSIIFluxInputs, CoupledPhotosystemInputs, RateCompetitionResult,
-        CytochromeFluorescenceResult, PAMFluorescenceResult, FluorescenceStatus,
+        PSIIFluxInputs, CoupledPhotosystemInputs, PSIIOpenFractionInputs,
+        ObservedFluorescenceInputs, RateCompetitionResult, CytochromeFluorescenceResult,
+        LakeModelResult, lake_model_yields, PAMFluorescenceResult, FluorescenceStatus,
         FluorescenceLit, FluorescenceDark, FluorescenceInvalidInput,
         FluorescenceIncompatibleRates, quenching_rate, maximum_photochemical_yield,
         psi_maximum_photochemical_yield, psii_maximum_photochemical_yield,
@@ -98,6 +100,7 @@ include("gas_exchange_sensitivities.jl")
 include("oxygen_exchange.jl")
 include("cytochrome_photosynthesis.jl")
 include("cytochrome_fluorescence.jl")
+include("lake_model_fluorescence.jl")
 include("leaf_model.jl")
 include("cytochrome_state_transitions.jl")
 include("pam_fluorescence.jl")

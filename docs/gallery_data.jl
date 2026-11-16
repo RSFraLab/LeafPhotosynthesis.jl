@@ -18,9 +18,10 @@ include(joinpath(EXAMPLES, "fluorescence.jl"))
 include(joinpath(EXAMPLES, "cytochrome_stress.jl"))
 include(joinpath(EXAMPLES, "johnson_berry_2021.jl"))
 include(joinpath(EXAMPLES, "flexas_2002.jl"))
+include(joinpath(EXAMPLES, "gu_2019.jl"))
 
 const SOURCES = ("one_leaf", "bonan_11_1", "core_exchange", "stomatal_response", "biochemical_turnover",
-    "oxygen_response", "fluorescence", "cytochrome_stress", "johnson_berry_2021", "flexas_2002")
+    "oxygen_response", "fluorescence", "cytochrome_stress", "johnson_berry_2021", "flexas_2002", "gu_2019")
 
 # Tiny serializer for this documentation's strings, finite numbers, and tables.
 # No JSON/plotting dependency is added to the physiology package.
@@ -57,6 +58,7 @@ function write_gallery_data(dir)
         cytochrome_stress = cytochrome_stress_curves(FT)
         johnson_berry = johnson_berry_2021_curves(FT)
         flexas_2002 = flexas_2002_curves(FT)
+        gu_2019 = gu_2019_curves(FT)
         turnover_settings = read_bonan_parameters(FT, joinpath(parameter_dir, "turnover.toml"))
         result = equilibrium_example(FT, biochemistry, settings)
         is_valid(result.exchange) || error("Nonconverged equilibrium in the $FT gallery example")
@@ -66,14 +68,14 @@ function write_gallery_data(dir)
             dA_dgs = result.carbon.dnet_assimilation_dgs, dE_dgs = result.water.dtranspiration_dgs,
             iterations = result.exchange.iterations, converged = is_valid(result.exchange))
         data[string(FT)] = (; curves, stomata, turnover, turnover_settings, oxygen_response = oxygen_response_rows,
-            fluorescence = fluorescence_rows, cytochrome_stress, johnson_berry, flexas_2002, equilibrium, biochemistry, settings)
+            fluorescence = fluorescence_rows, cytochrome_stress, johnson_berry, flexas_2002, gu_2019, equilibrium, biochemistry, settings)
         tables = Dict{String,Any}(name => rows for (name, rows) in curves)
         tables["stomata"] = stomata
         tables["equilibrium"] = [equilibrium]
         tables["turnover"] = turnover
         tables["oxygen_response"] = oxygen_response_rows
         tables["fluorescence"] = fluorescence_rows
-        merge!(tables, Dict(cytochrome_stress), Dict(johnson_berry), Dict(flexas_2002))
+        merge!(tables, Dict(cytochrome_stress), Dict(johnson_berry), Dict(flexas_2002), Dict(gu_2019))
         write_tables(joinpath(dir, "data", string(FT)), tables)
     end
     sources = Dict(name => read(joinpath(EXAMPLES, name * ".jl"), String) for name in SOURCES)
@@ -163,8 +165,10 @@ function check_gallery_data(payloads, dir, script_dir, page_dir)
         end
         # Figure ids of the gallery; "paper" is the id of the background plugin.
         figure_ids = setdiff(Set(m.captures[1] for m in eachmatch(r"\bid:\s*\"([a-z0-9-]+)\"", gallery_js)), ["paper"])
+        # The two Gu et al. (2019) Flexas figures pass their id to one shared specification.
+        union!(figure_ids, m.captures[1] for m in eachmatch(r"guFlexasFigure\(\"([a-z0-9-]+)\"", gallery_js))
         @testset "figures embedded in pages" begin
-            @test length(figure_ids) == 25
+            @test length(figure_ids) == 33
             for page in filter(endswith(".md"), readdir(page_dir))
                 text = read(joinpath(page_dir, page), String)
                 for m in eachmatch(r"data-figures=\"([^\"]+)\"", text), id in split(m.captures[1])
@@ -230,7 +234,21 @@ function check_values(d, FT)
         @test ctrl[end].high_co2_reversion_pam > 1.3
         @test ctrl[end].dtt_unquenched > 2.3
         @test length(fx["flexas_formulation_summary"]) == 6
+        connectivity, grid = fx["flexas_connectivity_fig2"], fx["flexas_connectivity_rmse"]
+        @test all(r -> r.g150_ku_0p5 >= r.g150_ku_2 >= r.g150_ku_10 > 1, connectivity)
+        @test connectivity[end].g10_ku_2 < 1
+        @test argmin(r -> r.rmse_ku_1, grid).psi_weight > argmin(r -> r.rmse_ku_3, grid).psi_weight
         @test length(fx["flexas_conductance_summary"]) == 6
+
+        gu = d.gu_2019
+        @test length(gu["gu_vitis_light_response"]) == 8
+        @test length(gu["gu_flexas_fig2"]) == 49
+        rmse = Dict(r.formulation => r.lit_fig2_rmse for r in gu["gu_flexas_summary"])
+        @test rmse["johnson_berry_pam2000"] < rmse["lake_model_open_fraction"] <
+            rmse["lake_measured_open_fraction"]
+        @test length(gu["gu_flexas_inset"]) == 6
+        @test all(r -> r.fluorescence_yield < r.paper_fluorescence_yield, gu["gu_vitis_light_response"])
+        @test abs(gu["gu_sif_assimilation"][end].gpp_rsb_100 - 17.47) < 0.1
     end
 end
 

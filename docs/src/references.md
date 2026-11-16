@@ -59,6 +59,10 @@ output hashes separately from this equation-based validation.
   ATP–NADPH coupling, connected-units PSII feedback quenching, and oxidized-``\mathrm{P700^+}``
   PSI fluorescence (`jenjohnson/johnson-berry-2021-pres`, MIT license, inspected for
   equation and parameter verification only; no upstream files bundled).
+- [Gu, Han, Wood, Chang, and Sun (2019)](https://doi.org/10.1111/nph.15796):
+  PSII lake-model relations between fluorescence yield, the open reaction-center fraction
+  ``q_L``, `NPQ` and linear electron flow (Eqs. 14, 16, 17, 20, 21), and the light-reaction
+  form of C3 assimilation (Eqs. 23, 24). Figs. 1c, 2a and 4c were digitized for the tests.
 - [Flexas et al. (2002)](https://doi.org/10.1034/j.1399-3054.2002.1140209.x) and
   Escalona, Flexas & Medrano (1999, *Aust. J. Plant Physiol.* 26:421–433):
   steady-state normalized chlorophyll fluorescence (``F_s / F_o``) light responses,

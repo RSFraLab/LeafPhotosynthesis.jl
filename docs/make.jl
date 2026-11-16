@@ -46,6 +46,7 @@ const PAGES = Any[
         "PSII fluorescence" => "fluorescence.md",
         "Cytochrome b6f stress" => "cytochrome_fluorescence.md",
         "Flexas (2002) water-stress SIF" => "flexas_2002_water_stress.md",
+        "Lake-model fluorescence (Gu 2019)" => "lake_model_fluorescence.md",
     ],
     "API reference" => [
         "Overview" => "api/index.md",

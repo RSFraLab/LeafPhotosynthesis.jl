@@ -1,0 +1,84 @@
+# Lake-model PSII fluorescence relations and their evaluation data from:
+#   Gu L, Han J, Wood JD, Chang CY-Y, Sun Y (2019), "Sun-induced Chl fluorescence and its
+#   importance for biophysical modeling of photosynthesis based on light reactions",
+#   New Phytologist 223:1179-1191, doi:10.1111/nph.15796 (Eqs. 14, 16, 17, 21, 24; Figs. 1c, 2a, 4c).
+# The Vitis vinifera values of their Figs. 1c and 4c are attributed by them to
+#   Flexas J et al. (2002), Physiologia Plantarum 114:231-240 (see flexas_2002.toml);
+# the water-stress treatment of that light response is not stated in Gu et al. (2019).
+#
+# No value in this file was fitted. The comparison against the Flexas et al. (2002) Figure 2
+# curves reuses flexas_2002.toml unchanged.
+
+# Gu et al. (2019), Fig. 4 caption (Vitis vinifera) and Fig. 2 caption.
+[lake_model]
+maximum_photochemical_yield = 0.83              # Phi_PSIImax of dark-adapted Vitis vinifera leaves (Fig. 4 caption)
+heat_to_fluorescence_ratio = 19.0               # k_DF = k_D / k_F (Fig. 2 and Fig. 4 captions)
+
+# Gu et al. (2019), Fig. 2 caption: values held fixed unless a panel varies them.
+# The chloroplast-envelope resistance r_ch = 0 there, so Eq. 24 reduces to series diffusion
+# through r_sb (leaf boundary layer and stomata) and r_wp (cell wall and plasmalemma).
+[figure2]
+open_fraction = 0.5                             # q_L
+escape_probability = 0.8                        # epsilon
+psii_fraction_of_sif = 1.0                      # PSI emission excluded (Eq. 2)
+ambient_co2_Pa = 40.0                           # C_a [Pa]
+gamma_star_Pa = 3.75                            # Gamma* [Pa]
+wall_resistance = 1.0                           # r_wp [Pa m^2 s micromol^-1]
+respiration = 1.0                               # R_d [micromol CO2 m^-2 s^-1]
+electrons_per_carboxylation = 4.0               # Eq. 4 denominator 4 C_c + 8 Gamma*
+oxygenation_cost = 2.0                          # 8 / 4
+sif_start = 0.0                                 # micromol photons m^-2 s^-1
+sif_step = 0.25
+sif_stop = 5.0
+boundary_stomatal_resistances = [0.25, 0.5, 0.75, 1.0, 1.25] # r_sb of Fig. 2a [Pa m^2 s micromol^-1]
+
+# Settings that make the package's C3 leaf evaluate Eq. 4 with a prescribed electron flow:
+# the electron flow enters as the capacity jmax, and light and Rubisco are far from limiting.
+# They select the electron-limited branch and do not otherwise enter Fig. 2 (the paper
+# states neither a pressure nor Rubisco kinetics for it).
+[figure2_host]
+pressure_Pa = 101325.0                          # converts Pa-based resistances to molar conductances
+mole_to_micromole = 1000000.0                   # micromol mol^-1
+diffusivity_ratio = 1.6                         # H2O / CO2 stomatal conductance ratio (cancels: r_sb is a CO2 resistance)
+temperature_K = 298.15                          # constant responses below; value not used by them
+oxygen_Pa = 21000.0                             # enters only the non-limiting Rubisco rate
+relative_humidity = 0.5                         # not read with prescribed conductance
+vpd_Pa = 1584.0                                 # not read with prescribed conductance
+nonlimiting_vcmax = 1000000.0                   # micromol CO2 m^-2 s^-1, far above any rate of the figure
+kc_Pa = 26.0                                    # enters only the non-limiting Rubisco rate
+ko_Pa = 17900.0                                 # enters only the non-limiting Rubisco rate
+nonlimiting_absorbed_par = 100000.0             # micromol photons m^-2 s^-1, far above J / (beta Phi_PSIImax)
+psii_fraction = 0.5                             # beta, typical value of the paper (Box 2)
+
+# Digitized from the vector graphics of Fig. 2a rendered at 300 dpi: right ends of the five
+# curves at SIF = 5 (axis ticks GPP = 0 and 30 at pixel rows 552 and 49; +-1 pixel = +-0.06).
+[digitized_figure2a]
+sif = 5.0
+gpp = [25.46, 22.07, 19.44, 17.47, 15.74]       # micromol CO2 m^-2 s^-1, for r_sb in the order above
+
+# Digitized from Fig. 1c (vector graphics rendered at 400 dpi; marker centroids against the
+# axis ticks PAR = 0 and 1400, NPQ = 0 and 1.6, q_L = 0.3 and 0.8; +-1 pixel = +-1.6 in PAR,
+# +-0.003 in NPQ, +-0.001 in q_L). The fourth NPQ marker is hidden by the q_L marker; its
+# value is taken from the Fig. 4c combination (1 - Phi_PSIImax) NPQ + Phi_PSIImax q_L = 0.540.
+[digitized_figure1c]
+par = [47.9, 104.8, 214.4, 327.1, 435.7, 563.9, 813.9, 1242.8] # micromol photons m^-2 s^-1
+open_fraction = [0.789, 0.743, 0.603, 0.508, 0.461, 0.414, 0.382, 0.364]
+npq = [0.224, 0.248, 0.587, 0.694, 0.844, 1.099, 1.503, 1.771]
+dark_open_fraction = 1.0                        # q_L of a dark-adapted leaf (all centers open), used below the first point
+# These are PAM quantities of one leaf of unstated treatment (apparent values of a signal
+# that contains PSI); the Flexas comparison transfers this q_L(PAR) to every drought stage.
+
+# Digitized from Fig. 4c (embedded bitmap; marker centroids against the axis ticks
+# Phi_SIF = 0 and 0.10, Phi_PSII = 0.3 and 0.8; +-1 pixel = +-0.00014 and +-0.0007).
+# As digitized, the plotted Phi_SIF is 26-33% above Eq. 14 evaluated with the Fig. 1c inputs
+# and follows (1 - Phi_PSIImax) / ((1 + k_DF) [(1 - Phi_PSIImax) NPQ + Phi_PSIImax q_L]),
+# i.e. Eq. 14 without the term (1 - Phi_PSIImax) in the bracket, within 1.5%; the cause of
+# this apparent figure/equation inconsistency is not established. The plotted Phi_PSII
+# matches Eq. 16.
+[digitized_figure4c]
+photochemical_yield = [0.760, 0.745, 0.651, 0.594, 0.550, 0.491, 0.427, 0.391]
+fluorescence_yield = [0.01240, 0.01306, 0.01424, 0.01583, 0.01627, 0.01613, 0.01492, 0.01425]
+
+[validation]
+float32_yield_tolerance = 0.00000095367431640625
+float64_yield_tolerance = 0.0000000000000017763568394002505

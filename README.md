@@ -59,7 +59,8 @@ julia --project=. -e 'using Pkg; Pkg.test()'
 ```
 
 The suite is split into named groups (`core_exchange`, `turnover`, `equilibrium`, `oxygen`,
-`fluorescence`, `leaf`, `excitation`, `cytochrome`, `flexas`, `qa`, `jet`; the table is at
+`fluorescence`, `leaf`, `excitation`, `cytochrome`, `flexas`, `lake_fluorescence`, `qa`, `jet`; the
+table is at
 the top of [`test/runtests.jl`](test/runtests.jl)). Each group runs in its own module and can
 run alone:
 

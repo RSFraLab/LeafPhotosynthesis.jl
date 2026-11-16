@@ -9,12 +9,14 @@ from the same photosystem excitations and realized electron flows used by carbon
 assimilation, either through empirical PSII rate competition with replaceable
 non-photochemical quenching (`RateCompetitionFluorescence`, `ConstantQuenching`,
 `SaturationQuenching`) or through coupled PSII/PSI + Cytochrome ``b_6f`` redox
-feedback (`CytochromeFluorescence`). Closed-form LHCII state transitions (`qT`,
+feedback (`CytochromeFluorescence`), or through the PSII lake-model relations of Gu et al.
+(2019), which take the open reaction-center fraction as an input and also return the linear
+electron flow from an observed fluorescence flux (`LakeModelFluorescence`). Closed-form LHCII state transitions (`qT`,
 `StateTransitionRule`) and apparent Pulse-Amplitude-Modulated fluorometry with
 PSI detector leakage (`PAMFluorescenceObserver`) compose directly on top of the
 steady-state photosystem states.
 
-Walkthroughs: [PSII fluorescence](../fluorescence.md), [Cytochrome b6f stress fluorescence](../cytochrome_fluorescence.md), [Flexas (2002) water-stress SIF](../flexas_2002_water_stress.md).
+Walkthroughs: [PSII fluorescence](../fluorescence.md), [Cytochrome b6f stress fluorescence](../cytochrome_fluorescence.md), [Flexas (2002) water-stress SIF](../flexas_2002_water_stress.md), [Lake-model fluorescence](../lake_model_fluorescence.md).
 
 
 ## Fluorescence Models & Quenching Laws
@@ -24,6 +26,7 @@ LeafPhotosynthesis.AbstractFluorescence
 NoFluorescence
 RateCompetitionFluorescence
 CytochromeFluorescence
+LakeModelFluorescence
 LeafPhotosynthesis.AbstractQuenching
 ConstantQuenching
 SaturationQuenching
@@ -37,6 +40,8 @@ PSIIRateParameters
 PSIRateParameters
 LeafPhotosynthesis.PSIIFluxInputs
 LeafPhotosynthesis.CoupledPhotosystemInputs
+LeafPhotosynthesis.PSIIOpenFractionInputs
+LeafPhotosynthesis.ObservedFluorescenceInputs
 fluorescence_inputs
 LeafPhotosynthesis.maximum_photochemical_yield
 LeafPhotosynthesis.psii_maximum_photochemical_yield
@@ -51,12 +56,15 @@ validate_fluorescence_coupling
 ```@docs
 LeafPhotosynthesis.RateCompetitionResult
 LeafPhotosynthesis.CytochromeFluorescenceResult
+LeafPhotosynthesis.LakeModelResult
 LeafPhotosynthesis.FluorescenceStatus
 LeafPhotosynthesis.FluorescenceLit
 LeafPhotosynthesis.FluorescenceDark
 LeafPhotosynthesis.FluorescenceInvalidInput
 LeafPhotosynthesis.FluorescenceIncompatibleRates
 fluorescence
+LeafPhotosynthesis.lake_model_yields
+electron_flow_from_fluorescence
 ```
 
 ## Closed-Form LHCII State Transitions (qT)

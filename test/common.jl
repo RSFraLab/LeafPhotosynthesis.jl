@@ -13,6 +13,7 @@ using LeafPhotosynthesis: AbstractPhotosynthesis, AbstractExcitation, AbstractQu
     CoupledPhotosystemInputs, RateCompetitionResult, CytochromeFluorescenceResult,
     PAMFluorescenceResult, FluorescenceLit, FluorescenceDark, FluorescenceInvalidInput,
     FluorescenceIncompatibleRates, quenching_rate, maximum_photochemical_yield,
+    PSIIOpenFractionInputs, ObservedFluorescenceInputs, LakeModelResult, lake_model_yields, C3Rates,
     psi_maximum_photochemical_yield, psii_maximum_photochemical_yield,
     minimum_psii_partition, dark_balanced_psii_partition, state_transition_partition,
     dark_pam_levels
@@ -34,6 +35,8 @@ include(joinpath(EXAMPLES, "setup", "cytochrome_stress.jl"))
 # flexas_2002_curves, setup_flexas_2002, evaluate_flexas_point and, through its setup,
 # setup_johnson_berry_2021 and exact_dual_excitation
 include(joinpath(EXAMPLES, "flexas_2002.jl"))
+# gu_2019_curves, setup_gu_2019, measured_open_fraction, gross_assimilation_from_electron_flow
+include(joinpath(EXAMPLES, "gu_2019.jl"))
 
 # Settings of Bonan's supplemental program 11.1, used by several groups.
 const parameter_path = joinpath(EXAMPLES, "parameters", "bonan_11_1.toml")

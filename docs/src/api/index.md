@@ -20,7 +20,7 @@ abstract types) are called as `LeafPhotosynthesis.name` or imported with
 | [Temperature Responses & Photorespiratory Compensation](temperature_and_compensation.md) | [Bonan 11.1 curves](../bonan_exercises.md), [Oxygen response](../oxygen_response.md) |
 | [Excitation, Electron Transport & Stoichiometry](excitation_and_electron_transport.md) | [Excitation contract](../excitation.md), [Cytochrome b6f mechanics](../cytochrome_fluorescence.md) |
 | [Carbon Assimilation, Rate Limitation & Turnover](carbon_assimilation_and_turnover.md) | [Biochemical turnover](../biochemical_turnover.md), [Bonan 11.1 curves](../bonan_exercises.md) |
-| [Chlorophyll Fluorescence, State Transitions & PAM](fluorescence_and_pam.md) | [PSII fluorescence](../fluorescence.md), [Cytochrome b6f stress fluorescence](../cytochrome_fluorescence.md), [Flexas (2002) water-stress SIF](../flexas_2002_water_stress.md) |
+| [Chlorophyll Fluorescence, State Transitions & PAM](fluorescence_and_pam.md) | [PSII fluorescence](../fluorescence.md), [Cytochrome b6f stress fluorescence](../cytochrome_fluorescence.md), [Lake-model fluorescence](../lake_model_fluorescence.md), [Flexas (2002) water-stress SIF](../flexas_2002_water_stress.md) |
 | [Stomatal Conductance, Gas Diffusion, Equilibrium & Oxygen](stomata_diffusion_and_equilibrium.md) | [Core exchange](../core_exchange.md), [Equilibrium & sensitivities](../equilibrium_and_sensitivities.md), [Oxygen response](../oxygen_response.md) |
 
 ## Conventions
