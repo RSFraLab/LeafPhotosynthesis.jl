@@ -398,9 +398,11 @@ measured `0.80`–`0.83`, and pulls their well-watered peak (`1.46`) down to abo
 The observer is an assumption throughout: weights carried over from another instrument and
 species, the measuring-beam fractions set equal to the actinic dark-balanced ones for every
 formulation, and fixed weights standing in for wavelength-dependent emission, reabsorption
-and detector response. Its `39 %` PSI share of dark ``F_o`` is above the roughly `30 %`
-often cited for C3 leaves with detection beyond `700 nm` (Pfündel et al. 2013, cited by
-Johnson & Berry 2021) and should not be read as a general correction for this instrument.
+and detector response. Its `39 %` PSI share of dark ``F_o`` lies inside the range of published estimates for
+detection beyond `700 nm`, which is wide: `24 %` in *Arabidopsis* (Pfündel et al. 2013),
+about `30 %` in C3 leaves (Pfündel 1998), `41 %` computed for an RG9 long-pass filter from
+isolated spinach PSI and PSII spectra (Bos et al. 2023) and `45 %` in cherry laurel
+(Pfündel 2021). It should not be read as a general correction for this instrument.
 The lake-model rows of the [Gu et al. comparison](lake_model_fluorescence.md) pass through
 the same observer.
 
