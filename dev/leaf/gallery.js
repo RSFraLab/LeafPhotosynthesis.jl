@@ -271,6 +271,28 @@ function figureSpecifications(precision) {
     description:"The same gas exchange, electron flow and open fraction with KU2 = 0.5, 2 and 10 ns⁻¹: connectivity sets the size of the PSII signal. Under severe drought every curve falls below the dark level Fo = 1.",
     rows:fx.flexas_connectivity_fig2,x:"incident_par",xLabel:"Incident PPFD (μmol photons m⁻² leaf s⁻¹)",yLabel:"PSII Fs / Fo (no PSI in the signal)",file:csv("flexas_connectivity_fig2"),
     series:[{key:"g150_ku_0p5",label:"g = 150 · KU2 = 0.5"},{key:"g150_ku_2",label:"g = 150 · KU2 = 2 (benchmark)",dash:[8,4]},{key:"g150_ku_10",label:"g = 150 · KU2 = 10",dash:[2,3]},{key:"g10_ku_0p5",label:"g = 10 · KU2 = 0.5",dash:[8,3,2,3]},{key:"g10_ku_2",label:"g = 10 · KU2 = 2",dash:[5,3]},{key:"g10_ku_10",label:"g = 10 · KU2 = 10",dash:[3,2]}]});
+  const fxObserved = (gVal, color) => ({
+    label: `Flexas (2002) Fig. 2 · g = ${gVal} (dots)`,
+    data: fx.flexas_digitized_fig2.filter(r => Math.round(r.conductance_mmol) === gVal && !r.dark).map(r => ({x: r.incident_par, y: r.observed_fs_over_fo})),
+    borderColor: color, backgroundColor: color, pointBackgroundColor: color, pointBorderColor: "#ffffff", pointBorderWidth: 0.9,
+    showLine: false, pointRadius: 3.6, pointHoverRadius: 5.2, pointHitRadius: 8, tension: 0,
+  });
+  add("flexas-plots", {id:"flexas-connectivity-detector",title:"PSII connectivity · the same curves through the assumed PAM observer",
+    description:"A constant PSI level (39 % of dark Fo) is added to Fs and to Fo. It compresses the PSII signal around Fo = 1 without moving the crossing; only this signal is comparable with the measured dots.",
+    rows:fx.flexas_connectivity_detector_fig2,x:"incident_par",xLabel:"Incident PPFD (μmol photons m⁻² leaf s⁻¹)",yLabel:"Detector Fs / Fo (PSII + PSI)",file:csv("flexas_connectivity_detector_fig2"),
+    extraDatasets:[fxObserved(150, "#222222"), fxObserved(10, "#8c3b5a")],extraToggleLabel:"Flexas (2002) digitized Fig. 2 (dots)",
+    series:[{key:"g150_ku_0p5",label:"g = 150 · KU2 = 0.5"},{key:"g150_ku_2",label:"g = 150 · KU2 = 2 (benchmark)",dash:[8,4]},{key:"g150_ku_10",label:"g = 150 · KU2 = 10",dash:[2,3]},{key:"g10_ku_0p5",label:"g = 10 · KU2 = 0.5",dash:[8,3,2,3]},{key:"g10_ku_2",label:"g = 10 · KU2 = 2",dash:[5,3]},{key:"g10_ku_10",label:"g = 10 · KU2 = 10",dash:[3,2]}]});
+  const fxDetectorSeries = [{key:"observed_fs_over_fo",label:"Flexas (2002) digitized Fig. 2",pointsOnly:true,color:"#222222"},
+    {key:"cytochrome_detector",label:"Cytochrome b₆f · through the observer"},{key:"cytochrome_psii",label:"Cytochrome b₆f · PSII only",dash:[6,4]},
+    {key:"drought_detector",label:"Drought KN(x) + prescribed PSI"},{key:"drought_psii",label:"Drought KN(x) · PSII only",dash:[6,4]},
+    {key:"cotton_detector",label:"Cotton KN(x) + prescribed PSI"},{key:"cotton_psii",label:"Cotton KN(x) · PSII only",dash:[6,4]}];
+  const fxDetectorFigure = (id, gVal, text) => add("flexas-plots", {id,
+    title:`PSII yield and detector signal · g = ${gVal} mmol m⁻² s⁻¹ (${text})`,
+    description:"Each formulation as the PSII yield ratio (dashed) and with the PSI level of the assumed observer added (solid), at the digitized irradiances. For the empirical fits the solid lines are a sensitivity case: they were calibrated on signals that contained PSI.",
+    rows:fx.flexas_detector_fig2.filter(r => Math.round(r.conductance_mmol) === gVal),x:"incident_par",xLabel:"Incident PPFD (μmol photons m⁻² leaf s⁻¹)",yLabel:"Fs / Fo",file:csv("flexas_detector_fig2"),
+    series:fxDetectorSeries});
+  fxDetectorFigure("flexas-detector-g150", 150, "well watered");
+  fxDetectorFigure("flexas-detector-g10", 10, "severe drought");
   add("flexas-plots", {id:"flexas-connectivity-rmse",title:"Error against Fig. 2 · KU2 and the PSI weight trade off",
     description:"RMSE of Fs/Fo over the 49 lit digitized points against the PSI/PSII detector weight, one curve per transfer rate. The minima are similar from KU2 = 1 to 3 ns⁻¹, but only weights of about 1.7 to 2.8 give the dark Fv/Fm of 0.80–0.83 that was measured.",
     rows:fx.flexas_connectivity_rmse,x:"psi_weight",xLabel:"PSI/PSII detector weight εF1/εF2",yLabel:"RMSE of Fs / Fo",file:csv("flexas_connectivity_rmse"),
