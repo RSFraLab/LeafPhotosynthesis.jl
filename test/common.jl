@@ -16,7 +16,7 @@ using LeafPhotosynthesis: AbstractPhotosynthesis, AbstractExcitation, AbstractQu
     PSIIOpenFractionInputs, ObservedFluorescenceInputs, LakeModelResult, lake_model_yields, C3Rates,
     psi_maximum_photochemical_yield, psii_maximum_photochemical_yield,
     minimum_psii_partition, dark_balanced_psii_partition, state_transition_partition,
-    dark_pam_levels
+    dark_pam_levels, detector_level
 
 # The example code is the test fixture. The physics tests build their leaves, parameter sets
 # and response curves with the functions of examples/, the same code that produces the

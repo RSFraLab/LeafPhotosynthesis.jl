@@ -1,5 +1,5 @@
 using LeafPhotosynthesis: psi_maximum_photochemical_yield, dark_balanced_psii_partition,
-    state_transition_partition, dark_pam_levels
+    state_transition_partition, dark_pam_levels, detector_level
 isdefined(@__MODULE__, :read_bonan_parameters) || include(joinpath(@__DIR__, "read_parameters.jl"))
 isdefined(@__MODULE__, :write_tables) || include(joinpath(@__DIR__, "write_tables.jl"))
 isdefined(@__MODULE__, :exact_dual_excitation) || include(joinpath(@__DIR__, "johnson_berry_2021.jl"))
@@ -201,6 +201,8 @@ function setup_flexas_2002(::Type{FT}; g_sw_mmol::Union{Nothing,FT} = nothing, e
         alpha1_dark,
         dark_pam,
         dark_psii,
+        # PSI part of the dark detector level Fo / S (the two observers share the PSII weight).
+        psi_dark_level = dark_pam.fo - dark_psii.fo,
         stomatal_state = StomatalState(g_sw * exp_cfg["mmol_to_mol"]),
         settings,
     )
@@ -237,6 +239,10 @@ function evaluate_flexas_point(
             cotton_fs_over_fo = nothing,
             drought_fs_over_fo = nothing,
             unquenched_fs_over_fo = nothing,
+            cotton_detector_fs_over_fo = nothing,
+            drought_detector_fs_over_fo = nothing,
+            psi_share_of_fs = nothing,
+            psi_share_of_fm_prime = nothing,
             net_assimilation = ge_dark.net_assimilation,
             biochemical_co2 = ge_dark.biochemical_co2,
             psii_open_fraction = one(FT),
@@ -302,6 +308,15 @@ function evaluate_flexas_point(
         cotton_fs_over_fo = FT(r_cot.fluorescence_yield / case.empirical_fo_yield),
         drought_fs_over_fo = FT(r_drt.fluorescence_yield / case.empirical_fo_yield),
         unquenched_fs_over_fo = FT(r_unq.fluorescence_yield / case.empirical_fo_yield),
+        # The PSII-only empirical yields as the PAM-2000 observer would see them, with the
+        # PSI emission of the Cytochrome leaf at the same light.
+        cotton_detector_fs_over_fo = FT(detector_fs_over_fo(
+            case, r_cot.fluorescence_yield, case.empirical_fo_yield, r_cyto.psi_fluorescence_yield)),
+        drought_detector_fs_over_fo = FT(detector_fs_over_fo(
+            case, r_drt.fluorescence_yield, case.empirical_fo_yield, r_cyto.psi_fluorescence_yield)),
+        # Share of PSI in the detector levels Fs and Fm' (the ideal observer sees PSII only).
+        psi_share_of_fs = FT(one(FT) - p_psii.fs / p_pam.fs),
+        psi_share_of_fm_prime = FT(one(FT) - p_psii.fm_prime / p_pam.fm_prime),
         net_assimilation = ge_cyto.net_assimilation,
         biochemical_co2 = ge_cyto.biochemical_co2,
         psii_open_fraction = r_cyto.psii_open_fraction,
@@ -360,6 +375,18 @@ function flexas_fs_over_fo(case, fl, observer, inputs)
     pam = pam_fluorescence(observer, fl, result, case.alpha2_dark, case.alpha1_dark)
     is_valid(pam) || error("Invalid PAM observation at KU2 = $(fl.psii.exciton_transfer_rate)")
     return pam.fs / pam.fo_dark
+end
+
+# Fs / Fo that the PAM-2000 observer of `case` reports for the PSII fluorescence yield of
+# any model (`psii_yield` in the light, `psii_dark_yield` for the dark-adapted Fo) together
+# with a PSI yield in the light (`psi_yield`) and the dark PSI level of the Cytochrome leaf.
+# The measuring light is absorbed with the dark fractions of the benchmark in both states.
+function detector_fs_over_fo(case, psii_yield, psii_dark_yield, psi_yield)
+    observer = case.pam_pam2000
+    lit = detector_level(observer, case.alpha2_dark, psii_yield, case.alpha1_dark, psi_yield)
+    dark = detector_level(observer, case.alpha2_dark, psii_dark_yield, zero(psi_yield), zero(psi_yield)) +
+        case.psi_dark_level
+    return lit / dark
 end
 
 # Column label of a transfer rate: 2.0 -> "2", 0.5 -> "0p5" (the shortest decimal form of

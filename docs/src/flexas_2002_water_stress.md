@@ -262,6 +262,20 @@ show the full rise, a [lake](lake_model_fluorescence.md) shows none.
 **Size of the signal.** For the well-watered leaf (``g_{sw} = 150``) the peak PSII
 ``F_s/F_o`` is `2.53`, `1.72` and `1.22` for ``K_{U2} = 0.5``, `2` and `10 ns⁻¹`.
 
+**What the assumed observer predicts.** These are PSII yields. A fluorometer adds the PSI
+level to ``F_s`` and to ``F_o``; with the benchmark's observer that level is constant and
+equal to ``c = 0.63`` times the dark PSII level, so a PSII ratio ``R`` is reported as
+``(R + c)/(1 + c)``, with ``R_{det} - 1 = (R - 1)/(1 + c)``. The peaks above become `1.94`,
+`1.44` and `1.13`; only these compare with the measured `1.45`. The constant level holds for
+this observer: PSI yield independent of P700 state (``K_{X1} = K_{P1}``), static antenna
+fractions, fixed optics, and no PSI fluorescence dynamics from acceptor-side closure. A
+PSI level that differs between the dark reference and the light (state transitions) would
+also move the crossing of ``F_o``.
+
+```@raw html
+<div class="leaf-app" data-leaf-app="figures" data-figures="flexas-connectivity-detector"></div>
+```
+
 **Below ``F_o``.** Under the same assumptions and whatever ``K_{U2}``, the PSII yield is
 below its dark level exactly when
 ``K_N > K_{P2}(1 - \Phi_{P2}) - (K_{F2} + K_{D2})\,\Phi_{P2}``: a low realized photochemical
@@ -269,7 +283,9 @@ yield relative to the absorbed excitation, with strong quenching. Low net assimi
 does not suffice, because photorespiration keeps consuming electrons. Well watered, the
 curves stay above ``F_o`` up to PPFD `2100` for all three transfer rates. Under severe
 drought (``g_{sw} = 10``) they are below it from PPFD `450`, `375` and `250` on (first
-sampled points of the 25-unit grid) and end at `0.58`, `0.55` and `0.49`. No drought
+sampled points of the 25-unit grid) and end at `0.58`, `0.55` and `0.49` (`0.75`, `0.73`
+and `0.68` as the observer predicts them: a constant PSI level compresses the signal around
+``F_o`` but leaves the crossing where it is). No drought
 parameterization is needed for this: in our reproduction of the Case 9 simulation of
 Johnson & Berry (their Fig. 8c; chloroplast CO₂ prescribed at `20 Pa`, static antenna) the
 yield at ``K_{U2} = 2\;\mathrm{ns^{-1}}`` peaks at `1.53` ``F_o``, is below ``F_o`` from PAR
@@ -343,6 +359,50 @@ the Inset RMSE `0.144`; with the schedule they are `0.062` and `0.038` (the two
 Cytochrome + PAM rows below). The detector weighting
 ``\varepsilon_{F1}/\varepsilon_{F2} = 2.0`` is carried over from Johnson & Berry (2021)
 (LI-6800, *P. fremontii*), and their Table 1 rate constants are used unchanged.
+
+### PSII yield and detector signal
+
+A PSII fluorescence yield is not what a fluorometer reports. The assumed observer adds a
+PSI level that is constant here, so its share of each level changes as PSII is quenched:
+`39 %` of dark ``F_o`` and `7 %` of dark ``F_m``; among the 49 lit digitized points, `27 %`
+(well watered, at the peak) to `51 %` (severe drought, high light) of ``F_s`` and up to
+`48 %` of ``F_m'``. The indices built from these levels are apparent quantities, biased in
+known directions: with ``P`` a PSII level and ``C`` the PSI level,
+``\Phi_{app} = \Phi_{PSII}\,P_m'/(P_m' + C)`` and ``NPQ_{app} = NPQ\,P_m'/(P_m' + C)`` are
+both too low, while ``q_L`` comes out too high. At ``g = 10`` and PPFD `1222` the model
+has ``\Phi_{PSII}`` `0.093` against an apparent `0.048`, `NPQ` `11.5` against `6.0`, and
+``q_L`` `0.17` against `0.21`. The PSII yields themselves are unchanged.
+
+Each formulation is scored twice against the 49 lit points: as the PSII ratio, and through
+the observer ([`detector_level`](@ref LeafPhotosynthesis.detector_level), with the same
+weights, measuring-beam fractions and PSI level for all):
+
+| Formulation | RMSE, PSII ratio | RMSE, with PSI level | with PSI, ``g = 150`` | with PSI, ``g = 10`` |
+| --- | --- | --- | --- | --- |
+| `CytochromeFluorescence` | `0.180` | `0.062` | `0.049` | `0.092` |
+| Cotton ``K_N(x)`` + prescribed PSI | `0.152` | `0.132` | `0.210` | `0.161` |
+| Drought ``K_N(x)`` + prescribed PSI | `0.118` | `0.118` | `0.205` | `0.065` |
+
+```@raw html
+<div class="leaf-app" data-leaf-app="figures" data-figures="flexas-detector-g150 flexas-detector-g10"></div>
+```
+
+For the mechanistic model the observer is the proper comparison, and it changes the picture.
+For the empirical fits the second column is a sensitivity case, not a correction: van der
+Tol et al. (2014) estimated their constants from fluorometer signals in which PSI was not
+corrected out, so their yields already represent both photosystems, and the unaugmented
+column follows that calibration more closely. Adding the prescribed PSI level on top mixes
+the two interpretations: it lowers their dark ``F_v/F_m`` from `0.80` to `0.71`, below the
+measured `0.80`–`0.83`, and pulls their well-watered peak (`1.46`) down to about `1.28`.
+
+The observer is an assumption throughout: weights carried over from another instrument and
+species, the measuring-beam fractions set equal to the actinic dark-balanced ones for every
+formulation, and fixed weights standing in for wavelength-dependent emission, reabsorption
+and detector response. Its `39 %` PSI share of dark ``F_o`` is above the roughly `30 %`
+often cited for C3 leaves with detection beyond `700 nm` (Pfündel et al. 2013, cited by
+Johnson & Berry 2021) and should not be read as a general correction for this instrument.
+The lake-model rows of the [Gu et al. comparison](lake_model_fluorescence.md) pass through
+the same observer.
 
 ### Peak positions
 

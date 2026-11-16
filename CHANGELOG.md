@@ -4,6 +4,15 @@
 
 ### Added
 
+- `LeafPhotosynthesis.detector_level`: the detector level `F / S` of Johnson & Berry (2021,
+  Eq. 38) from the PSII and PSI fluorescence yields of any model, so that PSII-only
+  formulations can be compared with a measured signal.
+- `examples/flexas_2002.jl`: tables `flexas_connectivity_detector_fig2`,
+  `flexas_detector_fig2` and `flexas_detector_summary`, the PSII yield ratio of each
+  formulation beside the `Fs/Fo` the assumed PAM observer predicts, with the PSI share of
+  `Fs` and `Fm'`; `evaluate_flexas_point` returns the empirical fits with the prescribed PSI
+  level added (a sensitivity case).
+
 - `LakeModelFluorescence`: the PSII lake-model relations of Gu et al. (2019, *New
   Phytologist* 223:1179–1191) between fluorescence, the open reaction-center fraction `qL`,
   `NPQ` and linear electron flow, as a third fluorescence component beside

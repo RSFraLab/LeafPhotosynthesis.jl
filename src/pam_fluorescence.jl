@@ -21,6 +21,40 @@ PAMFluorescenceObserver(fields::Vararg{Real,2}) =
     PAMFluorescenceObserver{scalar_type(PAMFluorescenceObserver, fields...)}(fields...)
 
 """
+    detector_level(observer::PAMFluorescenceObserver,
+        alpha_psii, psii_fluorescence_yield, alpha_psi, psi_fluorescence_yield)
+
+Compute the apparent detector level `F / S` of a fluorometer from the fluorescence yields
+of the two photosystems (Johnson & Berry 2021, Eq. 38):
+``α_2 Φ_{F2} ε_{F2} + α_1 Φ_{F1} ε_{F1}``, with the fractions of the measuring light absorbed
+by PSII and PSI (`alpha_psii > 0`, `alpha_psi ≥ 0`) and the weights of `observer`.
+
+The yields may come from any fluorescence model, so a PSII-only formulation
+([`RateCompetitionFluorescence`](@ref), [`LakeModelFluorescence`](@ref)) can be compared with
+a measured signal by adding a PSI yield. For a [`CytochromeFluorescenceResult`](@ref) the
+value equals the `fs` of [`pam_fluorescence`](@ref). Ratios of two levels (for example
+``F_s / F_o``) need each level evaluated with its own yields. Only signs and finiteness are
+checked (the result is `NaN` for a negative or non-finite yield, `alpha_psii ≤ 0` or
+`alpha_psi < 0`); that the two fractions belong to one measuring beam is the caller's concern.
+"""
+@inline function detector_level(
+    observer::PAMFluorescenceObserver{FTO},
+    alpha_psii::Real,
+    psii_fluorescence_yield::Real,
+    alpha_psi::Real,
+    psi_fluorescence_yield::Real,
+) where {FTO<:Real}
+    _, a2, f2, a1, f1 = promote_compatible(
+        detector_level, zero(FTO), alpha_psii, psii_fluorescence_yield, alpha_psi, psi_fluorescence_yield,
+    )
+    S = typeof(a2)
+    level = (a2 * f2) * S(observer.psii_sensitivity) + (a1 * f1) * S(observer.psi_sensitivity)
+    valid = is_positive(a2) && is_nonnegative(a1) && is_nonnegative(f2) && is_nonnegative(f1) &&
+        is_finite(level)
+    return valid ? level : S(NaN)
+end
+
+"""
     PAMFluorescenceResult{FT}
 
 Store apparent PAM fluorometer levels (`fs`, `fm_dark`, `fo_dark`, `fm_prime`,

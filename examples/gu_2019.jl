@@ -25,11 +25,11 @@ function gu_flexas_point(ref, case, ppfd::FT, observed::FT) where {FT<:AbstractF
     all(is_valid, (r_jb, pam, r_model)) ||
         error("Electron flow outside a fluorescence model's domain at g = $(case.g_sw), PPFD = $ppfd")
 
-    # PSII lake emission through the PAM-2000 observer: detector levels F / S.
-    observer = case.pam_pam2000
-    psii_level = case.alpha2_dark * r_model.fluorescence_yield * observer.psii_sensitivity
-    psi_level = case.alpha1_dark * r_jb.psi_fluorescence_yield * observer.psi_sensitivity
-    lake_model = FT((psii_level + psi_level) / case.dark_pam.fo)
+    # PSII lake emission as the PAM-2000 observer reports it, with the PSI emission of the
+    # Cytochrome leaf.
+    host_fo_yield = lake_model_yields(ref.host_lake, one(FT), zero(FT)).fluorescence_yield
+    lake_model = FT(detector_fs_over_fo(
+        case, r_model.fluorescence_yield, host_fo_yield, r_jb.psi_fluorescence_yield))
 
     # Lake relations on the detector's PAM quantities. `excitation` only sets the scale of
     # the fluxes: yields and Fs/Fo do not depend on it.

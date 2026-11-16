@@ -83,4 +83,5 @@ PAMFluorescenceObserver
 LeafPhotosynthesis.PAMFluorescenceResult
 pam_fluorescence
 LeafPhotosynthesis.dark_pam_levels
+LeafPhotosynthesis.detector_level
 ```

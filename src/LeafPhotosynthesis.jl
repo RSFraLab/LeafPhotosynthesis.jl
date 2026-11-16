@@ -64,7 +64,8 @@ export photosynthesize, biochemical_turnover, oxygen_exchange, gas_exchange,
         FluorescenceIncompatibleRates, quenching_rate, maximum_photochemical_yield,
         psi_maximum_photochemical_yield, psii_maximum_photochemical_yield,
         fluorescence_low_light_yield, minimum_psii_partition,
-        dark_balanced_psii_partition, state_transition_partition, dark_pam_levels
+        dark_balanced_psii_partition, state_transition_partition, dark_pam_levels,
+        detector_level
     """))
 end
 

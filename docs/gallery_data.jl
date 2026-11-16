@@ -165,10 +165,11 @@ function check_gallery_data(payloads, dir, script_dir, page_dir)
         end
         # Figure ids of the gallery; "paper" is the id of the background plugin.
         figure_ids = setdiff(Set(m.captures[1] for m in eachmatch(r"\bid:\s*\"([a-z0-9-]+)\"", gallery_js)), ["paper"])
-        # The two Gu et al. (2019) Flexas figures pass their id to one shared specification.
-        union!(figure_ids, m.captures[1] for m in eachmatch(r"guFlexasFigure\(\"([a-z0-9-]+)\"", gallery_js))
+        # The per-conductance Gu et al. (2019) and detector figures pass their id to one shared
+        # specification.
+        union!(figure_ids, m.captures[1] for m in eachmatch(r"(?:guFlexasFigure|fxDetectorFigure)\(\"([a-z0-9-]+)\"", gallery_js))
         @testset "figures embedded in pages" begin
-            @test length(figure_ids) == 33
+            @test length(figure_ids) == 36
             for page in filter(endswith(".md"), readdir(page_dir))
                 text = read(joinpath(page_dir, page), String)
                 for m in eachmatch(r"data-figures=\"([^\"]+)\"", text), id in split(m.captures[1])
@@ -238,6 +239,10 @@ function check_values(d, FT)
         @test all(r -> r.g150_ku_0p5 >= r.g150_ku_2 >= r.g150_ku_10 > 1, connectivity)
         @test connectivity[end].g10_ku_2 < 1
         @test argmin(r -> r.rmse_ku_1, grid).psi_weight > argmin(r -> r.rmse_ku_3, grid).psi_weight
+        detector = Dict(r.formulation => r for r in fx["flexas_detector_summary"])
+        @test detector["cytochrome"].detector_rmse < detector["cytochrome"].psii_only_rmse
+        @test all((r.g10_ku_2 < 1) == (connectivity[i].g10_ku_2 < 1)
+            for (i, r) in enumerate(fx["flexas_connectivity_detector_fig2"]))
         @test length(fx["flexas_conductance_summary"]) == 6
 
         gu = d.gu_2019

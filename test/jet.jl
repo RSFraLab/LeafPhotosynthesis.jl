@@ -69,6 +69,7 @@ function jet_entry_points(::Type{FT}) where {FT}
         "state_transition_excitation" =>
             (state_transition_excitation, (jb.rule, jb.fl_ku2, jb.photo, site)),
         "pam_fluorescence" => (pam_fluorescence, (jb.pam_leaked, jb.fl_ku2, jb_result, a2, a1)),
+        "detector_level" => (detector_level, (jb.pam_leaked, a2, FT(0.012), a1, FT(0.0033))),
     ]
     return ("C3" => c3, "Cytochrome" => cytochrome)
 end

@@ -253,12 +253,16 @@ function flexas_2002_curves(::Type{FT}) where {FT<:AbstractFloat}
         for g in FT.(cn["light_response_conductances_mmol"])]
     curve_columns = [Symbol("g", round(Int, Float64(case.g_sw)), "_ku_", transfer_rate_label(rate))
         for case in curve_cases for rate in curve_rates]
-    connectivity_rows = map(ppfd_grid[2:end]) do ppfd
-        values = [flexas_fs_over_fo(case, with_transfer_rate(case, rate), case.pam_ideal,
+    connectivity_curves(observer_of) = map(ppfd_grid[2:end]) do ppfd
+        values = [flexas_fs_over_fo(case, with_transfer_rate(case, rate), observer_of(case),
                 flexas_photosystem_inputs(case, ppfd))
             for case in curve_cases for rate in curve_rates]
         (; incident_par = ppfd, NamedTuple{Tuple(curve_columns)}(Tuple(FT.(values)))...)
     end
+    connectivity_rows = connectivity_curves(case -> case.pam_ideal)
+    # The same curves as the PAM-2000 observer reports them: the constant PSI level is added
+    # to Fs and to Fo, so its share of the signal changes as PSII is quenched.
+    connectivity_detector_rows = connectivity_curves(case -> case.pam_pam2000)
 
     # 9. Root-mean-square error of Fs / Fo over the lit digitized Figure 2 points for a grid of
     #    transfer rates and PSI/PSII detector weights: the two quantities that set the size
@@ -292,9 +296,50 @@ function flexas_2002_curves(::Type{FT}) where {FT<:AbstractFloat}
         )
     end
 
+    # 10. PSII fluorescence against what the detector reports, at every lit digitized point
+    #     and for each formulation: the Cytochrome model through its PAM observer, and the
+    #     PSII-only empirical KN(x) fits with the same PSI level added.
+    detector_by_g = map(eachindex(g_levels)) do idx
+        case = cases_combined[idx]
+        map([r for r in digitized_by_g[idx] if !r.dark]) do row
+            p = evaluate_flexas_point(case, row.incident_par)
+            (;
+                row.conductance_mmol,
+                row.incident_par,
+                row.observed_fs_over_fo,
+                cytochrome_psii = p.psii_fs_over_fo,
+                cytochrome_detector = p.pam2000_fs_over_fo,
+                cotton_psii = p.cotton_fs_over_fo,
+                cotton_detector = p.cotton_detector_fs_over_fo,
+                drought_psii = p.drought_fs_over_fo,
+                drought_detector = p.drought_detector_fs_over_fo,
+                p.psi_share_of_fs,
+                p.psi_share_of_fm_prime,
+            )
+        end
+    end
+    detector_rows = reduce(vcat, detector_by_g)
+    detector_summary_rows = map((:cytochrome, :cotton, :drought)) do name
+        psii, detector = Symbol(name, "_psii"), Symbol(name, "_detector")
+        score(rows, field) = flexas_rmse(FT, [getproperty(r, field) for r in rows],
+            [r.observed_fs_over_fo for r in rows])
+        (;
+            formulation = String(name),
+            psii_only_rmse = score(detector_rows, psii),
+            detector_rmse = score(detector_rows, detector),
+            psii_only_rmse_g150 = score(detector_by_g[1], psii),
+            detector_rmse_g150 = score(detector_by_g[1], detector),
+            psii_only_rmse_g10 = score(detector_by_g[6], psii),
+            detector_rmse_g10 = score(detector_by_g[6], detector),
+        )
+    end
+
     return Dict(
         "flexas_connectivity_fig2" => connectivity_rows,
+        "flexas_connectivity_detector_fig2" => connectivity_detector_rows,
         "flexas_connectivity_rmse" => connectivity_rmse_rows,
+        "flexas_detector_fig2" => detector_rows,
+        "flexas_detector_summary" => collect(detector_summary_rows),
         "flexas_mechanistic_fig2" => mechanistic_rows,
         "flexas_empirical_fig2" => empirical_rows,
         "flexas_inset_conductance" => inset_rows,
