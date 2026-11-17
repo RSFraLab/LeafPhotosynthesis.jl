@@ -2,6 +2,12 @@ using ForwardDiff
 
 # What a fluorometer reports against the PSII yield: the detector level of Johnson & Berry
 # (2021, Eq. 38) for any PSII fluorescence model, and its use in the Flexas benchmark.
+# Measured behind a function barrier, so that the test scope's untyped variables do not count.
+function detector_allocations(observer, alpha_psii, psii_yield, alpha_psi, psi_yield)
+    detector_level(observer, alpha_psii, psii_yield, alpha_psi, psi_yield)
+    return @allocated detector_level(observer, alpha_psii, psii_yield, alpha_psi, psi_yield)
+end
+
 @testset "Detector signal: PSII yield plus a constant PSI level" begin
     for FT in (Float32, Float64)
         @testset "$FT" begin
@@ -54,8 +60,7 @@ using ForwardDiff
                 @test_throws MethodError detector_level(observer, ForwardDiff.Dual{:seed}(Other(0.4), one(Other)),
                     ForwardDiff.Dual{:seed}(Other(0.01), zero(Other)), ForwardDiff.Dual{:seed}(Other(0.4), zero(Other)),
                     ForwardDiff.Dual{:seed}(Other(0.003), zero(Other)))
-                @test iszero((detector_level(observer, a2, FT(0.01), a1, FT(0.003));
-                    @allocated detector_level(observer, a2, FT(0.01), a1, FT(0.003))))
+                @test iszero(detector_allocations(observer, a2, FT(0.01), a1, FT(0.003)))
             end
 
             tables = flexas_2002_curves(FT)
